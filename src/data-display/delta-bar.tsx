@@ -1,0 +1,90 @@
+import {
+  type Component,
+  type ComponentProps,
+  mergeProps,
+  Show,
+  splitProps,
+} from "solid-js";
+
+import { cn } from "../cn";
+
+/**
+ * # Delta Bar
+ *
+ * Visual indicator for positive/negative change.
+ *
+ * @example
+ * ```
+ * <div class="space-y-4 w-64">
+ *   <DeltaBar value={25} />
+ *   <DeltaBar value={-30} />
+ *   <DeltaBar value={50} isIncreasePositive={false} />
+ * </div>
+ * ```
+ */
+
+type DeltaBarProps = ComponentProps<"div"> & {
+  value: number;
+  isIncreasePositive?: boolean;
+};
+
+const DeltaBar: Component<DeltaBarProps> = (rawProps) => {
+  const props = mergeProps(
+    {
+      isIncreasePositive: true,
+    },
+    rawProps,
+  );
+  const [local, others] = splitProps(props, [
+    "value",
+    "isIncreasePositive",
+    "class",
+  ]);
+
+  return (
+    <div
+      class={cn(
+        "relative flex h-2 w-full items-center rounded-full bg-secondary",
+        local.class,
+      )}
+      {...others}
+    >
+      <div class="flex h-full w-1/2 justify-end">
+        <Show when={local.value < 0}>
+          <div
+            class={cn(
+              "rounded-l-full",
+              (local.value > 0 && local.isIncreasePositive) ||
+                (local.value < 0 && !local.isIncreasePositive)
+                ? "bg-success-foreground"
+                : "bg-error-foreground",
+            )}
+            style={{ width: `${Math.abs(local.value)}%` }}
+          />
+        </Show>
+      </div>
+      <div
+        class={cn(
+          "z-10 h-4 w-1 rounded-full bg-primary ring-2 ring-background",
+        )}
+      />
+      <div class="flex h-full w-1/2 justify-start">
+        <Show when={local.value > 0}>
+          <div
+            class={cn(
+              "rounded-r-full",
+              (local.value > 0 && local.isIncreasePositive) ||
+                (local.value < 0 && !local.isIncreasePositive)
+                ? "bg-success-foreground"
+                : "bg-error-foreground",
+            )}
+            style={{ width: `${Math.abs(local.value)}%` }}
+          />
+        </Show>
+      </div>
+    </div>
+  );
+};
+
+export { DeltaBar };
+export type { DeltaBarProps };

@@ -1,0 +1,22 @@
+{
+  "name": "@xgx/table-infinite",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@solid-primitives/intersection-observer": "^2.1.6",
+    "@tanstack/solid-query": "^5.80.7",
+    "@tanstack/solid-table": "^8.21.3",
+    "lucide-solid": "^0.563.0"
+  },
+  "peerDependencies": {
+    "@xgx/ui": "*",
+    "solid-js": "^1.9.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
