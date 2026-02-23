@@ -35,8 +35,8 @@
     "clsx": "^2.1.1",
     "lucide-solid": "^0.563.0",
     "markdown-it": "^14.1.0",
-    "tailwind-merge": "^3.4.0"
     "@tanstack/solid-form": "^1.27.7",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@types/bun": "latest",
