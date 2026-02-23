@@ -9,8 +9,6 @@
     "./icons": "./src/icons.index.ts"
   },
   "dependencies": {
-    "@xgx/table-infinite": "file:./packages/table-infinite",
-    "@xgx/tanstack-form": "file:./packages/tanstack-form",
     "@ark-ui/solid": "5.31.0",
     "date-fns": "^4.1.0",
     "@atlaskit/pragmatic-drag-and-drop": "^1.5.0",
@@ -38,6 +36,7 @@
     "lucide-solid": "^0.563.0",
     "markdown-it": "^14.1.0",
     "tailwind-merge": "^3.4.0"
+    "@tanstack/solid-form": "^1.27.7",
   },
   "devDependencies": {
     "@types/bun": "latest",
