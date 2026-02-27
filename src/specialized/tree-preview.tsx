@@ -46,17 +46,6 @@ export interface TreePreviewProps
 	isBuilding?: boolean;
 }
 
-const TreeLine: Component<{ isLast?: boolean }> = (props) => (
-	<div class="absolute left-3 top-0 bottom-0 flex flex-col items-center">
-		<Show when={!props.isLast}>
-			<div class="w-px flex-1 bg-border" />
-		</Show>
-		<Show when={props.isLast}>
-			<div class="w-px h-3 bg-border" />
-		</Show>
-	</div>
-);
-
 const TreeConnector: Component<{ isLast?: boolean }> = (props) => (
 	<div class="absolute left-3 top-0 flex items-center h-6">
 		<div
