@@ -273,6 +273,8 @@ export {
 	ProgressValueLabel,
 } from "./feedback/progress.tsx";
 export { ProgressCircle } from "./feedback/progress-circle.tsx";
+export type { QueryBoundaryProps } from "./feedback/query-boundary.tsx";
+export { QueryBoundary } from "./feedback/query-boundary.tsx";
 export type { RouteLoadingIndicatorProps } from "./feedback/route-loading-indicator.tsx";
 export {
 	DefaultPendingComponent,

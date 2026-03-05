@@ -1,6 +1,18 @@
+import { cn } from "../cn";
+
 interface SpinnerProps {
-  class?: string;
+	class?: string;
+	/** Predefined size */
+	size?: "xs" | "sm" | "md" | "lg" | "xl";
 }
+
+const sizeClasses = {
+	xs: "w-3 h-3",
+	sm: "w-4 h-4",
+	md: "w-6 h-6",
+	lg: "w-8 h-8",
+	xl: "w-12 h-12",
+};
 
 /**
  * # Spinner
@@ -10,18 +22,24 @@ interface SpinnerProps {
  * @example
  * ```
  * <div class="flex items-center gap-4">
- *   <Spinner class="w-4 h-4" />
- *   <Spinner class="w-6 h-6" />
- *   <Spinner class="w-8 h-8" />
- *   <Spinner class="w-12 h-12 text-primary" />
+ *   <Spinner size="sm" />
+ *   <Spinner size="md" />
+ *   <Spinner size="lg" />
+ *   <Spinner size="xl" class="text-primary" />
  * </div>
  * ```
  */
 export function Spinner(props: SpinnerProps) {
-  return (
-    <div class={props.class}>
-      <style>
-        {`
+	return (
+		<div
+			class={cn(
+				sizeClasses[props.size ?? "md"],
+				"text-muted-foreground",
+				props.class,
+			)}
+		>
+			<style>
+				{`
 					@keyframes spinner_rotate {
 						100% { transform: rotate(360deg); }
 					}
@@ -31,25 +49,25 @@ export function Spinner(props: SpinnerProps) {
 						100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
 					}
 				`}
-      </style>
-      <svg
-        viewBox="0 0 50 50"
-        aria-hidden="true"
-        style={{ animation: "spinner_rotate 2s linear infinite" }}
-      >
-        <circle
-          cx="25"
-          cy="25"
-          r="21"
-          fill="none"
-          stroke="currentcolor"
-          stroke-width="6"
-          style={{
-            "stroke-linecap": "round",
-            animation: "spinner_dash 1.5s ease-in-out infinite",
-          }}
-        />
-      </svg>
-    </div>
-  );
+			</style>
+			<svg
+				viewBox="0 0 50 50"
+				aria-hidden="true"
+				style={{ animation: "spinner_rotate 2s linear infinite" }}
+			>
+				<circle
+					cx="25"
+					cy="25"
+					r="21"
+					fill="none"
+					stroke="currentcolor"
+					stroke-width="6"
+					style={{
+						"stroke-linecap": "round",
+						animation: "spinner_dash 1.5s ease-in-out infinite",
+					}}
+				/>
+			</svg>
+		</div>
+	);
 }
