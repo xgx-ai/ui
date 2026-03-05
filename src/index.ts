@@ -424,6 +424,7 @@ export {
 	OTPFieldInput,
 	OTPFieldSeparator,
 	OTPFieldSlot,
+	OTPInput,
 	REGEXP_ONLY_CHARS,
 	REGEXP_ONLY_DIGITS,
 	REGEXP_ONLY_DIGITS_AND_CHARS,
