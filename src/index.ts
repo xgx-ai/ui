@@ -255,6 +255,7 @@ export type {
 	EmptyStateIconProps,
 	EmptyStateProps,
 	EmptyStateTitleProps,
+	SimpleEmptyStateProps,
 } from "./feedback/empty-state.tsx";
 export {
 	EmptyState,
@@ -262,6 +263,7 @@ export {
 	EmptyStateDescription,
 	EmptyStateIcon,
 	EmptyStateTitle,
+	SimpleEmptyState,
 } from "./feedback/empty-state.tsx";
 export type { ErrorAlertProps } from "./feedback/error-alert.tsx";
 export { ErrorAlert } from "./feedback/error-alert.tsx";
