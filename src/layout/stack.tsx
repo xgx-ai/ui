@@ -409,14 +409,10 @@ export interface CenterProps extends ParentProps {
 	style?: JSX.CSSProperties;
 	/** Width */
 	w?: "full" | "auto";
-	/** Height */
-	h?: "full" | "auto" | "screen";
 	/** Min height */
 	minH?: "screen" | "full";
 	/** Padding */
 	p?: SpacingValue;
-	/** Padding top */
-	pt?: SpacingValue;
 	/** Background */
 	bg?: "background" | "muted" | "card";
 }
@@ -424,12 +420,6 @@ export interface CenterProps extends ParentProps {
 const widthClasses = {
 	full: "w-full",
 	auto: "w-auto",
-};
-
-const heightClasses = {
-	full: "h-full",
-	auto: "h-auto",
-	screen: "h-screen",
 };
 
 const minHeightClasses = {
@@ -443,29 +433,14 @@ const bgClasses = {
 	card: "bg-card",
 };
 
-const paddingTopClasses: Record<SpacingValue, string> = {
-	"0": "pt-0",
-	"0.5": "pt-0.5",
-	"1": "pt-1",
-	"1.5": "pt-1.5",
-	"2": "pt-2",
-	"3": "pt-3",
-	"4": "pt-4",
-	"5": "pt-5",
-	"6": "pt-6",
-	"8": "pt-8",
-};
-
 /** Centered content container */
 export function Center(props: CenterProps): JSX.Element {
 	const [local, rest] = splitProps(props, [
 		"class",
 		"style",
 		"w",
-		"h",
 		"minH",
 		"p",
-		"pt",
 		"bg",
 		"children",
 	]);
@@ -474,10 +449,8 @@ export function Center(props: CenterProps): JSX.Element {
 			class={cn(
 				"flex items-center justify-center",
 				local.w && widthClasses[local.w],
-				local.h && heightClasses[local.h],
 				local.minH && minHeightClasses[local.minH],
 				local.p && paddingClasses[local.p],
-				local.pt && paddingTopClasses[local.pt],
 				local.bg && bgClasses[local.bg],
 				local.class,
 			)}
@@ -600,8 +573,6 @@ export interface TextProps extends ParentProps {
 	weight?: "normal" | "medium" | "semibold" | "bold";
 	/** Text alignment */
 	align?: "left" | "center" | "right";
-	/** Truncate overflowing text with ellipsis */
-	truncate?: boolean;
 	/** Margin top */
 	mt?: SpacingValue;
 	/** Margin bottom */
@@ -655,7 +626,6 @@ export function Text(props: TextProps): JSX.Element {
 		"variant",
 		"weight",
 		"align",
-		"truncate",
 		"mt",
 		"mb",
 		"as",
@@ -673,7 +643,6 @@ export function Text(props: TextProps): JSX.Element {
 				textVariantClasses[local.variant ?? "default"],
 				local.weight && textWeightClasses[local.weight],
 				local.align && textAlignClasses[local.align],
-				local.truncate && "truncate",
 				local.mt && marginTopClasses[local.mt],
 				local.mb && marginBottomClasses[local.mb],
 				local.class,

@@ -269,6 +269,16 @@ export type { ErrorAlertProps } from "./feedback/error-alert.tsx";
 export { ErrorAlert } from "./feedback/error-alert.tsx";
 export type { LoadingIndicatorProps } from "./feedback/loading-indicator.tsx";
 export { LoadingIndicator } from "./feedback/loading-indicator.tsx";
+export type {
+	PageEmptyProps,
+	PageErrorProps,
+	PageLoadingProps,
+} from "./feedback/page-states.tsx";
+export {
+	PageEmpty,
+	PageError,
+	PageLoading,
+} from "./feedback/page-states.tsx";
 export {
 	Progress,
 	ProgressLabel,
