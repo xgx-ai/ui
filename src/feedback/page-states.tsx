@@ -139,3 +139,85 @@ export function PageError(props: PageErrorProps): JSX.Element {
 		</div>
 	);
 }
+
+/**
+ * Full-page 404 not found state. Full-screen centered with icon, title,
+ * description, and action.
+ *
+ * @example
+ * ```tsx
+ * <PageNotFound
+ *   onGoHome={() => navigate({ to: "/" })}
+ * />
+ *
+ * <PageNotFound
+ *   title="Document not found"
+ *   description="This document may have been deleted or moved."
+ *   action={<Button onClick={goBack}>Go back</Button>}
+ * />
+ * ```
+ */
+export interface PageNotFoundProps {
+	class?: string;
+	title?: string;
+	description?: string;
+	action?: JSX.Element;
+	/** Shorthand: renders a "Go home" button that calls this callback */
+	onGoHome?: () => void;
+}
+
+export function PageNotFound(props: PageNotFoundProps): JSX.Element {
+	const [local, rest] = splitProps(props, [
+		"class",
+		"title",
+		"description",
+		"action",
+		"onGoHome",
+	]);
+
+	return (
+		<div
+			class={cn(
+				"flex min-h-screen flex-col items-center justify-center gap-2 p-8",
+				local.class,
+			)}
+			{...rest}
+		>
+			<div class="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
+				<svg
+					class="size-8 text-muted-foreground"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+					aria-hidden="true"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+					/>
+				</svg>
+			</div>
+			<h3 class="text-xl font-semibold text-foreground">
+				{local.title ?? "Page not found"}
+			</h3>
+			<p class="text-sm text-muted-foreground text-center max-w-sm">
+				{local.description ??
+					"The page you're looking for doesn't exist or has been moved."}
+			</p>
+			<div class="mt-4">
+				{local.action ??
+					(local.onGoHome && (
+						<button
+							type="button"
+							class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
+							onClick={local.onGoHome}
+						>
+							Go home
+						</button>
+					))}
+			</div>
+		</div>
+	);
+}

@@ -273,11 +273,13 @@ export type {
 	PageEmptyProps,
 	PageErrorProps,
 	PageLoadingProps,
+	PageNotFoundProps,
 } from "./feedback/page-states.tsx";
 export {
 	PageEmpty,
 	PageError,
 	PageLoading,
+	PageNotFound,
 } from "./feedback/page-states.tsx";
 export {
 	Progress,
