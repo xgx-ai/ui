@@ -40,6 +40,8 @@ export interface FormSearchFieldProps<T = SearchOption> extends BaseFieldProps {
   noResultText?: string;
   /** Custom filter function (defaults to case-insensitive label match) */
   filterFn?: (option: T, query: string) => boolean;
+  /** Optional class for the inner search control element */
+  controlClass?: string;
   /** Open dropdown on focus (defaults to true for backward compatibility) */
   openOnFocus?: boolean;
 }
@@ -61,6 +63,7 @@ function FormSearchFieldInner<T>(props: {
   noResultText?: string;
   filterFn?: (option: T, query: string) => boolean;
   openOnFocus?: boolean;
+  controlClass?: string;
 }) {
   const [searchQuery, setSearchQuery] = createSignal("");
 
@@ -127,6 +130,7 @@ function FormSearchFieldInner<T>(props: {
         class={cn(
           props.hasError && "border-destructive",
           props.disabled && "bg-muted",
+          props.controlClass,
         )}
       >
         <SearchInput onBlur={() => props.field.handleBlur()} />
@@ -221,6 +225,7 @@ export function FormSearchField<T = SearchOption>(
                 noResultText={props.noResultText}
                 filterFn={props.filterFn}
                 openOnFocus={props.openOnFocus}
+                controlClass={props.controlClass}
               />
             </Suspense>
 

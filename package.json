@@ -7,6 +7,8 @@
 		".": "./src/index.ts",
 		"./base.css": "./src/base.css",
 		"./icons": "./src/icons.index.ts",
+		"./tanstack-form": "./src/tanstack-form/index.ts",
+		"./table-infinite": "./src/table-infinite/index.ts",
 		"./bun-plugin-solid": "./src/bun-plugins/solid.ts",
 		"./bun-plugin-tanstack-router": "./src/bun-plugins/tanstack-router.ts"
 	},
