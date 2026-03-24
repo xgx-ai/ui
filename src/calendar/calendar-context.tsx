@@ -6,7 +6,13 @@ import {
   startOfWeek,
 } from "date-fns";
 import type { Accessor, JSX } from "solid-js";
-import { createContext, createMemo, createSignal, useContext } from "solid-js";
+import {
+  createContext,
+  createEffect,
+  createMemo,
+  createSignal,
+  useContext,
+} from "solid-js";
 import type {
   CalendarEvent,
   CalendarViewMode,
@@ -65,6 +71,14 @@ export interface CalendarProviderProps {
   events: Accessor<CalendarEvent[]>;
   defaultViewMode?: CalendarViewMode;
   defaultDate?: Date;
+  /** Controlled view mode — overrides internal state when provided */
+  viewMode?: CalendarViewMode;
+  /** Controlled current date — overrides internal state when provided */
+  currentDate?: Date;
+  /** Called when the view mode changes (controlled mode) */
+  onViewModeChange?: (mode: CalendarViewMode) => void;
+  /** Called when the current date changes (controlled mode) */
+  onCurrentDateChange?: (date: Date) => void;
   onEventClick?: (event: CalendarEvent, mouseEvent: MouseEvent) => void;
   onEventMove?: (data: EventMoveData) => void;
   onEventResize?: (data: EventResizeData) => void;
@@ -75,15 +89,41 @@ export interface CalendarProviderProps {
 export function CalendarProvider(props: CalendarProviderProps) {
   const weekStartsOn = props.weekStartsOn ?? 1;
 
-  const [viewMode, setViewMode] = createSignal<CalendarViewMode>(
-    props.defaultViewMode ?? "week",
-  );
-  const [currentDate, setCurrentDate] = createSignal(
-    props.defaultDate ?? new Date(),
+  const [internalViewMode, setInternalViewMode] =
+    createSignal<CalendarViewMode>(
+      props.viewMode ?? props.defaultViewMode ?? "week",
+    );
+  const [internalCurrentDate, setInternalCurrentDate] = createSignal(
+    props.currentDate ?? props.defaultDate ?? new Date(),
   );
   const [selectedEventId, setSelectedEventId] = createSignal<string | null>(
     null,
   );
+
+  // Sync controlled props → internal signals (e.g. browser back/forward)
+  createEffect(() => {
+    if (props.viewMode !== undefined) {
+      setInternalViewMode(() => props.viewMode!);
+    }
+  });
+  createEffect(() => {
+    if (props.currentDate !== undefined) {
+      setInternalCurrentDate(() => props.currentDate!);
+    }
+  });
+
+  const viewMode = () => internalViewMode();
+  const currentDate = () => internalCurrentDate();
+
+  const setViewMode = (mode: CalendarViewMode) => {
+    setInternalViewMode(mode);
+    props.onViewModeChange?.(mode);
+  };
+
+  const setCurrentDate = (date: Date) => {
+    setInternalCurrentDate(date);
+    props.onCurrentDateChange?.(date);
+  };
 
   const startDate = createMemo(() => {
     const mode = viewMode();
@@ -136,7 +176,7 @@ export function CalendarProvider(props: CalendarProviderProps) {
     });
   };
 
-  const updateDatesForMode = (date: Date, _mode: CalendarViewMode) => {
+  const updateDate = (date: Date) => {
     setCurrentDate(date);
   };
 
@@ -145,11 +185,11 @@ export function CalendarProvider(props: CalendarProviderProps) {
     const date = currentDate();
 
     if (mode === "day") {
-      updateDatesForMode(addDays(date, 1), mode);
+      updateDate(addDays(date, 1));
     } else if (mode === "week") {
-      updateDatesForMode(addDays(date, 7), mode);
+      updateDate(addDays(date, 7));
     } else {
-      updateDatesForMode(addMonths(date, 1), mode);
+      updateDate(addMonths(date, 1));
     }
   };
 
@@ -158,20 +198,20 @@ export function CalendarProvider(props: CalendarProviderProps) {
     const date = currentDate();
 
     if (mode === "day") {
-      updateDatesForMode(addDays(date, -1), mode);
+      updateDate(addDays(date, -1));
     } else if (mode === "week") {
-      updateDatesForMode(addDays(date, -7), mode);
+      updateDate(addDays(date, -7));
     } else {
-      updateDatesForMode(addMonths(date, -1), mode);
+      updateDate(addMonths(date, -1));
     }
   };
 
   const goToDate = (date: Date) => {
-    updateDatesForMode(date, viewMode());
+    updateDate(date);
   };
 
   const goToToday = () => {
-    updateDatesForMode(new Date(), viewMode());
+    updateDate(new Date());
   };
 
   const handleEventClick = (event: CalendarEvent, mouseEvent: MouseEvent) => {

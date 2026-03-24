@@ -140,7 +140,7 @@ export interface SimpleEmptyStateProps {
  * ```
  */
 export function SimpleEmptyState(props: SimpleEmptyStateProps): JSX.Element {
-	const [local, rest] = splitProps(props, [
+	const [local] = splitProps(props, [
 		"class",
 		"icon",
 		"title",

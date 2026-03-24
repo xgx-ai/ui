@@ -34,7 +34,7 @@ import type { UseTableReturn } from "./use-table.ts";
 const TableRoot: Component<ComponentProps<"table">> = (props) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
-    <div class="relative w-full h-full">
+    <div class="relative w-full h-full overflow-x-auto">
       <table
         class={cn("w-full caption-bottom !bg-none", local.class)}
         {...others}
@@ -83,7 +83,7 @@ const TableHead: Component<ComponentProps<"th">> = (props) => {
   return (
     <th
       class={cn(
-        "h-10 px-4 text-left align-middle font-medium text-xs text-muted-foreground uppercase tracking-wider [&:has([role=checkbox])]:pr-0",
+        "h-10 px-2 sm:px-4 text-left align-middle font-medium text-xs text-muted-foreground uppercase tracking-wider [&:has([role=checkbox])]:pr-0",
         local.class,
       )}
       {...others}
@@ -96,7 +96,7 @@ const TableCell: Component<ComponentProps<"td">> = (props) => {
   return (
     <td
       class={cn(
-        "px-4 py-2.5 align-middle text-foreground [&:has([role=checkbox])]:pr-0",
+        "px-2 sm:px-4 py-2.5 align-middle text-xs text-foreground [&:has([role=checkbox])]:pr-0",
         local.class,
       )}
       {...others}

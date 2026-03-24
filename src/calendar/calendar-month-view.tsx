@@ -96,9 +96,41 @@ export function CalendarMonthView(props: CalendarMonthViewProps) {
                 <div class="space-y-0.5">
                   <For each={visibleEvents()}>
                     {(event) => (
-                      <Tooltip>
-                        <TooltipTrigger
-                          as="div"
+                      <Show
+                        when={props.renderEventContent}
+                        fallback={
+                          <Tooltip>
+                            <TooltipTrigger
+                              as="div"
+                              class="px-1.5 py-0.5 rounded border text-[10px] truncate cursor-pointer hover:shadow"
+                              style={{
+                                "background-color": `${event.colour ?? "#8b5cf6"}20`,
+                                "border-color": `${event.colour ?? "#8b5cf6"}40`,
+                                color: event.colour ?? "#8b5cf6",
+                              }}
+                              onClick={(e: MouseEvent) =>
+                                onEventClick?.(event, e)
+                              }
+                            >
+                              {event.title}
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <Show
+                                when={props.renderTooltip}
+                                fallback={
+                                  <div class="font-medium">{event.title}</div>
+                                }
+                              >
+                                {props.renderTooltip!(
+                                  event,
+                                  createContext(event),
+                                )}
+                              </Show>
+                            </TooltipContent>
+                          </Tooltip>
+                        }
+                      >
+                        <div
                           class="px-1.5 py-0.5 rounded border text-[10px] truncate cursor-pointer hover:shadow"
                           style={{
                             "background-color": `${event.colour ?? "#8b5cf6"}20`,
@@ -107,19 +139,12 @@ export function CalendarMonthView(props: CalendarMonthViewProps) {
                           }}
                           onClick={(e: MouseEvent) => onEventClick?.(event, e)}
                         >
-                          {event.title}
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <Show
-                            when={props.renderTooltip}
-                            fallback={
-                              <div class="font-medium">{event.title}</div>
-                            }
-                          >
-                            {props.renderTooltip!(event, createContext(event))}
-                          </Show>
-                        </TooltipContent>
-                      </Tooltip>
+                          {props.renderEventContent!(
+                            event,
+                            createContext(event),
+                          )}
+                        </div>
+                      </Show>
                     )}
                   </For>
 

@@ -751,6 +751,7 @@ export {
 } from "./overlays/filter-popover.tsx";
 export {
 	Popover,
+	PopoverClose,
 	PopoverContent,
 	PopoverTrigger,
 } from "./overlays/popover.tsx";

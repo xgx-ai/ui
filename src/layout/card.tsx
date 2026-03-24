@@ -37,7 +37,10 @@ const Card: Component<CardProps> = (props) => {
 const CardHeader: Component<ComponentProps<"div">> = (props) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
-    <div class={cn("flex flex-col space-y-1.5 p-6", local.class)} {...others} />
+    <div
+      class={cn("flex flex-col space-y-1.5 p-4 sm:p-6", local.class)}
+      {...others}
+    />
   );
 };
 
@@ -63,13 +66,16 @@ const CardDescription: Component<ComponentProps<"p">> = (props) => {
 
 const CardContent: Component<ComponentProps<"div">> = (props) => {
   const [local, others] = splitProps(props, ["class"]);
-  return <div class={cn("p-6 pt-0", local.class)} {...others} />;
+  return <div class={cn("p-4 sm:p-6 pt-0", local.class)} {...others} />;
 };
 
 const CardFooter: Component<ComponentProps<"div">> = (props) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
-    <div class={cn("flex items-center p-6 pt-0", local.class)} {...others} />
+    <div
+      class={cn("flex items-center p-4 sm:p-6 pt-0", local.class)}
+      {...others}
+    />
   );
 };
 

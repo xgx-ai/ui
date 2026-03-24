@@ -20,7 +20,11 @@ export function Page(props: PageProps): JSX.Element {
   const [local, rest] = splitProps(props, ["class", "size", "children"]);
   return (
     <div
-      class={cn("p-6 w-full", sizeClasses[local.size ?? "lg"], local.class)}
+      class={cn(
+        "p-2 sm:p-6 w-full",
+        sizeClasses[local.size ?? "lg"],
+        local.class,
+      )}
       {...rest}
     >
       {local.children}

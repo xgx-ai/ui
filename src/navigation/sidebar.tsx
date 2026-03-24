@@ -94,7 +94,7 @@ export interface SidebarMainProps extends ParentProps {
 export function SidebarMain(props: SidebarMainProps): JSX.Element {
   const [local, rest] = splitProps(props, ["class", "children"]);
   return (
-    <main class={cn("flex-1 bg-gray-50 p-8", local.class)} {...rest}>
+    <main class={cn("flex-1 bg-gray-50 p-4 lg:p-8", local.class)} {...rest}>
       {local.children}
     </main>
   );

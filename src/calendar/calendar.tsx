@@ -17,6 +17,14 @@ import type { CalendarEvent } from "./types";
 export interface CalendarProps
   extends Omit<CalendarProviderProps, "children" | "events"> {
   events: CalendarEvent[] | Accessor<CalendarEvent[]>;
+  /** Controlled view mode */
+  viewMode?: CalendarProviderProps["viewMode"];
+  /** Controlled current date */
+  currentDate?: CalendarProviderProps["currentDate"];
+  /** Called when the view mode changes */
+  onViewModeChange?: CalendarProviderProps["onViewModeChange"];
+  /** Called when the current date changes */
+  onCurrentDateChange?: CalendarProviderProps["onCurrentDateChange"];
   class?: string;
   hideViewModeToggle?: boolean;
   hideDayHeader?: boolean;
@@ -45,17 +53,21 @@ function CalendarInner(props: {
 
   return (
     <Card class={`h-full flex flex-col overflow-hidden ${props.class ?? ""}`}>
-      <div class="flex items-center justify-between p-4 border-b">
-        <div class={props.hideViewModeToggle ? "" : "w-32"}>
+      <div class="flex items-center justify-between px-4 py-3 border-b border-black/[0.06]">
+        <div
+          class={
+            props.hideViewModeToggle ? "" : props.headerLeft ? "w-32" : "w-10"
+          }
+        >
           {props.headerLeft}
         </div>
 
         <CalendarHeaderNav />
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5">
           {props.headerRight}
           <Show when={!props.hideViewModeToggle}>
-            <div class="bg-muted rounded-md overflow-hidden flex">
+            <div class="bg-muted/70 rounded-md overflow-hidden flex border border-black/[0.06]">
               <Button
                 variant={viewMode() === "day" ? "default" : "ghost"}
                 size="sm"
@@ -119,6 +131,10 @@ export function Calendar(props: CalendarProps) {
       events={eventsAccessor as Accessor<CalendarEvent[]>}
       defaultViewMode={props.defaultViewMode}
       defaultDate={props.defaultDate}
+      viewMode={props.viewMode}
+      currentDate={props.currentDate}
+      onViewModeChange={props.onViewModeChange}
+      onCurrentDateChange={props.onCurrentDateChange}
       onEventClick={props.onEventClick}
       onEventMove={props.onEventMove}
       onEventResize={props.onEventResize}
