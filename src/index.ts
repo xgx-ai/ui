@@ -1,5 +1,11 @@
 // Utilities
 
+// Activity Timeline
+export { ActivityTimeline } from "./activity-timeline/index.ts";
+export type {
+	ActivityTimelineFilter,
+	ActivityTimelineProps,
+} from "./activity-timeline/index.ts";
 // Calendar
 export {
 	Calendar,
@@ -37,6 +43,11 @@ export {
 	AvatarFallback,
 	AvatarImage,
 } from "./data-display/avatar.tsx";
+export type {
+	AvatarGroupItem,
+	AvatarGroupProps,
+} from "./data-display/avatar-group.tsx";
+export { AvatarGroup } from "./data-display/avatar-group.tsx";
 export { BarList } from "./data-display/bar-list.tsx";
 export type {
 	DataGridCellProps,
@@ -120,6 +131,27 @@ export type {
 	UseTableReturn,
 } from "./data-display/use-table.ts";
 export { useTable } from "./data-display/use-table.ts";
+export type {
+	SidebarRowProps,
+	SidebarSectionProps,
+} from "./data-display/sidebar-section.tsx";
+export {
+	SidebarRow,
+	SidebarSection,
+} from "./data-display/sidebar-section.tsx";
+export type { TimelineItemProps } from "./data-display/timeline-item.tsx";
+export { TimelineItem } from "./data-display/timeline-item.tsx";
+// Detail Sidebar
+export {
+	DetailSidebar,
+} from "./detail-sidebar/index.ts";
+export type {
+	DetailSidebarBadge,
+	DetailSidebarHeader,
+	DetailSidebarProps,
+	DetailSidebarSection,
+	DetailSidebarSlimIcon,
+} from "./detail-sidebar/index.ts";
 export type {
 	// Preview types
 	DefaultPreviewProps,
