@@ -1,12 +1,10 @@
 import {
-	createSignal,
 	For,
 	onCleanup,
 	onMount,
 	Show,
 	splitProps,
 } from "solid-js";
-import type { Component } from "solid-js";
 import { cn } from "../cn";
 import { Button } from "../forms/button";
 import { SearchBar } from "../forms/search-bar";
@@ -35,11 +33,8 @@ function ActivityTimeline<TItem = unknown>(
 	]);
 
 	let sentinelRef: HTMLDivElement | undefined;
-	const [isInitialLoad, setIsInitialLoad] = createSignal(true);
 
 	onMount(() => {
-		setIsInitialLoad(false);
-
 		const observer = new IntersectionObserver((entries) => {
 			if (
 				entries[0]?.isIntersecting &&
