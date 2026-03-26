@@ -15,9 +15,8 @@ import { CalendarHeaderEntry } from "./calendar-header-entry";
 import { isHeaderEvent, layoutEvents } from "./calendar-utils";
 import type { CalendarEvent } from "./types";
 
-const START_HOUR = 0;
-const END_HOUR = 24;
-const VISIBLE_HOURS = END_HOUR - START_HOUR;
+const DEFAULT_START_HOUR = 0;
+const DEFAULT_END_HOUR = 24;
 const PIXELS_PER_HOUR = 48;
 const SNAP_MINUTES = 15;
 
@@ -32,10 +31,18 @@ export interface CalendarDayViewProps {
   ) => JSX.Element;
   /** Hide the day name + date number sticky header */
   hideDayHeader?: boolean;
+  /** First visible hour (default 0) */
+  startHour?: number;
+  /** Last visible hour (default 24) */
+  endHour?: number;
 }
 
 export function CalendarDayView(props: CalendarDayViewProps) {
   const { currentDate, getEventsForDay, onSlotClick } = useCalendarContext();
+
+  const START_HOUR = () => props.startHour ?? DEFAULT_START_HOUR;
+  const END_HOUR = () => props.endHour ?? DEFAULT_END_HOUR;
+  const VISIBLE_HOURS = () => END_HOUR() - START_HOUR();
 
   let scrollRef: HTMLDivElement | undefined;
 
@@ -44,18 +51,22 @@ export function CalendarDayView(props: CalendarDayViewProps) {
   onCleanup(() => clearInterval(timer));
 
   onMount(() => {
-    requestAnimationFrame(() => {
-      const now = new Date();
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const scrollTop = Math.max(
-        0,
-        (currentMinutes / 60 - 1) * PIXELS_PER_HOUR,
-      );
-      scrollRef?.scrollTo({ top: scrollTop });
-    });
+    if (START_HOUR() === 0) {
+      requestAnimationFrame(() => {
+        const now = new Date();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const scrollTop = Math.max(
+          0,
+          (currentMinutes / 60 - 1) * PIXELS_PER_HOUR,
+        );
+        scrollRef?.scrollTo({ top: scrollTop });
+      });
+    }
   });
 
-  const hours = Array.from({ length: VISIBLE_HOURS }, (_, i) => i + START_HOUR);
+  const hours = createMemo(() =>
+    Array.from({ length: VISIBLE_HOURS() }, (_, i) => i + START_HOUR()),
+  );
 
   const dayEvents = createMemo(() => getEventsForDay(currentDate()));
 
@@ -88,7 +99,7 @@ export function CalendarDayView(props: CalendarDayViewProps) {
         class="grid text-sm min-w-full"
         style={{
           "grid-template-columns": "48px 1fr",
-          "min-height": `${VISIBLE_HOURS * 48}px`,
+          "min-height": `${VISIBLE_HOURS() * 48}px`,
         }}
       >
         {/* Header row — sticky, includes all-day events */}
@@ -127,7 +138,7 @@ export function CalendarDayView(props: CalendarDayViewProps) {
 
         {/* Time labels column */}
         <div class="sticky left-0 bg-card z-10">
-          <Index each={hours}>
+          <Index each={hours()}>
             {(hour) => (
               <div class="h-12 pr-3 flex items-start justify-end">
                 <span class="text-[11px] text-gray-400 -mt-1.5">
@@ -148,7 +159,7 @@ export function CalendarDayView(props: CalendarDayViewProps) {
             const clickY = e.clientY - rect.top;
             if (clickY < 0) return;
             const totalMinutes =
-              START_HOUR * 60 + (clickY / PIXELS_PER_HOUR) * 60;
+              START_HOUR() * 60 + (clickY / PIXELS_PER_HOUR) * 60;
             const snappedMinutes =
               Math.round(totalMinutes / SNAP_MINUTES) * SNAP_MINUTES;
             const date = new Date(currentDate());
@@ -164,7 +175,7 @@ export function CalendarDayView(props: CalendarDayViewProps) {
         >
           {/* Hour grid lines */}
           <div>
-            <Index each={hours}>
+            <Index each={hours()}>
               {() => (
                 <div
                   class="h-12 hover:bg-gray-50"
@@ -183,8 +194,8 @@ export function CalendarDayView(props: CalendarDayViewProps) {
                 layoutEvent={layoutEvent}
                 day={currentDate()}
                 headerSpace={0}
-                startHour={START_HOUR}
-                visibleHours={VISIBLE_HOURS}
+                startHour={START_HOUR()}
+                visibleHours={VISIBLE_HOURS()}
                 renderContent={props.renderEventContent}
                 renderTooltip={props.renderTooltip}
               />
@@ -196,7 +207,7 @@ export function CalendarDayView(props: CalendarDayViewProps) {
             <div
               class="absolute left-0 right-0 pointer-events-none"
               style={{
-                top: `${((now().getHours() * 60 + now().getMinutes()) / 60) * PIXELS_PER_HOUR}px`,
+                top: `${((now().getHours() * 60 + now().getMinutes()) / 60 - START_HOUR()) * PIXELS_PER_HOUR}px`,
                 "z-index": "5",
               }}
             >

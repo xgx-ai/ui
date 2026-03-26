@@ -28,6 +28,10 @@ export interface CalendarProps
   class?: string;
   hideViewModeToggle?: boolean;
   hideDayHeader?: boolean;
+  /** First visible hour in day/week views (default 0) */
+  startHour?: number;
+  /** Last visible hour in day/week views (default 24) */
+  endHour?: number;
   renderEventContent?: (
     event: CalendarEvent,
     context: CalendarEntryContext,
@@ -44,6 +48,8 @@ function CalendarInner(props: {
   class?: string;
   hideViewModeToggle?: boolean;
   hideDayHeader?: boolean;
+  startHour?: number;
+  endHour?: number;
   renderEventContent?: CalendarProps["renderEventContent"];
   renderTooltip?: CalendarProps["renderTooltip"];
   headerLeft?: JSX.Element;
@@ -103,12 +109,16 @@ function CalendarInner(props: {
             renderEventContent={props.renderEventContent}
             renderTooltip={props.renderTooltip}
             hideDayHeader={props.hideDayHeader}
+            startHour={props.startHour}
+            endHour={props.endHour}
           />
         </Show>
         <Show when={viewMode() === "week"}>
           <CalendarWeekView
             renderEventContent={props.renderEventContent}
             renderTooltip={props.renderTooltip}
+            startHour={props.startHour}
+            endHour={props.endHour}
           />
         </Show>
         <Show when={viewMode() === "month"}>
@@ -145,6 +155,8 @@ export function Calendar(props: CalendarProps) {
         class={props.class}
         hideViewModeToggle={props.hideViewModeToggle}
         hideDayHeader={props.hideDayHeader}
+        startHour={props.startHour}
+        endHour={props.endHour}
         renderEventContent={props.renderEventContent}
         renderTooltip={props.renderTooltip}
         headerLeft={props.headerLeft}

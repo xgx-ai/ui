@@ -15,9 +15,8 @@ import { CalendarHeaderEntry } from "./calendar-header-entry";
 import { isHeaderEvent, layoutEvents } from "./calendar-utils";
 import type { CalendarEvent } from "./types";
 
-export const START_HOUR = 0;
-export const END_HOUR = 24;
-export const VISIBLE_HOURS = END_HOUR - START_HOUR;
+const DEFAULT_START_HOUR = 0;
+const DEFAULT_END_HOUR = 24;
 
 export interface CalendarWeekViewProps {
   renderEventContent?: (
@@ -28,6 +27,10 @@ export interface CalendarWeekViewProps {
     event: CalendarEvent,
     context: CalendarEntryContext,
   ) => JSX.Element;
+  /** First visible hour (default 0) */
+  startHour?: number;
+  /** Last visible hour (default 24) */
+  endHour?: number;
 }
 
 const PIXELS_PER_HOUR = 48;
@@ -36,6 +39,10 @@ const SNAP_MINUTES = 15;
 export function CalendarWeekView(props: CalendarWeekViewProps) {
   const { weekDays, getEventsForDay, onSlotClick } = useCalendarContext();
 
+  const START_HOUR = () => props.startHour ?? DEFAULT_START_HOUR;
+  const END_HOUR = () => props.endHour ?? DEFAULT_END_HOUR;
+  const VISIBLE_HOURS = () => END_HOUR() - START_HOUR();
+
   let scrollRef: HTMLDivElement | undefined;
 
   const [now, setNow] = createSignal(new Date());
@@ -43,10 +50,14 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
   onCleanup(() => clearInterval(timer));
 
   onMount(() => {
-    scrollRef?.scrollTo({ top: 8 * PIXELS_PER_HOUR });
+    if (START_HOUR() === 0) {
+      scrollRef?.scrollTo({ top: 8 * PIXELS_PER_HOUR });
+    }
   });
 
-  const hours = Array.from({ length: VISIBLE_HOURS }, (_, i) => i + START_HOUR);
+  const hours = createMemo(() =>
+    Array.from({ length: VISIBLE_HOURS() }, (_, i) => i + START_HOUR()),
+  );
 
   // Compute layout for all 7 days at the top level so both header and day columns can access it
   const allWeekEvents = createMemo(() =>
@@ -106,7 +117,7 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
         class="grid text-sm min-w-full"
         style={{
           "grid-template-columns": "48px repeat(7, minmax(0, 1fr))",
-          "min-height": `${VISIBLE_HOURS * 48}px`,
+          "min-height": `${VISIBLE_HOURS() * 48}px`,
         }}
       >
         {/* Header row — sticky, includes all-day events */}
@@ -156,7 +167,7 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
 
         {/* Time labels column */}
         <div class="sticky left-0 bg-card z-10">
-          <Index each={hours}>
+          <Index each={hours()}>
             {(hour) => (
               <div class="h-12 pr-3 flex items-start justify-end">
                 <span class="text-[11px] text-gray-400 -mt-1.5">
@@ -180,7 +191,7 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
               const clickY = e.clientY - rect.top;
               if (clickY < 0) return;
               const totalMinutes =
-                START_HOUR * 60 + (clickY / PIXELS_PER_HOUR) * 60;
+                START_HOUR() * 60 + (clickY / PIXELS_PER_HOUR) * 60;
               const snappedMinutes =
                 Math.round(totalMinutes / SNAP_MINUTES) * SNAP_MINUTES;
               const date = new Date(day());
@@ -204,7 +215,7 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
               >
                 {/* Hour grid lines */}
                 <div>
-                  <Index each={hours}>
+                  <Index each={hours()}>
                     {() => (
                       <div
                         class="h-12 hover:bg-gray-50"
@@ -223,8 +234,8 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
                       layoutEvent={layoutEvent}
                       day={day()}
                       headerSpace={0}
-                      startHour={START_HOUR}
-                      visibleHours={VISIBLE_HOURS}
+                      startHour={START_HOUR()}
+                      visibleHours={VISIBLE_HOURS()}
                       renderContent={props.renderEventContent}
                       renderTooltip={props.renderTooltip}
                     />
@@ -236,7 +247,7 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
                   <div
                     class="absolute left-0 right-0 pointer-events-none"
                     style={{
-                      top: `${((now().getHours() * 60 + now().getMinutes()) / 60) * PIXELS_PER_HOUR}px`,
+                      top: `${((now().getHours() * 60 + now().getMinutes()) / 60 - START_HOUR()) * PIXELS_PER_HOUR}px`,
                       "z-index": "5",
                     }}
                   >
