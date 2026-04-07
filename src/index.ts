@@ -796,15 +796,6 @@ export {
 	SheetTitle,
 	SheetTrigger,
 } from "./overlays/sheet.tsx";
-// Quote Document
-export type {
-	QuoteDocumentClient,
-	QuoteDocumentLineItem,
-	QuoteDocumentProps,
-	QuoteDocumentSeller,
-	QuoteDocumentSpreadTotals,
-} from "./quote-document.tsx";
-export { QuoteDocument } from "./quote-document.tsx";
 // Specialized
 export type { ChatMessage, ChatProps } from "./specialized/chat.tsx";
 export {
