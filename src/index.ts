@@ -835,6 +835,7 @@ export type {
 	CollaborationConfig,
 	FloatingToolbarProps,
 	RichTextEditorFormProps,
+	RichTextEditorInstance,
 	RichTextEditorProps,
 	ToolbarConfig,
 } from "./specialized/rich-text-editor/index.ts";
