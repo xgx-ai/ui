@@ -1,4 +1,6 @@
-import type { Editor } from "@tiptap/core";
+import type { AnyExtension, Editor, EditorOptions } from "@tiptap/core";
+
+export type RichTextEditorInstance = Editor;
 
 export interface ToolbarConfig {
   /** Enable bold, italic, underline formatting */
@@ -50,6 +52,14 @@ export interface RichTextEditorProps {
   minHeight?: string;
   /** Optional collaboration config for multi-user editing */
   collaboration?: CollaborationConfig;
+  /** Additional TipTap extensions to register */
+  extensions?: AnyExtension[];
+  /** Additional editor props merged into the underlying ProseMirror view */
+  editorProps?: EditorOptions['editorProps'];
+  /** Called when the editor instance is created or destroyed */
+  onEditorReady?: (editor: Editor | null) => void;
+  /** Whether to show the built-in floating toolbar */
+  showFloatingToolbar?: boolean;
 }
 
 export interface RichTextEditorFormProps extends RichTextEditorProps {

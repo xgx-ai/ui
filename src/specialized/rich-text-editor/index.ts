@@ -7,6 +7,7 @@ export type {
   CollaborationConfig,
   FloatingToolbarProps,
   RichTextEditorFormProps,
+  RichTextEditorInstance,
   RichTextEditorProps,
   ToolbarConfig,
 } from "./types";

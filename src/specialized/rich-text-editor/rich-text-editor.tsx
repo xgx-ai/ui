@@ -112,6 +112,10 @@ export function RichTextEditor(props: RichTextEditorProps) {
       );
     }
 
+    if (props.extensions?.length) {
+      extensions.push(...props.extensions);
+    }
+
     const newEditor = new Editor({
       element: container,
       extensions,
@@ -124,10 +128,15 @@ export function RichTextEditor(props: RichTextEditorProps) {
         props.onBlur?.();
       },
       editorProps: {
+        ...props.editorProps,
         attributes: {
+          ...(typeof props.editorProps?.attributes === 'object' ? props.editorProps.attributes : {}),
           class: cn(
             "prose prose-sm max-w-none focus:outline-none px-3 py-2 text-xs w-full h-full",
             props.contentClass,
+            typeof (props.editorProps?.attributes as Record<string, string> | undefined)?.class === 'string'
+              ? (props.editorProps?.attributes as Record<string, string>).class
+              : '',
           ),
           style: `min-height: ${props.minHeight || "120px"}`,
         },
@@ -141,6 +150,7 @@ export function RichTextEditor(props: RichTextEditorProps) {
     });
 
     setEditor(newEditor);
+    props.onEditorReady?.(newEditor);
   };
 
   // Sync props.value changes to editor content (deferred to skip initial mount)
@@ -180,6 +190,7 @@ export function RichTextEditor(props: RichTextEditorProps) {
 
   onCleanup(() => {
     const currentEditor = editor();
+    props.onEditorReady?.(null);
     setEditor(null);
     isInitializing = false; // Reset guard for potential re-mount
     if (currentEditor) {
@@ -191,7 +202,7 @@ export function RichTextEditor(props: RichTextEditorProps) {
     }
   });
 
-  const showBubbleMenu = () => !props.readOnly && !props.disabled;
+  const showBubbleMenu = () => props.showFloatingToolbar !== false && !props.readOnly && !props.disabled;
   const [wrapperRef, setWrapperRef] = createSignal<
     HTMLDivElement | undefined
   >();
