@@ -1,4 +1,4 @@
-import { type JSX, type ParentProps, splitProps } from "solid-js";
+import { type Component, type JSX, type ParentProps, splitProps } from "solid-js";
 import { cn } from "../cn";
 
 // ---------------------------------------------------------------------------
@@ -78,24 +78,32 @@ export function SidebarNav(props: SidebarNavProps): JSX.Element {
 // ---------------------------------------------------------------------------
 
 export interface SidebarNavItemProps extends ParentProps {
-	href: string;
+	href?: string;
 	class?: string;
 	active?: boolean;
 	title?: string;
+	/** Render a custom element (e.g. a router Link) instead of a plain `<a>`. */
+	as?: Component<any> | string;
+	/** Alias for `href` — used by routers that expect a `to` prop. */
+	to?: string;
 }
 
 /** A single navigation link. Renders as a centred icon button by default. */
 export function SidebarNavItem(props: SidebarNavItemProps): JSX.Element {
 	const [local, rest] = splitProps(props, [
+		"as",
 		"href",
+		"to",
 		"class",
 		"active",
 		"children",
 		"title",
 	]);
+	const Tag = local.as ?? "a";
 	return (
-		<a
-			href={local.href}
+		<Tag
+			href={local.href ?? local.to}
+			to={local.to ?? local.href}
 			title={local.title}
 			class={cn(
 				"flex h-9 w-9 items-center justify-center rounded-lg text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -106,7 +114,7 @@ export function SidebarNavItem(props: SidebarNavItemProps): JSX.Element {
 			{...rest}
 		>
 			{local.children}
-		</a>
+		</Tag>
 	);
 }
 
