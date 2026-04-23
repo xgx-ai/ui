@@ -1,7 +1,11 @@
 import type { Component, ComponentProps } from "solid-js";
-import { splitProps } from "solid-js";
+import { Show, splitProps } from "solid-js";
 
 import { cn } from "../cn";
+
+type LabelProps = ComponentProps<"label"> & {
+  required?: boolean;
+};
 
 /**
  * # Label
@@ -13,11 +17,12 @@ import { cn } from "../cn";
  * <div class="space-y-2">
  *   <Label for="email">Email address</Label>
  *   <Label class="text-muted-foreground">Optional label</Label>
+ *   <Label required>Required field</Label>
  * </div>
  * ```
  */
-const Label: Component<ComponentProps<"label">> = (props) => {
-  const [local, others] = splitProps(props, ["class"]);
+const Label: Component<LabelProps> = (props) => {
+  const [local, others] = splitProps(props, ["class", "required", "children"]);
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: Generic label component - consumer provides htmlFor or wraps control
     <label
@@ -26,7 +31,13 @@ const Label: Component<ComponentProps<"label">> = (props) => {
         local.class,
       )}
       {...others}
-    />
+    >
+      {local.children}
+      <Show when={local.required}>
+        {" "}
+        <span class="text-destructive">*</span>
+      </Show>
+    </label>
   );
 };
 

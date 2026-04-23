@@ -51,7 +51,10 @@
 		"tailwindcss": "^4.1.18"
 	},
 	"peerDependencies": {
+		"@solid-primitives/context": ">=0.2.0",
+		"@solid-primitives/refs": ">=1.0.0",
 		"@tanstack/solid-query": "^5.75.0",
+		"chart.js": ">=4.0.0",
 		"solid-js": "^1.9.0"
 	}
 }
