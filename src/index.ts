@@ -734,6 +734,7 @@ export {
 export type { PaginationProps } from "./navigation/pagination.tsx";
 export { Pagination } from "./navigation/pagination.tsx";
 export type {
+	SidebarFooterProps,
 	SidebarHeaderProps,
 	SidebarLayoutProps,
 	SidebarMainProps,
@@ -743,6 +744,7 @@ export type {
 } from "./navigation/sidebar.tsx";
 export {
 	Sidebar,
+	SidebarFooter,
 	SidebarHeader,
 	SidebarLayout,
 	SidebarMain,
