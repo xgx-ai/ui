@@ -195,7 +195,7 @@ export default function FormField(props: FormFieldProps) {
           label={local.label}
           required={isRequired()}
           placeholder={local.placeholder}
-          value={local.field.state.value ?? ""}
+          value={(local.field.state.value as string | number) ?? ""}
           onChange={(e) => {
             let value = e;
             if (props.type === "number") {
@@ -209,7 +209,7 @@ export default function FormField(props: FormFieldProps) {
           step={local.step}
           inputMode={local.inputMode}
           onBlur={() => local.field.handleBlur()}
-          error={errors()}
+          error={errors()?.join(", ")}
           description={local.description}
         />
       }
@@ -256,7 +256,7 @@ export default function FormField(props: FormFieldProps) {
               props.height || "h-32"
             } ${local.class || ""}`}
             placeholder={local.placeholder}
-            value={local.field.state.value ?? ""}
+            value={(local.field.state.value as string) ?? ""}
             onInput={(e) => {
               local.field.handleChange(e.currentTarget.value);
               props.onChange?.(e.currentTarget.value);
@@ -278,7 +278,7 @@ export default function FormField(props: FormFieldProps) {
             class={`w-full p-2 border border-gray-200 rounded-lg bg-white text-xs ${
               local.class || ""
             }`}
-            value={local.field.state.value ?? ""}
+            value={(local.field.state.value as string) ?? ""}
             onChange={(e) => {
               local.field.handleChange(e.currentTarget.value);
               props.onChange?.(e.currentTarget.value);

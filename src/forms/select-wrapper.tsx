@@ -179,7 +179,7 @@ export function SelectWrapper<T>(props: SelectProps<T>) {
                 .toLowerCase()
                 .includes(inputValue.toLowerCase());
             }}
-            itemComponent={(p: { item: { rawValue: T } }) => {
+            itemComponent={(p: any) => {
               const isExtraButton = (
                 p.item.rawValue as unknown as ExtraButtonOption
               )?.isExtraButton;
