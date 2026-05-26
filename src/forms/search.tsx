@@ -193,11 +193,8 @@ const SearchContent = <T extends ValidComponent = "div">(
     // Using Portal directly here, as SearchContent doesn't automatically portal
     <SearchPrimitive.Portal>
       <SearchPrimitive.Content // Changed
-        style={{
-          "max-height": "var(--kb-popper-content-available-height)", // Keep popper styles
-        }}
         class={cn(
-          "relative z-50 min-w-32 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-80", // Base styles from ComboboxContent
+          "relative max-h-(--kb-popper-content-available-height) z-50 min-w-32 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-80", // Base styles from ComboboxContent
           local.class,
         )}
         {...others}

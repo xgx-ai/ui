@@ -98,11 +98,8 @@ const AutocompleteContent = <T extends ValidComponent = "div">(
   return (
     <SearchPrimitive.Portal>
       <SearchPrimitive.Content
-        style={{
-          "max-height": "var(--kb-popper-content-available-height)",
-        }}
         class={cn(
-          "relative z-50 min-w-32 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-80",
+          "relative max-h-(--kb-popper-content-available-height) z-50 min-w-32 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-80",
           local.class,
         )}
         {...others}
