@@ -1,4 +1,5 @@
-import type { JSX, Setter } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import type { Setter } from "solid-js";
 
 export type ToastTypes =
   | "normal"
@@ -133,10 +134,7 @@ export interface ToastToDismiss {
   dismiss: boolean;
 }
 
-export type ExternalToast = Omit<
-  ToastT,
-  "id" | "type" | "title" | "delete" | "promise"
-> & {
+export type ExternalToast = Omit<ToastT, "id" | "type" | "title" | "delete" | "promise"> & {
   id?: number | string;
 };
 

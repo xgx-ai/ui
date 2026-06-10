@@ -15,6 +15,10 @@ export interface ToolbarConfig {
   color?: boolean;
   /** Enable code/code block */
   code?: boolean;
+  /** App-supplied text colour options for the toolbar */
+  textColors?: string[];
+  /** App-supplied highlight colour options for the toolbar */
+  highlightColors?: Array<{ color: string; name: string }>;
 }
 
 export interface CollaborationConfig {
@@ -55,7 +59,7 @@ export interface RichTextEditorProps {
   /** Additional TipTap extensions to register */
   extensions?: AnyExtension[];
   /** Additional editor props merged into the underlying ProseMirror view */
-  editorProps?: EditorOptions['editorProps'];
+  editorProps?: EditorOptions["editorProps"];
   /** Called when the editor instance is created or destroyed */
   onEditorReady?: (editor: Editor | null) => void;
   /** Whether to show the built-in floating toolbar */

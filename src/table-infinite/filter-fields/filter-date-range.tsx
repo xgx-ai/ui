@@ -1,9 +1,7 @@
-import { TextField, TextFieldInput, TextFieldLabel } from "@xgx/ui";
+import { TextField, TextFieldInput, TextFieldLabel } from "../../forms/text-field";
 import type { UseTableFiltersReturn } from "../use-table-filters";
 
-export interface FilterDateRangeProps<
-  TFilters extends Record<string, unknown>,
-> {
+export interface FilterDateRangeProps<TFilters extends Record<string, unknown>> {
   /**
    * The label to display for the date range
    */
@@ -38,10 +36,8 @@ export interface FilterDateRangeProps<
 export function FilterDateRange<TFilters extends Record<string, unknown>>(
   props: FilterDateRangeProps<TFilters>,
 ) {
-  const fromValue = () =>
-    (props.filterHook.filters()[props.fromKey] as string) ?? "";
-  const toValue = () =>
-    (props.filterHook.filters()[props.toKey] as string) ?? "";
+  const fromValue = () => (props.filterHook.filters()[props.fromKey] as string) ?? "";
+  const toValue = () => (props.filterHook.filters()[props.toKey] as string) ?? "";
 
   const handleFromChange = (value: string) => {
     props.filterHook.setFilter(
@@ -51,23 +47,14 @@ export function FilterDateRange<TFilters extends Record<string, unknown>>(
   };
 
   const handleToChange = (value: string) => {
-    props.filterHook.setFilter(
-      props.toKey,
-      (value || undefined) as TFilters[typeof props.toKey],
-    );
+    props.filterHook.setFilter(props.toKey, (value || undefined) as TFilters[typeof props.toKey]);
   };
 
   return (
     <div class="space-y-2 py-1">
       <div class="flex gap-2">
-        <TextField
-          value={fromValue()}
-          onChange={handleFromChange}
-          class="flex-1"
-        >
-          <TextFieldLabel class="text-xs text-gray-600">
-            {props.label}
-          </TextFieldLabel>
+        <TextField value={fromValue()} onChange={handleFromChange} class="flex-1">
+          <TextFieldLabel class="text-xs text-muted-foreground">{props.label}</TextFieldLabel>
           <TextFieldInput type="date" class="h-8 px-2 py-1" />
         </TextField>
         <TextField value={toValue()} onChange={handleToChange} class="flex-1">

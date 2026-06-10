@@ -1,4 +1,6 @@
-import { type JSX, type ParentProps, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface LinkProps extends ParentProps {
@@ -16,12 +18,7 @@ const variantClasses = {
 
 /** Styled link component */
 export function Link(props: LinkProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "href",
-    "class",
-    "variant",
-    "children",
-  ]);
+  const [local, rest] = splitProps(props, ["href", "class", "variant", "children"]);
   return (
     <a
       href={local.href}
@@ -60,10 +57,7 @@ export function BackLink(props: BackLinkProps): JSX.Element {
   return (
     <a
       href={local.href}
-      class={cn(
-        "text-sm text-muted-foreground hover:text-foreground",
-        local.class,
-      )}
+      class={cn("text-sm text-muted-foreground hover:text-foreground", local.class)}
       {...rest}
     >
       {local.children ?? "← Back"}

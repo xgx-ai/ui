@@ -1,4 +1,6 @@
-import { type JSX, type ParentProps, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface AuthPageProps extends ParentProps {
@@ -11,7 +13,7 @@ export function AuthPage(props: AuthPageProps): JSX.Element {
   return (
     <div
       class={cn(
-        "min-h-screen flex items-center justify-center bg-muted/30 p-4",
+        "flex min-h-screen items-center justify-center bg-background p-4 text-foreground",
         local.class,
       )}
       {...rest}
@@ -29,7 +31,13 @@ export interface AuthCardProps extends ParentProps {
 export function AuthCard(props: AuthCardProps): JSX.Element {
   const [local, rest] = splitProps(props, ["class", "children"]);
   return (
-    <div class={cn("mx-auto max-w-sm w-full", local.class)} {...rest}>
+    <div
+      class={cn(
+        "mx-auto w-full max-w-sm rounded-lg border border-border-subtle bg-surface-raised p-6 text-surface-raised-foreground shadow-elevation-medium",
+        local.class,
+      )}
+      {...rest}
+    >
       {local.children}
     </div>
   );
@@ -44,7 +52,10 @@ export function FullScreenCenter(props: FullScreenCenterProps): JSX.Element {
   const [local, rest] = splitProps(props, ["class", "children"]);
   return (
     <div
-      class={cn("min-h-screen flex items-center justify-center", local.class)}
+      class={cn(
+        "flex min-h-screen items-center justify-center bg-background text-foreground",
+        local.class,
+      )}
       {...rest}
     >
       {local.children}

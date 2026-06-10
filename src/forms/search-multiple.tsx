@@ -1,3 +1,4 @@
+import type { JSX } from "@solidjs/web";
 import { cn } from "../cn";
 import { ComboboxTrigger } from "./combobox";
 import {
@@ -12,7 +13,7 @@ import {
   SearchSection,
 } from "./search";
 import { Skeleton } from "../feedback/skeleton";
-import { For, type JSXElement, Show, Suspense } from "solid-js";
+import { For, Show, Loading as Suspense } from "solid-js";
 import { Label } from "./label";
 
 type SearchProps<T> = {
@@ -29,7 +30,7 @@ type SearchProps<T> = {
   error?: string;
   class?: string;
   readOnly?: boolean;
-  extraButton?: () => JSXElement;
+  extraButton?: () => JSX.Element;
   debounceOptionsMillisecond?: number;
   isLoading?: boolean;
   noResultText?: string;
@@ -50,9 +51,7 @@ export default function SearchMultiple<T>(props: SearchProps<T>) {
     if (!props.value) return props.placeholder || "";
 
     if (Array.isArray(props.value)) {
-      return props.value
-        .map((item) => getDisplayValue(item, props.optionTextValue))
-        .join(", ");
+      return props.value.map((item) => getDisplayValue(item, props.optionTextValue)).join(", ");
     } else {
       return getDisplayValue(props.value as T, props.optionTextValue);
     }
@@ -67,7 +66,7 @@ export default function SearchMultiple<T>(props: SearchProps<T>) {
         {props.readOnly ? (
           <div
             class={cn(
-              "flex h-9 rounded-md border border-input bg-gray-50 px-3 py-2 text-xs",
+              "flex h-9 rounded-md border border-input bg-muted px-3 py-2 text-xs text-muted-foreground",
               props.class,
             )}
           >
@@ -96,7 +95,7 @@ export default function SearchMultiple<T>(props: SearchProps<T>) {
             }}
             onInputChange={props.onInputChange}
             debounceOptionsMillisecond={props.debounceOptionsMillisecond}
-            itemComponent={(p) => {
+            itemComponent={(p: any) => {
               return (
                 <SearchItem item={p.item}>
                   <SearchItemLabel>
@@ -105,34 +104,26 @@ export default function SearchMultiple<T>(props: SearchProps<T>) {
                 </SearchItem>
               );
             }}
-            sectionComponent={(p) => (
-              <SearchSection>
-                {p.section.rawValue[props.optionTextValue]}
-              </SearchSection>
+            sectionComponent={(p: any) => (
+              <SearchSection>{p.section.rawValue[props.optionTextValue]}</SearchSection>
             )}
           >
             <SearchControl
               class={cn(
-                "relative flex flex-wrap items-center min-h-8.5 border-gray-200/50 bg-white/60 text-[11px]",
+                "relative flex min-h-8.5 flex-wrap items-center border-border-subtle bg-background text-[11px]",
                 props.class,
                 props.readOnly && "opacity-50 pointer-events-none",
               )}
             >
-              <div
-                class={cn(
-                  "flex flex-row flex-wrap items-center pr-10 gap-1 w-full",
-                )}
-              >
-                <Show
-                  when={Array.isArray(props.value) && props.value.length > 0}
-                >
+              <div class={cn("flex flex-row flex-wrap items-center pr-10 gap-1 w-full")}>
+                <Show when={Array.isArray(props.value) && props.value.length > 0}>
                   <For each={props.value as T[]}>
                     {(item) => (
-                      <span class="bg-primary-100 text-primary-800 rounded px-2 py-0.5 text-xs flex items-center gap-1 bg-gray-100 whitespace-nowrap">
+                      <span class="flex items-center gap-1 whitespace-nowrap rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                         {getDisplayValue(item, props.optionTextValue)}
                         <button
                           type="button"
-                          class="text-primary-600 hover:text-primary-800 ml-1 cursor-pointer focus:outline-none"
+                          class="ml-1 cursor-pointer text-muted-foreground hover:text-foreground focus:outline-none"
                           onClick={(e) => {
                             props.onRemove?.(item);
                           }}
@@ -154,9 +145,7 @@ export default function SearchMultiple<T>(props: SearchProps<T>) {
 
             <SearchContent onCloseAutoFocus={(e) => e.preventDefault()}>
               <SearchListbox />
-              <SearchNoResult>
-                {props.noResultText || "No results found."}
-              </SearchNoResult>
+              <SearchNoResult>{props.noResultText || "No results found."}</SearchNoResult>
               <Show when={props.extraButton}>
                 <div class="p-2 border-t mt-1">{props.extraButton!()}</div>
               </Show>
@@ -166,7 +155,7 @@ export default function SearchMultiple<T>(props: SearchProps<T>) {
       </Suspense>
       <div
         class={cn(
-          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-destructive",
+          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-error",
           props.error && "opacity-100 h-4 ",
         )}
       >

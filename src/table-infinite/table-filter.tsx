@@ -1,6 +1,9 @@
-import { Button, cn, Popover, PopoverContent, PopoverTrigger } from "@xgx/ui";
-import { ListFilter } from "lucide-solid";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { cn } from "../cn";
+import { Button } from "../forms/button";
+import { ListFilter } from "../icons.index";
+import { Popover, PopoverContent, PopoverTrigger } from "../overlays/popover";
+
 import { Show } from "solid-js";
 import type { UseTableFiltersReturn } from "./use-table-filters";
 
@@ -51,10 +54,7 @@ export function TableFilter<TFilters extends Record<string, unknown>>(
   return (
     <Popover>
       <PopoverTrigger>
-        <Button
-          variant="outline"
-          class={cn("text-xs rounded-full text-gray-500 relative", props.class)}
-        >
+        <Button variant="outline" class={cn("relative text-xs text-muted-foreground", props.class)}>
           <div class="mr-2">
             <ListFilter size={14} />
           </div>
@@ -73,7 +73,7 @@ export function TableFilter<TFilters extends Record<string, unknown>>(
               <h1 class="text-sm font-medium">Filtering</h1>
             </div>
             <Button
-              class="text-primary text-[11px] hover:text-primary/80"
+              class="text-[11px] text-control hover:text-control-hover-foreground"
               size="sm"
               variant="link"
               onClick={handleReset}
@@ -82,9 +82,7 @@ export function TableFilter<TFilters extends Record<string, unknown>>(
             </Button>
           </div>
 
-          <div class="flex flex-col gap-2 max-h-96 overflow-y-auto">
-            {props.children}
-          </div>
+          <div class="flex flex-col gap-2 max-h-96 overflow-y-auto">{props.children}</div>
         </div>
       </PopoverContent>
     </Popover>

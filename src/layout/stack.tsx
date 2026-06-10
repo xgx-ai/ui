@@ -1,19 +1,11 @@
-import { type JSX, type ParentProps, splitProps } from "solid-js";
-import { Dynamic } from "solid-js/web";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { type ParentProps } from "solid-js";
+import { Dynamic } from "@solidjs/web";
 import { cn } from "../cn";
 
 /** Common spacing values */
-type SpacingValue =
-  | "0"
-  | "0.5"
-  | "1"
-  | "1.5"
-  | "2"
-  | "3"
-  | "4"
-  | "5"
-  | "6"
-  | "8";
+type SpacingValue = "0" | "0.5" | "1" | "1.5" | "2" | "3" | "4" | "5" | "6" | "8";
 
 const marginTopClasses: Record<SpacingValue, string> = {
   "0": "mt-0",
@@ -138,9 +130,9 @@ export function Stack(props: StackProps): JSX.Element {
         local.mb && marginBottomClasses[local.mb],
         local.py && paddingYClasses[local.py],
         local.borderTop && "border-t",
+        local.classList,
         local.class,
       )}
-      classList={local.classList}
       onSubmit={local.onSubmit}
       {...rest}
     >
@@ -252,19 +244,7 @@ export function Flex(props: FlexProps): JSX.Element {
   );
 }
 
-type ColValue =
-  | "1"
-  | "2"
-  | "3"
-  | "4"
-  | "5"
-  | "6"
-  | "7"
-  | "8"
-  | "9"
-  | "10"
-  | "11"
-  | "12";
+type ColValue = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12";
 
 export interface GridProps extends ParentProps {
   class?: string;
@@ -435,15 +415,7 @@ const bgClasses = {
 
 /** Centered content container */
 export function Center(props: CenterProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "style",
-    "w",
-    "minH",
-    "p",
-    "bg",
-    "children",
-  ]);
+  const [local, rest] = splitProps(props, ["class", "style", "w", "minH", "p", "bg", "children"]);
   return (
     <div
       class={cn(
@@ -490,13 +462,8 @@ export interface BoxProps extends ParentProps {
   /** Form submit handler (when as="form") */
   onSubmit?: (e: SubmitEvent) => void;
   onClick?: (e: MouseEvent) => void;
-  /** Inner HTML */
-  innerHTML?: string;
   /** Element ref */
-  ref?:
-    | HTMLDivElement
-    | HTMLInputElement
-    | ((el: HTMLDivElement | HTMLInputElement) => void);
+  ref?: HTMLDivElement | HTMLInputElement | ((el: HTMLDivElement | HTMLInputElement) => void);
   type?: string;
   accept?: string;
   multiple?: boolean;
@@ -530,7 +497,6 @@ export function Box(props: BoxProps): JSX.Element {
     "onClick",
     "onInput",
     "onChange",
-    "innerHTML",
     "ref",
     "type",
     "accept",
@@ -541,14 +507,12 @@ export function Box(props: BoxProps): JSX.Element {
   return (
     <Dynamic
       component={local.as ?? "div"}
-      class={cn(local.p && paddingClasses[local.p], local.class)}
-      classList={local.classList}
+      class={cn(local.p && paddingClasses[local.p], local.classList, local.class)}
       style={local.style}
       onSubmit={local.onSubmit}
       onClick={local.onClick}
       onInput={local.onInput}
       onChange={local.onChange}
-      innerHTML={local.innerHTML}
       ref={local.ref}
       type={local.type}
       accept={local.accept}
@@ -601,7 +565,7 @@ const textVariantClasses = {
   default: "text-foreground",
   muted: "text-muted-foreground",
   accent: "text-accent-foreground",
-  destructive: "text-destructive",
+  destructive: "text-danger",
 };
 
 const textWeightClasses = {
@@ -676,18 +640,13 @@ const sectionPaddingClasses = {
 
 const sectionVariantClasses = {
   default: "",
-  muted: "bg-muted/50 rounded-lg",
-  card: "bg-card border rounded-lg shadow-sm",
+  muted: "bg-surface-muted rounded-md",
+  card: "bg-card border rounded-md shadow-sm",
 };
 
 /** Section container for grouping related content */
 export function Section(props: SectionProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "padding",
-    "variant",
-    "children",
-  ]);
+  const [local, rest] = splitProps(props, ["class", "padding", "variant", "children"]);
   return (
     <div
       class={cn(
@@ -731,12 +690,7 @@ const headingLevelDefaults: Record<number, string> = {
 
 /** Semantic heading component with flexible sizing */
 export function Heading(props: HeadingProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "level",
-    "size",
-    "children",
-  ]);
+  const [local, rest] = splitProps(props, ["class", "level", "size", "children"]);
   const level = local.level ?? 2;
   const tag = `h${level}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 

@@ -1,5 +1,5 @@
 import type { Component } from "solid-js";
-import { createEffect, createSignal, Show } from "solid-js";
+import { createTrackedEffect, createSignal, Show } from "solid-js";
 import { cn } from "../cn";
 
 type ColorPickerProps = {
@@ -37,23 +37,21 @@ const buttonSwatchSizes = {
  * ```
  * <div class="space-y-4">
  *   <div class="flex items-center gap-4">
- *     <ColorPicker defaultValue="#6366f1" />
- *     <ColorPicker defaultValue="#10b981" size="lg" />
+ *     <ColorPicker defaultValue={brandColor} />
+ *     <ColorPicker defaultValue={accentColor} size="lg" />
  *   </div>
  *   <div class="flex items-center gap-4">
- *     <ColorPicker defaultValue="#6366f1" variant="button" />
- *     <ColorPicker defaultValue="#10b981" variant="button" showValue />
+ *     <ColorPicker defaultValue={brandColor} variant="button" />
+ *     <ColorPicker defaultValue={accentColor} variant="button" showValue />
  *   </div>
  * </div>
  * ```
  */
 const ColorPicker: Component<ColorPickerProps> = (props) => {
-  const [internalValue, setInternalValue] = createSignal(
-    props.value ?? props.defaultValue ?? "#000000",
-  );
+  const [internalValue, setInternalValue] = createSignal(props.value ?? props.defaultValue ?? "");
 
   // Sync with external value prop
-  createEffect(() => {
+  createTrackedEffect(() => {
     if (props.value !== undefined) {
       setInternalValue(props.value);
     }
@@ -73,8 +71,7 @@ const ColorPicker: Component<ColorPickerProps> = (props) => {
     <label
       class={cn(
         "inline-flex items-center gap-2 cursor-pointer",
-        variant() === "button" &&
-          "rounded-md border px-3 py-2 hover:bg-accent transition-colors",
+        variant() === "button" && "rounded-md border px-3 py-2 hover:bg-accent transition-colors",
         props.disabled && "opacity-50 cursor-not-allowed",
         props.class,
       )}
@@ -89,16 +86,12 @@ const ColorPicker: Component<ColorPickerProps> = (props) => {
           "[&::-webkit-color-swatch-wrapper]:p-0",
           "[&::-webkit-color-swatch]:rounded [&::-webkit-color-swatch]:border-none",
           "[&::-moz-color-swatch]:rounded [&::-moz-color-swatch]:border-none",
-          variant() === "swatch"
-            ? swatchSizes[size()]
-            : buttonSwatchSizes[size()],
+          variant() === "swatch" ? swatchSizes[size()] : buttonSwatchSizes[size()],
           props.disabled && "cursor-not-allowed",
         )}
       />
       <Show when={props.showValue || variant() === "button"}>
-        <span class="text-sm font-mono text-muted-foreground uppercase">
-          {internalValue()}
-        </span>
+        <span class="text-sm font-mono text-muted-foreground uppercase">{internalValue()}</span>
       </Show>
     </label>
   );

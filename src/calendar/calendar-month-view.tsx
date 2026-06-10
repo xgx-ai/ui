@@ -1,12 +1,6 @@
-import {
-  addDays,
-  format,
-  isSameDay,
-  isSameMonth,
-  startOfMonth,
-  startOfWeek,
-} from "date-fns";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { addDays, format, isSameDay, isSameMonth, startOfMonth, startOfWeek } from "date-fns";
+
 import { createMemo, For, Show } from "solid-js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../feedback/tooltip";
 import { useCalendarContext } from "./calendar-context";
@@ -16,14 +10,8 @@ import type { CalendarEvent } from "./types";
 const MAX_VISIBLE_EVENTS = 3;
 
 export interface CalendarMonthViewProps {
-  renderEventContent?: (
-    event: CalendarEvent,
-    context: CalendarEntryContext,
-  ) => JSX.Element;
-  renderTooltip?: (
-    event: CalendarEvent,
-    context: CalendarEntryContext,
-  ) => JSX.Element;
+  renderEventContent?: (event: CalendarEvent, context: CalendarEntryContext) => JSX.Element;
+  renderTooltip?: (event: CalendarEvent, context: CalendarEntryContext) => JSX.Element;
 }
 
 export function CalendarMonthView(props: CalendarMonthViewProps) {
@@ -43,19 +31,19 @@ export function CalendarMonthView(props: CalendarMonthViewProps) {
   const createContext = (event: CalendarEvent): CalendarEntryContext => ({
     isCompleted: !!event.isCompleted,
     isShort: true,
-    colour: event.colour ?? "#8b5cf6",
-    colourLight: `${event.colour ?? "#8b5cf6"}20`,
+    colour: event.colour ?? "var(--primary)",
+    colourLight: `color-mix(in oklch, ${event.colour ?? "var(--primary)"} 18%, transparent)`,
     timeDisplay: "",
   });
 
   return (
     <div class="h-full overflow-auto p-4">
-      <div class="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-lg overflow-hidden">
+      <div class="grid grid-cols-7 gap-px overflow-hidden rounded-md border border-border-subtle bg-border-subtle">
         {/* Day of week headers */}
         <For each={weekDayLabels()}>
           {(day) => (
-            <div class="bg-gray-50 p-2 text-center">
-              <span class="text-[11px] uppercase tracking-wider font-medium text-gray-500">
+            <div class="bg-surface-muted p-2 text-center">
+              <span class="text-[11px] uppercase tracking-wider font-medium text-muted-foreground">
                 {format(day, "EEE")}
               </span>
             </div>
@@ -68,26 +56,20 @@ export function CalendarMonthView(props: CalendarMonthViewProps) {
             const isCurrentMonth = isSameMonth(day, currentDate());
             const isToday = isSameDay(day, new Date());
             const dayEvents = createMemo(() => getEventsForDay(day));
-            const visibleEvents = createMemo(() =>
-              dayEvents().slice(0, MAX_VISIBLE_EVENTS),
-            );
+            const visibleEvents = createMemo(() => dayEvents().slice(0, MAX_VISIBLE_EVENTS));
             const hiddenCount = createMemo(() =>
               Math.max(0, dayEvents().length - MAX_VISIBLE_EVENTS),
             );
 
             return (
-              <div
-                class={`bg-card min-h-[100px] p-1 ${
-                  !isCurrentMonth ? "bg-gray-50/50" : ""
-                }`}
-              >
+              <div class={`min-h-[100px] p-1 ${isCurrentMonth ? "bg-card" : "bg-surface-muted"}`}>
                 <div
                   class={`text-sm font-medium mb-1 w-7 h-7 flex items-center justify-center ${
                     isToday
                       ? "bg-primary text-primary-foreground rounded-full"
                       : isCurrentMonth
-                        ? "text-gray-900"
-                        : "text-gray-400"
+                        ? "text-foreground"
+                        : "text-muted-foreground"
                   }`}
                 >
                   {format(day, "d")}
@@ -104,27 +86,24 @@ export function CalendarMonthView(props: CalendarMonthViewProps) {
                               as="div"
                               class="px-1.5 py-0.5 rounded border text-[10px] truncate cursor-pointer hover:shadow"
                               style={{
-                                "background-color": `${event.colour ?? "#8b5cf6"}20`,
-                                "border-color": `${event.colour ?? "#8b5cf6"}40`,
-                                color: event.colour ?? "#8b5cf6",
+                                "background-color": `color-mix(in oklch, ${
+                                  event.colour ?? "var(--primary)"
+                                } 18%, transparent)`,
+                                "border-color": `color-mix(in oklch, ${
+                                  event.colour ?? "var(--primary)"
+                                } 34%, transparent)`,
+                                color: event.colour ?? "var(--primary)",
                               }}
-                              onClick={(e: MouseEvent) =>
-                                onEventClick?.(event, e)
-                              }
+                              onClick={(e: MouseEvent) => onEventClick?.(event, e)}
                             >
                               {event.title}
                             </TooltipTrigger>
                             <TooltipContent>
                               <Show
                                 when={props.renderTooltip}
-                                fallback={
-                                  <div class="font-medium">{event.title}</div>
-                                }
+                                fallback={<div class="font-medium">{event.title}</div>}
                               >
-                                {props.renderTooltip!(
-                                  event,
-                                  createContext(event),
-                                )}
+                                {props.renderTooltip!(event, createContext(event))}
                               </Show>
                             </TooltipContent>
                           </Tooltip>
@@ -133,25 +112,24 @@ export function CalendarMonthView(props: CalendarMonthViewProps) {
                         <div
                           class="px-1.5 py-0.5 rounded border text-[10px] truncate cursor-pointer hover:shadow"
                           style={{
-                            "background-color": `${event.colour ?? "#8b5cf6"}20`,
-                            "border-color": `${event.colour ?? "#8b5cf6"}40`,
-                            color: event.colour ?? "#8b5cf6",
+                            "background-color": `color-mix(in oklch, ${
+                              event.colour ?? "var(--primary)"
+                            } 18%, transparent)`,
+                            "border-color": `color-mix(in oklch, ${
+                              event.colour ?? "var(--primary)"
+                            } 34%, transparent)`,
+                            color: event.colour ?? "var(--primary)",
                           }}
                           onClick={(e: MouseEvent) => onEventClick?.(event, e)}
                         >
-                          {props.renderEventContent!(
-                            event,
-                            createContext(event),
-                          )}
+                          {props.renderEventContent!(event, createContext(event))}
                         </div>
                       </Show>
                     )}
                   </For>
 
                   <Show when={hiddenCount() > 0}>
-                    <div class="text-[10px] text-gray-500 px-1">
-                      +{hiddenCount()} more
-                    </div>
+                    <div class="text-[10px] text-muted-foreground px-1">+{hiddenCount()} more</div>
                   </Show>
                 </div>
               </div>

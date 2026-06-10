@@ -1,57 +1,172 @@
-import * as HoverCardPrimitive from "@kobalte/core/hover-card";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import type { Component, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-
+import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
+import { Dynamic } from "@solidjs/web";
+import type { Component } from "solid-js";
+import { createContext, createSignal, Show, useContext } from "solid-js";
 import { cn } from "../cn";
+import { splitProps } from "../utils/split-props";
 
-/**
- * # Hover Card
- *
- * Card that appears on hover with additional info.
- *
- * @example
- * ```
- * <HoverCard>
- *   <HoverCardTrigger class="underline cursor-pointer">
- *     Hover me
- *   </HoverCardTrigger>
- *   <HoverCardContent>
- *     <div class="space-y-2">
- *       <h4 class="text-sm font-semibold">More Information</h4>
- *       <p class="text-sm">Additional details shown on hover.</p>
- *     </div>
- *   </HoverCardContent>
- * </HoverCard>
- * ```
- */
+const DynamicAny = Dynamic as any;
 
-const HoverCardTrigger = HoverCardPrimitive.Trigger;
-
-const HoverCard: Component<HoverCardPrimitive.HoverCardRootProps> = (props) => {
-  return <HoverCardPrimitive.Root gutter={4} {...props} />;
+type HoverCardContextValue = {
+  close: () => void;
+  open: () => boolean;
+  openNow: () => void;
+  setTrigger: (element: HTMLElement) => void;
+  trigger: () => HTMLElement | undefined;
 };
 
-type HoverCardContentProps<T extends ValidComponent = "div"> =
-  HoverCardPrimitive.HoverCardContentProps<T> & {
-    class?: string | undefined;
+const HoverCardContext = createContext<HoverCardContextValue>();
+
+function useHoverCard() {
+  const context = useContext(HoverCardContext);
+  if (!context) throw new Error("HoverCard parts must be used inside HoverCard.");
+  return context;
+}
+
+type HoverCardProps = {
+  children?: JSX.Element;
+  defaultOpen?: boolean;
+  gutter?: number;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
+const HoverCard: Component<HoverCardProps> = (props) => {
+  const [uncontrolledOpen, setUncontrolledOpen] = createSignal(Boolean(props.defaultOpen));
+  const [trigger, setTrigger] = createSignal<HTMLElement>();
+  const open = () => props.open ?? uncontrolledOpen();
+  const setOpen = (next: boolean) => {
+    if (props.open === undefined) setUncontrolledOpen(next);
+    props.onOpenChange?.(next);
   };
 
-const HoverCardContent = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, HoverCardContentProps<T>>,
-) => {
-  const [local, others] = splitProps(props as HoverCardContentProps, ["class"]);
   return (
-    <HoverCardPrimitive.Portal>
-      <HoverCardPrimitive.Content
+    <HoverCardContext
+      value={{
+        close: () => setOpen(false),
+        open,
+        openNow: () => setOpen(true),
+        setTrigger,
+        trigger,
+      }}
+    >
+      {props.children}
+    </HoverCardContext>
+  );
+};
+
+type HoverCardTriggerProps<T extends ValidComponent = "span"> = Omit<
+  ComponentProps<"div">,
+  "ref"
+> & {
+  as?: T;
+  children?: JSX.Element;
+  ref?: any;
+};
+
+const HoverCardTrigger = <T extends ValidComponent = "span">(props: HoverCardTriggerProps<T>) => {
+  const hoverCard = useHoverCard();
+  const [local, others] = splitProps(props, [
+    "as",
+    "children",
+    "onBlur",
+    "onFocus",
+    "onMouseEnter",
+    "onMouseLeave",
+    "ref",
+  ]);
+  const setRef = (element: HTMLElement) => {
+    hoverCard.setTrigger(element);
+    const ref = local.ref as ((element: HTMLElement) => void) | undefined;
+    ref?.(element);
+  };
+  const onMouseEnter: JSX.EventHandler<HTMLElement, MouseEvent> = (event) => {
+    const handler = local.onMouseEnter as JSX.EventHandler<HTMLElement, MouseEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented) hoverCard.openNow();
+  };
+  const onMouseLeave: JSX.EventHandler<HTMLElement, MouseEvent> = (event) => {
+    const handler = local.onMouseLeave as JSX.EventHandler<HTMLElement, MouseEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented) hoverCard.close();
+  };
+  const onFocus: JSX.EventHandler<HTMLElement, FocusEvent> = (event) => {
+    const handler = local.onFocus as JSX.EventHandler<HTMLElement, FocusEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented) hoverCard.openNow();
+  };
+  const onBlur: JSX.EventHandler<HTMLElement, FocusEvent> = (event) => {
+    const handler = local.onBlur as JSX.EventHandler<HTMLElement, FocusEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented) hoverCard.close();
+  };
+
+  return (
+    <DynamicAny
+      component={local.as ?? "span"}
+      ref={setRef}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      {...others}
+    >
+      {local.children}
+    </DynamicAny>
+  );
+};
+
+type HoverCardContentProps<T extends ValidComponent = "div"> = ComponentProps<"div"> & {
+  as?: T;
+  children?: JSX.Element;
+};
+
+const HoverCardContent = <T extends ValidComponent = "div">(props: HoverCardContentProps<T>) => {
+  const hoverCard = useHoverCard();
+  const [local, others] = splitProps(props, [
+    "as",
+    "class",
+    "children",
+    "onMouseEnter",
+    "onMouseLeave",
+  ]);
+  const style = () => {
+    const rect = hoverCard.trigger()?.getBoundingClientRect();
+    if (!rect) return { left: "0px", top: "0px" };
+    return {
+      left: `${rect.left}px`,
+      top: `${rect.bottom + 8}px`,
+    };
+  };
+  const onMouseEnter: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
+    const handler = local.onMouseEnter as JSX.EventHandler<HTMLDivElement, MouseEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented) hoverCard.openNow();
+  };
+  const onMouseLeave: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
+    const handler = local.onMouseLeave as JSX.EventHandler<HTMLDivElement, MouseEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented) hoverCard.close();
+  };
+
+  return (
+    <Show when={hoverCard.open()}>
+      <Dynamic
+        component={local.as ?? "div"}
         class={cn(
-          "z-50 w-64 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+          "fixed z-50 w-64 rounded-md border border-border-subtle bg-popover p-4 text-popover-foreground shadow-elevation-medium outline-hidden",
           local.class,
         )}
+        style={style()}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
         {...others}
-      />
-    </HoverCardPrimitive.Portal>
+      >
+        {local.children}
+      </Dynamic>
+    </Show>
   );
 };
 
 export { HoverCard, HoverCardContent, HoverCardTrigger };
+export type { HoverCardContentProps, HoverCardProps, HoverCardTriggerProps };

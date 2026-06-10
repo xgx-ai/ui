@@ -1,5 +1,7 @@
-import { type JSX, type ParentProps, Show, splitProps } from "solid-js";
-import { Dynamic } from "solid-js/web";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { type ParentProps, Show } from "solid-js";
+import { Dynamic } from "@solidjs/web";
 import { cn } from "../cn";
 
 export interface ListItemProps extends ParentProps {
@@ -25,8 +27,8 @@ export interface ListItemProps extends ParentProps {
  * ```tsx
  * <ListItem
  *   leading={<Avatar><Building2 /></Avatar>}
- *   title="Acme Corp"
- *   subtitle="Technology"
+ *   title="Example organisation"
+ *   subtitle="Category"
  *   trailing={<ChevronRight />}
  *   interactive
  *   onClick={() => navigate(id)}
@@ -52,7 +54,7 @@ export function ListItem(props: ListItemProps): JSX.Element {
       class={cn(
         "flex items-center gap-2.5 p-2 rounded-md group w-full text-left",
         local.interactive &&
-          "hover:bg-muted/50 transition-colors cursor-pointer",
+          "cursor-pointer transition-colors hover:bg-hover hover:text-hover-foreground",
         local.class,
       )}
       onClick={local.onClick}
@@ -64,9 +66,7 @@ export function ListItem(props: ListItemProps): JSX.Element {
       <div class="flex-1 min-w-0">
         <div class="text-sm font-medium truncate">{local.title}</div>
         <Show when={local.subtitle}>
-          <div class="text-xs text-muted-foreground truncate">
-            {local.subtitle}
-          </div>
+          <div class="text-xs text-muted-foreground truncate">{local.subtitle}</div>
         </Show>
       </div>
       <Show when={local.trailing}>

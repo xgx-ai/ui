@@ -1,14 +1,9 @@
+import type { JSX } from "@solidjs/web";
+import { createMountEffect } from "../utils/lifecycle";
+import { Index } from "../utils/indexed";
 import { format, isSameDay } from "date-fns";
-import type { JSX } from "solid-js";
-import {
-  createMemo,
-  createSignal,
-  For,
-  Index,
-  onCleanup,
-  onMount,
-  Show,
-} from "solid-js";
+
+import { createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 import { useCalendarContext } from "./calendar-context";
 import { CalendarEntry, type CalendarEntryContext } from "./calendar-entry";
 import { CalendarHeaderEntry } from "./calendar-header-entry";
@@ -19,14 +14,8 @@ const DEFAULT_START_HOUR = 0;
 const DEFAULT_END_HOUR = 24;
 
 export interface CalendarWeekViewProps {
-  renderEventContent?: (
-    event: CalendarEvent,
-    context: CalendarEntryContext,
-  ) => JSX.Element;
-  renderTooltip?: (
-    event: CalendarEvent,
-    context: CalendarEntryContext,
-  ) => JSX.Element;
+  renderEventContent?: (event: CalendarEvent, context: CalendarEntryContext) => JSX.Element;
+  renderTooltip?: (event: CalendarEvent, context: CalendarEntryContext) => JSX.Element;
   /** First visible hour (default 0) */
   startHour?: number;
   /** Last visible hour (default 24) */
@@ -49,7 +38,7 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
   const timer = setInterval(() => setNow(new Date()), 60_000);
   onCleanup(() => clearInterval(timer));
 
-  onMount(() => {
+  createMountEffect(() => {
     if (START_HOUR() === 0) {
       scrollRef?.scrollTo({ top: 8 * PIXELS_PER_HOUR });
     }
@@ -60,9 +49,7 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
   );
 
   // Compute layout for all 7 days at the top level so both header and day columns can access it
-  const allWeekEvents = createMemo(() =>
-    weekDays().flatMap((d) => getEventsForDay(d)),
-  );
+  const allWeekEvents = createMemo(() => weekDays().flatMap((d) => getEventsForDay(d)));
 
   const weekLayoutData = createMemo(() => {
     const allEvts = allWeekEvents();
@@ -85,13 +72,10 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
     if (headerEvents.length === 0) return 0;
 
     const lanes: { endDate: Date }[] = [];
-    const sorted = [...headerEvents].sort(
-      (a, b) => a.startDate.getTime() - b.startDate.getTime(),
-    );
+    const sorted = [...headerEvents].sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
     for (const event of sorted) {
-      const eventEnd =
-        event.endDate || new Date(event.startDate.getTime() + 30 * 60 * 1000);
+      const eventEnd = event.endDate || new Date(event.startDate.getTime() + 30 * 60 * 1000);
       let placed = false;
       for (let i = 0; i < lanes.length; i++) {
         if (event.startDate >= lanes[i].endDate) {
@@ -107,9 +91,7 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
     return lanes.length;
   });
 
-  const headerSpace = createMemo(() =>
-    headerLaneCount() > 0 ? headerLaneCount() * 24 + 8 : 0,
-  );
+  const headerSpace = createMemo(() => (headerLaneCount() > 0 ? headerLaneCount() * 24 + 8 : 0));
 
   return (
     <div ref={scrollRef} class="h-full overflow-auto bg-card">
@@ -129,7 +111,7 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
             return (
               <div class="sticky top-0 z-20 bg-card border-b">
                 <div class="p-2 text-center">
-                  <span class="text-[11px] uppercase tracking-wider text-gray-500">
+                  <span class="text-[11px] uppercase tracking-wider text-muted-foreground">
                     {format(day(), "EEE")}
                   </span>
                   <div
@@ -170,7 +152,7 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
           <Index each={hours()}>
             {(hour) => (
               <div class="h-12 pr-3 flex items-start justify-end">
-                <span class="text-[11px] text-gray-400 -mt-1.5">
+                <span class="text-[11px] text-muted-foreground -mt-1.5">
                   {hour().toString().padStart(2, "0")}:00
                 </span>
               </div>
@@ -190,40 +172,25 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
               const rect = target.getBoundingClientRect();
               const clickY = e.clientY - rect.top;
               if (clickY < 0) return;
-              const totalMinutes =
-                START_HOUR() * 60 + (clickY / PIXELS_PER_HOUR) * 60;
-              const snappedMinutes =
-                Math.round(totalMinutes / SNAP_MINUTES) * SNAP_MINUTES;
+              const totalMinutes = START_HOUR() * 60 + (clickY / PIXELS_PER_HOUR) * 60;
+              const snappedMinutes = Math.round(totalMinutes / SNAP_MINUTES) * SNAP_MINUTES;
               const date = new Date(day());
-              date.setHours(
-                Math.floor(snappedMinutes / 60),
-                snappedMinutes % 60,
-                0,
-                0,
-              );
+              date.setHours(Math.floor(snappedMinutes / 60), snappedMinutes % 60, 0, 0);
               const endDate = new Date(date.getTime() + 30 * 60 * 1000);
               onSlotClick({ date, endDate });
             };
 
             return (
               <div
-                class="relative min-h-full cursor-pointer"
-                style={{
-                  "border-right": isLastDay ? "none" : "1px solid #f3f4f6",
-                }}
+                class={`relative min-h-full cursor-pointer ${
+                  isLastDay ? "" : "border-r border-border-subtle"
+                }`}
                 onClick={handleSlotClick}
               >
                 {/* Hour grid lines */}
                 <div>
                   <Index each={hours()}>
-                    {() => (
-                      <div
-                        class="h-12 hover:bg-gray-50"
-                        style={{
-                          "border-bottom": "1px solid #f9fafb",
-                        }}
-                      />
-                    )}
+                    {() => <div class="h-12 border-b border-border-subtle hover:bg-hover" />}
                   </Index>
                 </div>
 
@@ -251,8 +218,8 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
                       "z-index": "5",
                     }}
                   >
-                    <div class="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-red-500" />
-                    <div class="w-full h-0.5 bg-red-500" />
+                    <div class="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-error-foreground" />
+                    <div class="w-full h-0.5 bg-error-foreground" />
                   </div>
                 </Show>
               </div>

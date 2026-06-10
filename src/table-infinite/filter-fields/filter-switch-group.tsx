@@ -1,10 +1,9 @@
-import { Checkbox, Label } from "@xgx/ui";
+import { Checkbox } from "../../forms/checkbox";
+import { Label } from "../../forms/label";
 import { For } from "solid-js";
 import type { UseTableFiltersReturn } from "../use-table-filters";
 
-export interface FilterSwitchGroupOption<
-  TFilters extends Record<string, unknown>,
-> {
+export interface FilterSwitchGroupOption<TFilters extends Record<string, unknown>> {
   /**
    * The label to display for the checkbox
    */
@@ -15,9 +14,7 @@ export interface FilterSwitchGroupOption<
   filterKey: keyof TFilters & string;
 }
 
-export interface FilterSwitchGroupProps<
-  TFilters extends Record<string, unknown>,
-> {
+export interface FilterSwitchGroupProps<TFilters extends Record<string, unknown>> {
   /**
    * The group label to display above the checkboxes
    */
@@ -55,15 +52,12 @@ export function FilterSwitchGroup<TFilters extends Record<string, unknown>>(
 
   const handleChange = (key: keyof TFilters & string, checked: boolean) => {
     // Set to undefined when false to keep URL clean
-    props.filterHook.setFilter(
-      key,
-      checked ? (true as TFilters[typeof key]) : undefined,
-    );
+    props.filterHook.setFilter(key, checked ? (true as TFilters[typeof key]) : undefined);
   };
 
   return (
     <div class="space-y-2 py-1">
-      <Label class="text-xs text-gray-600">{props.label}</Label>
+      <Label class="text-xs text-muted-foreground">{props.label}</Label>
       <div class="flex items-center gap-4">
         <For each={props.options}>
           {(option) => (
@@ -73,7 +67,7 @@ export function FilterSwitchGroup<TFilters extends Record<string, unknown>>(
                 onChange={(checked) => handleChange(option.filterKey, checked)}
                 size="sm"
               />
-              <span class="text-xs text-gray-700">{option.label}</span>
+              <span class="text-xs text-foreground">{option.label}</span>
             </div>
           )}
         </For>

@@ -1,5 +1,6 @@
+import { splitProps } from "../../utils/split-props";
 import { cva } from "class-variance-authority";
-import { splitProps } from "solid-js";
+
 import { cn } from "../../cn.ts";
 
 const labelVariants = cva(
@@ -7,9 +8,9 @@ const labelVariants = cva(
   {
     variants: {
       variant: {
-        label: "data-invalid:text-destructive text-xs",
+        label: "data-invalid:text-error text-xs",
         description: "font-normal text-muted-foreground text-xs",
-        error: "text-xs text-destructive text-xs",
+        error: "text-xs text-error text-xs",
       },
     },
     defaultVariants: {
@@ -27,8 +28,7 @@ export const FieldLabel = <T extends "label">(props: LabelProps<T>) => {
   const [local, others] = splitProps(props, ["class", "required", "children"]);
   return (
     <div class={cn(labelVariants(), local.class)} {...others}>
-      {local.children}{" "}
-      {local.required && <span class="text-destructive">*</span>}
+      {local.children} {local.required && <span class="text-error">*</span>}
     </div>
   );
 };

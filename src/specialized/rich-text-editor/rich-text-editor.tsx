@@ -9,10 +9,9 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import Underline from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
 import {
-  createEffect,
+  createRenderEffect,
   createSignal,
   getOwner,
-  on,
   onCleanup,
   runWithOwner,
   Show,
@@ -24,31 +23,32 @@ import { defaultToolbarConfig } from "./types";
 import "./collaboration-carets.css";
 
 export function RichTextEditor(props: RichTextEditorProps) {
-  const [editorContainer, setEditorContainer] =
-    createSignal<HTMLDivElement | null>(null);
+  const [editorContainer, setEditorContainer] = createSignal<HTMLDivElement | null>(null);
   const [editor, setEditor] = createSignal<Editor | null>(null);
 
   // Ref-based guard to prevent race conditions with duplicate editor creation
   let isInitializing = false;
 
-  createEffect(() => {
-    const container = editorContainer();
-    if (!container) return;
-    if (editor()) return;
+  createRenderEffect(
+    () => [editorContainer(), editor()] as const,
+    ([container, currentEditor]) => {
+      if (!container) return;
+      if (currentEditor) return;
 
-    // Capture the owner to preserve reactive context across setTimeout
-    const owner = getOwner();
+      // Capture the owner to preserve reactive context across setTimeout
+      const owner = getOwner();
 
-    const timeoutId = setTimeout(() => {
-      runWithOwner(owner, () => {
-        const currentContainer = editorContainer();
-        if (!currentContainer || editor()) return;
-        initializeEditor(currentContainer);
-      });
-    }, 10);
+      const timeoutId = setTimeout(() => {
+        runWithOwner(owner, () => {
+          const currentContainer = editorContainer();
+          if (!currentContainer || editor()) return;
+          initializeEditor(currentContainer);
+        });
+      }, 10);
 
-    onCleanup(() => clearTimeout(timeoutId));
-  });
+      return () => clearTimeout(timeoutId);
+    },
+  );
 
   const initializeEditor = (container: HTMLDivElement) => {
     // Prevent duplicate initialization from race conditions
@@ -130,13 +130,16 @@ export function RichTextEditor(props: RichTextEditorProps) {
       editorProps: {
         ...props.editorProps,
         attributes: {
-          ...(typeof props.editorProps?.attributes === 'object' ? props.editorProps.attributes : {}),
+          ...(typeof props.editorProps?.attributes === "object"
+            ? props.editorProps.attributes
+            : {}),
           class: cn(
             "prose prose-sm max-w-none focus:outline-none px-3 py-2 text-xs w-full h-full",
             props.contentClass,
-            typeof (props.editorProps?.attributes as Record<string, string> | undefined)?.class === 'string'
+            typeof (props.editorProps?.attributes as Record<string, string> | undefined)?.class ===
+              "string"
               ? (props.editorProps?.attributes as Record<string, string>).class
-              : '',
+              : "",
           ),
           style: `min-height: ${props.minHeight || "120px"}`,
         },
@@ -157,35 +160,31 @@ export function RichTextEditor(props: RichTextEditorProps) {
   // Skip entirely for collaborative editors — the Y.js document is the source of truth,
   // and calling setContent would overwrite the Y.js document and broadcast to all peers,
   // causing an infinite loop between clients.
-  createEffect(
-    on(
-      () => props.value,
-      (newValue) => {
-        if (props.collaboration) return;
+  createRenderEffect(
+    () => props.value,
+    (newValue) => {
+      if (props.collaboration) return;
 
-        const currentEditor = editor();
-        if (!currentEditor) return;
+      const currentEditor = editor();
+      if (!currentEditor) return;
 
-        const currentContent = currentEditor.getHTML();
-        if (newValue !== currentContent && newValue !== undefined) {
-          currentEditor.commands.setContent(newValue, {
-            emitUpdate: false,
-          });
-        }
-      },
-      { defer: true },
-    ),
+      const currentContent = currentEditor.getHTML();
+      if (newValue !== currentContent && newValue !== undefined) {
+        currentEditor.commands.setContent(newValue, {
+          emitUpdate: false,
+        });
+      }
+    },
+    { defer: true },
   );
 
-  createEffect(
-    on(
-      () => [props.disabled, props.readOnly],
-      () => {
-        const currentEditor = editor();
-        if (!currentEditor) return;
-        currentEditor.setEditable(!props.disabled && !props.readOnly);
-      },
-    ),
+  createRenderEffect(
+    () => [props.disabled, props.readOnly] as const,
+    () => {
+      const currentEditor = editor();
+      if (!currentEditor) return;
+      currentEditor.setEditable(!props.disabled && !props.readOnly);
+    },
   );
 
   onCleanup(() => {
@@ -202,15 +201,12 @@ export function RichTextEditor(props: RichTextEditorProps) {
     }
   });
 
-  const showBubbleMenu = () => props.showFloatingToolbar !== false && !props.readOnly && !props.disabled;
-  const [wrapperRef, setWrapperRef] = createSignal<
-    HTMLDivElement | undefined
-  >();
+  const showBubbleMenu = () =>
+    props.showFloatingToolbar !== false && !props.readOnly && !props.disabled;
+  const [wrapperRef, setWrapperRef] = createSignal<HTMLDivElement | undefined>();
 
   return (
     <div ref={(el) => setWrapperRef(el)} class="relative">
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: Click-to-focus pattern for editor container */}
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: Editor container receives focus delegation */}
       <div
         ref={setEditorContainer}
         class={cn(
@@ -219,7 +215,7 @@ export function RichTextEditor(props: RichTextEditorProps) {
           "overflow-auto cursor-text",
           "[&>.ProseMirror]:flex-1 [&>.ProseMirror]:outline-none",
           props.disabled && "cursor-not-allowed opacity-50",
-          props.readOnly && "bg-muted/30",
+          props.readOnly && "bg-surface-muted",
           props.class,
         )}
         style={{

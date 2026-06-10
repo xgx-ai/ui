@@ -1,15 +1,10 @@
-import { TriangleAlert } from "lucide-solid";
-import { createSignal, type JSX, Match, Show, Switch } from "solid-js";
-import { createStore, reconcile } from "solid-js/store";
+import type { JSX } from "@solidjs/web";
+import { TriangleAlert } from "../../icons.index";
+import { createSignal, Match, Show, Switch } from "solid-js";
+import { createStore } from "solid-js";
 import { cn } from "../../cn.ts";
 import { Button } from "../../forms/button.tsx";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogTitle,
-} from "../dialog.tsx";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "../dialog.tsx";
 
 export type DialogContentProps<T> = {
   resolve: (value: T) => void;
@@ -77,7 +72,9 @@ export function useResponseDialog() {
   let resolver: (value: unknown) => void;
 
   const showResponseDialog = <T,>(props: DialogProps<T>): Promise<T | null> => {
-    setDialogProps(reconcile(props));
+    setDialogProps((state) => {
+      Object.assign(state, props);
+    });
     setIsOpen(true);
     return new Promise((resolve) => {
       resolver = (value: unknown) => {
@@ -117,9 +114,7 @@ export function useResponseDialog() {
                   <DialogTitle>{dialogProps.title}</DialogTitle>
                 </Show>
                 <Show when={dialogProps.description}>
-                  <DialogDescription>
-                    {dialogProps.description}
-                  </DialogDescription>
+                  <DialogDescription>{dialogProps.description}</DialogDescription>
                 </Show>
                 {dialogProps.content?.({
                   resolve: (value: unknown) => {
@@ -129,16 +124,24 @@ export function useResponseDialog() {
                     resolver(null);
                   },
                   setClass: (c: string) => {
-                    setDialogProps("class", c);
+                    setDialogProps((state) => {
+                      state.class = c;
+                    });
                   },
                   setTitle: (t: string) => {
-                    setDialogProps("title", t);
+                    setDialogProps((state) => {
+                      state.title = t;
+                    });
                   },
                   setDescription: (d: string) => {
-                    setDialogProps("description", d);
+                    setDialogProps((state) => {
+                      state.description = d;
+                    });
                   },
                   setMount: (m: HTMLDivElement) => {
-                    setDialogProps("mount", m);
+                    setDialogProps((state) => {
+                      state.mount = m;
+                    });
                   },
                 })}
               </DialogContent>
@@ -191,10 +194,8 @@ function DialogAlertTemplate(
   return (
     <>
       <div class="flex items-start pr-4 gap-4">
-        <div
-          class={`flex size-10 shrink-0 items-center justify-center rounded-full bg-error`}
-        >
-          <TriangleAlert stroke={"red"} />
+        <div class={`flex size-10 shrink-0 items-center justify-center rounded-full bg-error`}>
+          <TriangleAlert color="red" />
         </div>
         <div class="flex flex-col gap-2">
           <DialogTitle>{`${props.title}`}</DialogTitle>
@@ -207,17 +208,11 @@ function DialogAlertTemplate(
         <Button variant={"outline"} size={"sm"} onClick={props.reject}>
           Cancel
         </Button>
-        <Button
-          size={"sm"}
-          variant={"destructive"}
-          onClick={() => props.resolve(true)}
-        >
+        <Button size={"sm"} variant={"destructive"} onClick={() => props.resolve(true)}>
           {props.templateProps?.action || "Confirm"}
         </Button>
       </DialogFooter>
     </>
   );
 }
-export type ShowResponseDialog = ReturnType<
-  typeof useResponseDialog
->["showResponseDialog"];
+export type ShowResponseDialog = ReturnType<typeof useResponseDialog>["showResponseDialog"];

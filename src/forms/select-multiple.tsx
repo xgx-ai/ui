@@ -1,3 +1,4 @@
+import type { JSX } from "@solidjs/web";
 import { cn } from "../cn";
 import {
   Combobox,
@@ -11,7 +12,7 @@ import {
   ComboboxTrigger,
 } from "./combobox";
 import { Skeleton } from "../feedback/skeleton";
-import { createMemo, For, type JSXElement, Show, Suspense } from "solid-js";
+import { createMemo, For, Show, Loading as Suspense } from "solid-js";
 import { useFormAttributesProvider } from "./form-attribute-context";
 import { Label } from "./label";
 
@@ -28,7 +29,7 @@ type SelectProps<T> = {
   error?: string;
   class?: string;
   readOnly?: boolean;
-  extraButton?: () => JSXElement;
+  extraButton?: () => JSX.Element;
 };
 
 // Special type for the extra button option
@@ -50,16 +51,13 @@ function getDisplayValue<T>(item: T, optionTextValue?: keyof T): string {
 
 export default function SelectMultiple<T>(props: SelectProps<T>) {
   const extraProps = useFormAttributesProvider();
-  const isReadOnly =
-    props.readOnly || (extraProps?.props && extraProps.props.readOnly);
+  const isReadOnly = props.readOnly || (extraProps?.props && extraProps.props.readOnly);
 
   const displaySelectedValues = () => {
     if (!props.value) return props.placeholder || "";
 
     if (Array.isArray(props.value)) {
-      return props.value
-        .map((item) => getDisplayValue(item, props.optionTextValue))
-        .join(", ");
+      return props.value.map((item) => getDisplayValue(item, props.optionTextValue)).join(", ");
     } else {
       return getDisplayValue(props.value as T, props.optionTextValue);
     }
@@ -112,10 +110,8 @@ export default function SelectMultiple<T>(props: SelectProps<T>) {
           }
         }}
         // Modified itemComponent
-        itemComponent={(p) => {
-          const isExtraButton = (
-            p.item.rawValue as unknown as ExtraButtonOption
-          )?.isExtraButton;
+        itemComponent={(p: any) => {
+          const isExtraButton = (p.item.rawValue as unknown as ExtraButtonOption)?.isExtraButton;
           if (isExtraButton) {
             // Render the extra button directly
             return <div class="p-2 border-t">{props.extraButton!()}</div>;
@@ -135,8 +131,7 @@ export default function SelectMultiple<T>(props: SelectProps<T>) {
         // Add filter to always show extra button
         defaultFilter={(option: T, inputValue: string) => {
           // Always show extra button
-          const isExtraButton = (option as unknown as ExtraButtonOption)
-            ?.isExtraButton;
+          const isExtraButton = (option as unknown as ExtraButtonOption)?.isExtraButton;
           if (isExtraButton) {
             return true;
           }
@@ -144,11 +139,9 @@ export default function SelectMultiple<T>(props: SelectProps<T>) {
           const displayValue = getDisplayValue(option, props.optionTextValue);
           return displayValue.toLowerCase().includes(inputValue.toLowerCase());
         }}
-        sectionComponent={(p) => (
+        sectionComponent={(p: any) => (
           <ComboboxSection>
-            {props.optionTextValue
-              ? p.section.rawValue[props.optionTextValue]
-              : p.section.rawValue}
+            {props.optionTextValue ? p.section.rawValue[props.optionTextValue] : p.section.rawValue}
           </ComboboxSection>
         )}
       >
@@ -160,25 +153,21 @@ export default function SelectMultiple<T>(props: SelectProps<T>) {
           )}
         >
           <div
-            class={cn(
-              "flex flex-row flex-wrap items-center pl-2 pr-8 gap-1 w-full min-h-9 py-0",
-            )}
+            class={cn("flex flex-row flex-wrap items-center pl-2 pr-8 gap-1 w-full min-h-9 py-0")}
           >
             <Show when={Array.isArray(props.value) && props.value.length > 0}>
               <For each={props.value as T[]}>
                 {(item) => (
-                  <span class="bg-primary-100 text-primary-800 rounded px-2 py-0.5 text-xs flex items-center gap-1 bg-gray-100">
+                  <span class="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                     {getDisplayValue(item, props.optionTextValue)}
                     <button
                       type="button"
-                      class="text-primary-600 hover:text-primary-800 ml-1 cursor-pointer"
+                      class="ml-1 cursor-pointer text-muted-foreground hover:text-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (Array.isArray(props.value)) {
                           const newValue = (props.value as T[]).filter(
-                            (val) =>
-                              val[props.optionValue] !==
-                              item[props.optionValue],
+                            (val) => val[props.optionValue] !== item[props.optionValue],
                           );
                           props.onChange?.(newValue.length ? newValue : null);
                         }
@@ -213,7 +202,7 @@ export default function SelectMultiple<T>(props: SelectProps<T>) {
         {isReadOnly ? (
           <div
             class={cn(
-              "flex h-9 rounded-md border border-input bg-gray-50 px-3 py-2 text-xs",
+              "flex h-9 rounded-md border border-input bg-muted px-3 py-2 text-xs text-muted-foreground",
               props.class,
             )}
           >
@@ -225,7 +214,7 @@ export default function SelectMultiple<T>(props: SelectProps<T>) {
       </Suspense>
       <div
         class={cn(
-          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-destructive",
+          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-error",
           props.error && "opacity-100 h-4 ",
         )}
       >

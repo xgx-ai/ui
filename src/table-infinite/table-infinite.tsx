@@ -1,4 +1,6 @@
-import { createVisibilityObserver } from "@solid-primitives/intersection-observer";
+import type { JSX } from "@solidjs/web";
+import { Index } from "../utils/indexed";
+import { createVisibilityObserver } from "../utils/visibility-observer";
 import {
   type Column,
   type ColumnDef,
@@ -10,37 +12,37 @@ import {
   type RowSelectionState,
   type SortingState,
   type VisibilityState,
-} from "@tanstack/solid-table";
+} from "../data-display/solid-table";
 import {
-  Checkbox,
-  cn,
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  TableRoot as Table,
   TableBody,
   TableCell,
   TableFooter,
   TableHead,
   TableHeader,
+  TableRoot as Table,
   TableRow,
-} from "@xgx/ui";
-import { Settings } from "lucide-solid";
+} from "../data-display/table";
+import { Checkbox } from "../forms/checkbox";
+import { cn } from "../cn";
 import {
-  createEffect,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "../navigation/dropdown-menu";
+import { Settings } from "../icons.index";
+import {
+  createTrackedEffect,
   createMemo,
   createSignal,
   For,
-  Index,
-  type JSX,
-  mergeProps,
+  merge as mergeProps,
   Show,
-  Suspense,
+  Loading as Suspense,
 } from "solid-js";
-import { createStore } from "solid-js/store";
-import { Dynamic } from "solid-js/web";
+import { createStore } from "solid-js";
+import { Dynamic } from "@solidjs/web";
 import type { UseTableInfiniteReturn } from "./use-table-infinite";
 
 // Separate component for column visibility settings to maintain dropdown state across re-renders
@@ -51,9 +53,7 @@ interface ColumnVisibilitySettingsProps<TData> {
   getColumnDisplayName: (col: ColumnDef<TData, unknown>) => string;
 }
 
-const ColumnVisibilitySettings = <TData,>(
-  props: ColumnVisibilitySettingsProps<TData>,
-) => {
+const ColumnVisibilitySettings = <TData,>(props: ColumnVisibilitySettingsProps<TData>) => {
   const [isOpen, setIsOpen] = createSignal(false);
 
   const toggleableColumns = () =>
@@ -66,7 +66,7 @@ const ColumnVisibilitySettings = <TData,>(
   return (
     <div class="flex items-center justify-center h-full">
       <DropdownMenu open={isOpen()} onOpenChange={(open) => setIsOpen(open)}>
-        <DropdownMenuTrigger class="flex items-center justify-center p-1 rounded hover:bg-gray-100 transition-colors">
+        <DropdownMenuTrigger class="flex items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-hover hover:text-hover-foreground">
           <Settings class="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent class="w-48">
@@ -160,19 +160,14 @@ const COLUMN_VISIBILITY_STORAGE_KEY_PREFIX = "table-column-visibility:";
 
 const getStoredColumnVisibility = (tableId: string): VisibilityState | null => {
   try {
-    const stored = localStorage.getItem(
-      `${COLUMN_VISIBILITY_STORAGE_KEY_PREFIX}${tableId}`,
-    );
+    const stored = localStorage.getItem(`${COLUMN_VISIBILITY_STORAGE_KEY_PREFIX}${tableId}`);
     return stored ? JSON.parse(stored) : null;
   } catch {
     return null;
   }
 };
 
-const saveColumnVisibility = (
-  tableId: string,
-  visibility: VisibilityState,
-): void => {
+const saveColumnVisibility = (tableId: string, visibility: VisibilityState): void => {
   try {
     localStorage.setItem(
       `${COLUMN_VISIBILITY_STORAGE_KEY_PREFIX}${tableId}`,
@@ -184,10 +179,7 @@ const saveColumnVisibility = (
 };
 
 export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
-  const props = mergeProps(
-    { columns: [] as ColumnDef<TData, unknown>[] },
-    rawProps,
-  );
+  const props = mergeProps({ columns: [] as ColumnDef<TData, unknown>[] }, rawProps);
 
   // Derive tableId from prop or from the hook's tableId
   const tableId = () => props.tableId ?? props.table.tableId;
@@ -204,13 +196,13 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
   );
 
   // Persist column visibility to localStorage when it changes
-  createEffect(() => {
+  createTrackedEffect(() => {
     if (props.enableColumnVisibility) {
       saveColumnVisibility(tableId(), columnVisibility);
     }
   });
 
-  createEffect(() => {
+  createTrackedEffect(() => {
     setColumnOrder(
       tableColumns().map((col) => {
         const columnRef = col as { id?: string; accessorKey?: string };
@@ -240,10 +232,7 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
     left: props.enableRowSelection ? ["select"] : [],
     right: [
       ...props.columns
-        .filter(
-          (col) =>
-            (col.meta as { pinned?: string } | undefined)?.pinned === "right",
-        )
+        .filter((col) => (col.meta as { pinned?: string } | undefined)?.pinned === "right")
         .map((col) => {
           const columnRef = col as {
             id?: string;
@@ -261,7 +250,7 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
   const isVisible = useVisibilityObserver(() => sentinelRef);
 
   // Load more when sentinel becomes visible
-  createEffect(() => {
+  createTrackedEffect(() => {
     if (
       isVisible() &&
       props.table.hasMore() &&
@@ -273,17 +262,13 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
   });
 
   const shouldShowStatusBar = () => props.showStatusBar ?? false;
-  const totalCount = () =>
-    props.table.totalCount?.() ?? props.table.data().length;
+  const totalCount = () => props.table.totalCount?.() ?? props.table.data().length;
   const selectedCount = () =>
     props.enableRowSelection
-      ? props.table.data().filter((row) => props.table.isRowSelected(row))
-          .length
+      ? props.table.data().filter((row) => props.table.isRowSelected(row)).length
       : 0;
   const showEndOfResults = () =>
-    !props.table.hasMore() &&
-    props.table.data().length > 0 &&
-    !props.table.query.isLoading;
+    !props.table.hasMore() && props.table.data().length > 0 && !props.table.query.isLoading;
 
   const tableColumns = createMemo(() => {
     const columns: ColumnDef<TData, unknown>[] = [];
@@ -297,9 +282,7 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
           const allSelected =
             currentData.length > 0 &&
             currentData.every((worker) => props.table.isRowSelected(worker));
-          const someSelected = currentData.some((worker) =>
-            props.table.isRowSelected(worker),
-          );
+          const someSelected = currentData.some((worker) => props.table.isRowSelected(worker));
 
           return (
             <div class="flex items-center justify-center h-full">
@@ -317,9 +300,7 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
           <div class="flex items-center justify-center h-full">
             <Checkbox
               checked={props.table.isRowSelected(info.row.original)}
-              onChange={(value) =>
-                props.table.toggleRowSelection(info.row.original, value)
-              }
+              onChange={(value) => props.table.toggleRowSelection(info.row.original, value)}
               aria-label="Select row"
               size="md"
             />
@@ -342,7 +323,11 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
           <ColumnVisibilitySettings
             columns={props.columns}
             columnVisibility={columnVisibility}
-            setColumnVisibility={setColumnVisibility}
+            setColumnVisibility={(colId, visible) => {
+              setColumnVisibility((state) => {
+                state[colId] = visible;
+              });
+            }}
             getColumnDisplayName={getColumnDisplayName}
           />
         ),
@@ -380,9 +365,7 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
       },
     },
     onColumnOrderChange: setColumnOrder,
-    onRowSelectionChange: props.enableRowSelection
-      ? setRowSelection
-      : undefined,
+    onRowSelectionChange: props.enableRowSelection ? setRowSelection : undefined,
     onSortingChange: props.enableSorting ? setSorting : undefined,
     onColumnPinningChange: setColumnPinning,
     getRowId: props.getRowId,
@@ -410,14 +393,10 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
                       <TableHead
                         class={cn(
                           "whitespace-nowrap",
-                          header().column.getCanSort() &&
-                            "cursor-pointer select-none",
+                          header().column.getCanSort() && "cursor-pointer select-none",
                         )}
                         onClick={header().column.getToggleSortingHandler()}
-                        style={getColumnStyles(
-                          header().column,
-                          columnVisibility,
-                        )}
+                        style={getColumnStyles(header().column, columnVisibility)}
                       >
                         <Dynamic
                           component={header().column.columnDef.header}
@@ -444,12 +423,10 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
                 fallback={
                   <TableRow class="border-none bg-none cursor-default hover:bg-transparent">
                     <TableCell
-                      colSpan={props.columns.length}
-                      class="h-24 text-center text-xs text-gray-400"
+                      colspan={props.columns.length}
+                      class="h-24 text-center text-xs text-muted-foreground"
                     >
-                      {props.table.query.isLoading
-                        ? "Loading..."
-                        : "No results."}
+                      {props.table.query.isLoading ? "Loading..." : "No results."}
                     </TableCell>
                   </TableRow>
                 }
@@ -457,14 +434,10 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
                 <Index each={solidTable.getRowModel().rows}>
                   {(row) => (
                     <TableRow
-                      data-state={
-                        row().getIsSelected() ? "selected" : undefined
-                      }
+                      data-state={row().getIsSelected() ? "selected" : undefined}
                       onClick={() => props.onRowClick?.(row().original)}
                       onMouseEnter={
-                        props.onRowHover
-                          ? () => props.onRowHover?.(row().original)
-                          : undefined
+                        props.onRowHover ? () => props.onRowHover?.(row().original) : undefined
                       }
                       class={props.onRowClick ? "cursor-pointer" : undefined}
                     >
@@ -472,10 +445,7 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
                         {(cell) => (
                           <TableCell
                             class="whitespace-nowrap"
-                            style={getColumnStyles(
-                              cell.column,
-                              columnVisibility,
-                            )}
+                            style={getColumnStyles(cell.column, columnVisibility)}
                           >
                             <Dynamic
                               component={cell.column.columnDef.cell}
@@ -490,19 +460,19 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
               </Show>
             </Suspense>
           </TableBody>
-          <TableFooter class="bg-white/0">
+          <TableFooter class="bg-transparent">
             <TableRow class="border-none cursor-default hover:bg-transparent">
-              <TableCell colSpan={props.columns.length} class="text-center">
+              <TableCell colspan={props.columns.length} class="text-center">
                 <div
                   ref={sentinelRef}
                   class="flex justify-center py-4"
                   hidden={!props.table.hasMore() || props.table.query.isLoading}
                 >
-                  <div class="text-xs text-gray-400">Loading more...</div>
+                  <div class="text-xs text-muted-foreground">Loading more...</div>
                 </div>
                 <Show when={showEndOfResults()}>
                   <div class="flex justify-center py-4">
-                    <div class="text-xs text-gray-300">
+                    <div class="text-xs text-muted-foreground/70">
                       {props.statusBarEndMessage ?? "End of results"}
                     </div>
                   </div>
@@ -513,15 +483,13 @@ export const TableInfinite = <TData,>(rawProps: TableInfiniteProps<TData>) => {
         </Table>
       </div>
       <Show when={shouldShowStatusBar()}>
-        <div class="py-2 text-xs text-gray-600 border-t border-gray-200/50 flex items-center justify-between">
+        <div class="flex items-center justify-between border-t border-border-subtle py-2 text-xs text-muted-foreground">
           <div>
             <span>
               {props.statusBarLabel ?? "Total results"}: {totalCount()}
             </span>
             <Show when={props.enableRowSelection}>
-              <span class="ml-1 text-black/50">
-                ( Selected: {selectedCount()} )
-              </span>
+              <span class="ml-1 text-muted-foreground/70">( Selected: {selectedCount()} )</span>
             </Show>
           </div>
           <Show when={props.statusBarSlot}>

@@ -1,5 +1,7 @@
-import type { JSX, ParentProps } from "solid-js";
-import { splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import type { ParentProps } from "solid-js";
+
 import { cn } from "../cn";
 
 type HeadingProps = ParentProps<JSX.HTMLAttributes<HTMLHeadingElement>>;
@@ -11,10 +13,7 @@ const H1 = (props: HeadingProps) => {
   const [local, others] = splitProps(props, ["class", "children"]);
   return (
     <h1
-      class={cn(
-        "text-xl font-semibold text-foreground tracking-tight",
-        local.class,
-      )}
+      class={cn("xgx-text-page-title font-semibold tracking-tight text-foreground", local.class)}
       {...others}
     >
       {local.children}
@@ -26,10 +25,7 @@ const H2 = (props: HeadingProps) => {
   const [local, others] = splitProps(props, ["class", "children"]);
   return (
     <h2
-      class={cn(
-        "text-base font-semibold text-foreground tracking-tight",
-        local.class,
-      )}
+      class={cn("xgx-text-title font-semibold tracking-tight text-foreground", local.class)}
       {...others}
     >
       {local.children}
@@ -40,7 +36,7 @@ const H2 = (props: HeadingProps) => {
 const H3 = (props: HeadingProps) => {
   const [local, others] = splitProps(props, ["class", "children"]);
   return (
-    <h3 class={cn("text-2xs text-muted-foreground", local.class)} {...others}>
+    <h3 class={cn("xgx-text-body-tight font-medium text-foreground", local.class)} {...others}>
       {local.children}
     </h3>
   );
@@ -49,13 +45,7 @@ const H3 = (props: HeadingProps) => {
 const H4 = (props: HeadingProps) => {
   const [local, others] = splitProps(props, ["class", "children"]);
   return (
-    <h4
-      class={cn(
-        "text-xs font-medium text-foreground tracking-tight",
-        local.class,
-      )}
-      {...others}
-    >
+    <h4 class={cn("xgx-text-body-tight font-medium text-foreground", local.class)} {...others}>
       {local.children}
     </h4>
   );
@@ -64,10 +54,7 @@ const H4 = (props: HeadingProps) => {
 const P = (props: ParagraphProps) => {
   const [local, others] = splitProps(props, ["class", "children"]);
   return (
-    <p
-      class={cn("text-sm text-foreground leading-relaxed", local.class)}
-      {...others}
-    >
+    <p class={cn("xgx-text-body text-foreground", local.class)} {...others}>
       {local.children}
     </p>
   );
@@ -76,7 +63,7 @@ const P = (props: ParagraphProps) => {
 const Small = (props: SpanProps) => {
   const [local, others] = splitProps(props, ["class", "children"]);
   return (
-    <span class={cn("text-xs text-muted-foreground", local.class)} {...others}>
+    <span class={cn("xgx-text-caption text-muted-foreground", local.class)} {...others}>
       {local.children}
     </span>
   );
@@ -85,7 +72,7 @@ const Small = (props: SpanProps) => {
 const Muted = (props: ParagraphProps) => {
   const [local, others] = splitProps(props, ["class", "children"]);
   return (
-    <p class={cn("text-sm text-muted-foreground", local.class)} {...others}>
+    <p class={cn("xgx-text-body text-muted-foreground", local.class)} {...others}>
       {local.children}
     </p>
   );
@@ -94,7 +81,7 @@ const Muted = (props: ParagraphProps) => {
 const Lead = (props: ParagraphProps) => {
   const [local, others] = splitProps(props, ["class", "children"]);
   return (
-    <p class={cn("text-lg text-muted-foreground", local.class)} {...others}>
+    <p class={cn("xgx-text-title text-muted-foreground", local.class)} {...others}>
       {local.children}
     </p>
   );
@@ -103,10 +90,7 @@ const Lead = (props: ParagraphProps) => {
 const Large = (props: DivProps) => {
   const [local, others] = splitProps(props, ["class", "children"]);
   return (
-    <div
-      class={cn("text-lg font-semibold text-foreground", local.class)}
-      {...others}
-    >
+    <div class={cn("xgx-text-title font-semibold text-foreground", local.class)} {...others}>
       {local.children}
     </div>
   );
@@ -116,10 +100,7 @@ const Label = (props: SpanProps) => {
   const [local, others] = splitProps(props, ["class", "children"]);
   return (
     <span
-      class={cn(
-        "text-3xs text-muted-foreground uppercase tracking-wide",
-        local.class,
-      )}
+      class={cn("xgx-text-caption uppercase tracking-wide text-muted-foreground", local.class)}
       {...others}
     >
       {local.children}

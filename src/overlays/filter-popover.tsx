@@ -1,4 +1,6 @@
-import { type JSX, type ParentProps, Show, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { type ParentProps, Show } from "solid-js";
 import { cn } from "../cn";
 import { Button } from "../forms/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
@@ -75,9 +77,7 @@ export function FilterPopover(props: FilterPopoverProps): JSX.Element {
               </Button>
             </Show>
           </div>
-          <div class="flex flex-col gap-2 max-h-96 overflow-y-auto">
-            {local.children}
-          </div>
+          <div class="flex flex-col gap-2 max-h-96 overflow-y-auto">{local.children}</div>
         </div>
       </PopoverContent>
     </Popover>
@@ -96,12 +96,7 @@ export interface FilterItemProps extends ParentProps {
  * Individual filter item with label.
  */
 export function FilterItem(props: FilterItemProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "label",
-    "direction",
-    "children",
-  ]);
+  const [local, rest] = splitProps(props, ["class", "label", "direction", "children"]);
 
   const isRow = () => local.direction !== "column";
 

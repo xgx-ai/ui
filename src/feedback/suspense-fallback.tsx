@@ -1,4 +1,5 @@
-import { type JSX, Suspense } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { Loading as Suspense } from "solid-js";
 import { cn } from "../cn.ts";
 import { Spinner } from "./spinner.tsx";
 
@@ -13,12 +14,7 @@ function SuspenseFallback(props: SuspenseFallbackProps) {
   return (
     <Suspense
       fallback={
-        <div
-          class={cn(
-            "flex items-center justify-center w-full h-full min-h-24",
-            props.class,
-          )}
-        >
+        <div class={cn("flex items-center justify-center w-full h-full min-h-24", props.class)}>
           <Spinner class="size-8 text-muted-foreground" />
         </div>
       }

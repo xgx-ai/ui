@@ -1,9 +1,7 @@
-import { TextField, TextFieldInput, TextFieldLabel } from "@xgx/ui";
+import { TextField, TextFieldInput, TextFieldLabel } from "../../forms/text-field";
 import type { UseTableFiltersReturn } from "../use-table-filters";
 
-export interface FilterNumberRangeProps<
-  TFilters extends Record<string, unknown>,
-> {
+export interface FilterNumberRangeProps<TFilters extends Record<string, unknown>> {
   /**
    * The label to display for the number range
    */
@@ -56,10 +54,8 @@ export interface FilterNumberRangeProps<
 export function FilterNumberRange<TFilters extends Record<string, unknown>>(
   props: FilterNumberRangeProps<TFilters>,
 ) {
-  const minValue = () =>
-    (props.filterHook.filters()[props.minKey] as string) ?? "";
-  const maxValue = () =>
-    (props.filterHook.filters()[props.maxKey] as string) ?? "";
+  const minValue = () => (props.filterHook.filters()[props.minKey] as string) ?? "";
+  const maxValue = () => (props.filterHook.filters()[props.maxKey] as string) ?? "";
 
   const sanitiseValue = (value: string) => {
     if (props.allowDecimals === false) {
@@ -84,19 +80,16 @@ export function FilterNumberRange<TFilters extends Record<string, unknown>>(
     );
   };
 
-  const inputMode = () =>
-    props.allowDecimals === false ? "numeric" : "decimal";
+  const inputMode = () => (props.allowDecimals === false ? "numeric" : "decimal");
 
   return (
     <div class="space-y-2 py-1">
       <div class="flex gap-2">
         <TextField value={minValue()} onChange={handleMinChange} class="flex-1">
-          <TextFieldLabel class="text-xs text-gray-600">
-            {props.label}
-          </TextFieldLabel>
+          <TextFieldLabel class="text-xs text-muted-foreground">{props.label}</TextFieldLabel>
           <TextFieldInput
             type="text"
-            inputMode={inputMode()}
+            inputmode={inputMode()}
             class="h-8 px-2 py-1"
             placeholder={props.minPlaceholder ?? "Min"}
           />
@@ -105,7 +98,7 @@ export function FilterNumberRange<TFilters extends Record<string, unknown>>(
           <TextFieldLabel class="invisible text-xs">&nbsp;</TextFieldLabel>
           <TextFieldInput
             type="text"
-            inputMode={inputMode()}
+            inputmode={inputMode()}
             class="h-8 px-2 py-1"
             placeholder={props.maxPlaceholder ?? "Max"}
           />

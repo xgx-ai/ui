@@ -12,10 +12,7 @@ interface ErrorAlertProps {
 
 function ErrorAlert(props: ErrorAlertProps) {
   const getMessage = () =>
-    props.message ||
-    props.error?.message ||
-    props.fallbackMessage ||
-    "An error occurred";
+    props.message || props.error?.message || props.fallbackMessage || "An error occurred";
 
   return (
     <Show when={props.error || props.message}>

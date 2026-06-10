@@ -1,0 +1,14 @@
+{
+  "defaults": {
+    "chromeLaunchConfig": {
+      "args": ["--no-sandbox", "--disable-dev-shm-usage"]
+    },
+    "standard": "WCAG2AA",
+    "timeout": 30000
+  },
+  "urls": [
+    "http://localhost:5174/#foundations",
+    "http://localhost:5174/#forms",
+    "http://localhost:5174/#async"
+  ]
+}

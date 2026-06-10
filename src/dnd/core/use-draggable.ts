@@ -1,6 +1,6 @@
 import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { disableNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/disable-native-drag-preview";
-import { type Accessor, createEffect, createSignal, onCleanup } from "solid-js";
+import { type Accessor, createTrackedEffect, createSignal } from "solid-js";
 import { useDndContext } from "./context";
 import type { DragData, DraggableOptions, DragState } from "./types";
 
@@ -64,7 +64,7 @@ export function createDraggable<T extends DragData = DragData>(
     handleRef = el;
   };
 
-  createEffect(() => {
+  createTrackedEffect(() => {
     const el = elementRef;
     if (!el) return;
 
@@ -104,7 +104,7 @@ export function createDraggable<T extends DragData = DragData>(
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   return {

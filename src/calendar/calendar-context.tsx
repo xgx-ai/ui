@@ -1,18 +1,7 @@
-import {
-  addDays,
-  addMonths,
-  endOfWeek,
-  startOfMonth,
-  startOfWeek,
-} from "date-fns";
-import type { Accessor, JSX } from "solid-js";
-import {
-  createContext,
-  createEffect,
-  createMemo,
-  createSignal,
-  useContext,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { addDays, addMonths, endOfWeek, startOfMonth, startOfWeek } from "date-fns";
+import type { Accessor } from "solid-js";
+import { createContext, createTrackedEffect, createMemo, createSignal, useContext } from "solid-js";
 import type {
   CalendarEvent,
   CalendarViewMode,
@@ -59,9 +48,7 @@ const CalendarContext = createContext<CalendarContextValue>();
 export const useCalendarContext = () => {
   const context = useContext(CalendarContext);
   if (!context) {
-    throw new Error(
-      "useCalendarContext must be used within a CalendarProvider",
-    );
+    throw new Error("useCalendarContext must be used within a CalendarProvider");
   }
   return context;
 };
@@ -89,24 +76,21 @@ export interface CalendarProviderProps {
 export function CalendarProvider(props: CalendarProviderProps) {
   const weekStartsOn = props.weekStartsOn ?? 1;
 
-  const [internalViewMode, setInternalViewMode] =
-    createSignal<CalendarViewMode>(
-      props.viewMode ?? props.defaultViewMode ?? "week",
-    );
+  const [internalViewMode, setInternalViewMode] = createSignal<CalendarViewMode>(
+    props.viewMode ?? props.defaultViewMode ?? "week",
+  );
   const [internalCurrentDate, setInternalCurrentDate] = createSignal(
     props.currentDate ?? props.defaultDate ?? new Date(),
   );
-  const [selectedEventId, setSelectedEventId] = createSignal<string | null>(
-    null,
-  );
+  const [selectedEventId, setSelectedEventId] = createSignal<string | null>(null);
 
   // Sync controlled props → internal signals (e.g. browser back/forward)
-  createEffect(() => {
+  createTrackedEffect(() => {
     if (props.viewMode !== undefined) {
       setInternalViewMode(() => props.viewMode!);
     }
   });
-  createEffect(() => {
+  createTrackedEffect(() => {
     if (props.currentDate !== undefined) {
       setInternalCurrentDate(() => props.currentDate!);
     }
@@ -241,9 +225,5 @@ export function CalendarProvider(props: CalendarProviderProps) {
     onSlotClick: props.onSlotClick,
   };
 
-  return (
-    <CalendarContext.Provider value={value}>
-      {props.children}
-    </CalendarContext.Provider>
-  );
+  return <CalendarContext value={value}>{props.children}</CalendarContext>;
 }

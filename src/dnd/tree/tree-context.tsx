@@ -1,11 +1,6 @@
+import type { JSX } from "@solidjs/web";
 import type { Instruction } from "@atlaskit/pragmatic-drag-and-drop-hitbox/tree-item";
-import {
-  type Accessor,
-  createContext,
-  createSignal,
-  type JSX,
-  useContext,
-} from "solid-js";
+import { type Accessor, createContext, createSignal, useContext } from "solid-js";
 import type { DragData } from "../core/types";
 
 // Re-export the Instruction type for consumers
@@ -91,11 +86,7 @@ interface TreeDndContextValue {
   /** Handler for move events */
   onMove?: (event: TreeMoveEvent) => void;
   /** Check if an item can be dropped on a target */
-  canDrop?: (
-    sourceId: string,
-    targetId: string,
-    instruction: Instruction,
-  ) => boolean;
+  canDrop?: (sourceId: string, targetId: string, instruction: Instruction) => boolean;
   /** Indentation width in pixels */
   indentWidth: number;
   /** Whether drag operations are globally disabled */
@@ -111,11 +102,7 @@ export interface TreeDndProviderProps {
   /** Called when a tree item is moved */
   onMove?: (event: TreeMoveEvent) => void;
   /** Custom validation for drop operations */
-  canDrop?: (
-    sourceId: string,
-    targetId: string,
-    instruction: Instruction,
-  ) => boolean;
+  canDrop?: (sourceId: string, targetId: string, instruction: Instruction) => boolean;
   /** Width of each indentation level in pixels */
   indentWidth?: number;
   /** Whether drag operations are globally disabled (e.g., during mutation) */
@@ -170,11 +157,7 @@ export function TreeDndProvider(props: TreeDndProviderProps): JSX.Element {
     disabled: props.disabled ?? defaultDisabled,
   };
 
-  return (
-    <TreeDndContext.Provider value={contextValue}>
-      {props.children}
-    </TreeDndContext.Provider>
-  );
+  return <TreeDndContext value={contextValue}>{props.children}</TreeDndContext>;
 }
 
 /**

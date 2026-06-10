@@ -1,104 +1,118 @@
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import * as RadioGroupPrimitive from "@kobalte/core/radio-group";
-import type { JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { createContext, createSignal, useContext } from "solid-js";
+import { Circle } from "../icons.index";
 import { cn } from "../cn";
+import { splitProps } from "../utils/split-props";
 
-type RadioGroupRootProps<T extends ValidComponent = "div"> =
-  RadioGroupPrimitive.RadioGroupRootProps<T> & { class?: string | undefined };
-
-const RadioGroup = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, RadioGroupRootProps<T>>,
-) => {
-  const [local, others] = splitProps(props as RadioGroupRootProps, ["class"]);
-  return (
-    <RadioGroupPrimitive.Root
-      class={cn("grid gap-2", local.class)}
-      {...others}
-    />
-  );
+type RadioGroupProps = Omit<ComponentProps<"div">, "onChange"> & {
+  value?: string;
+  defaultValue?: string;
+  disabled?: boolean;
+  onChange?: (value: string) => void;
 };
 
-type RadioGroupItemProps<T extends ValidComponent = "div"> =
-  RadioGroupPrimitive.RadioGroupItemProps<T> & {
-    class?: string | undefined;
-    children?: JSX.Element;
-  };
+const RadioGroupContext = createContext<{
+  disabled?: boolean;
+  value: () => string | undefined;
+  setValue: (value: string) => void;
+}>({
+  value: () => undefined,
+  setValue: () => {},
+});
 
-const RadioGroupItem = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, RadioGroupItemProps<T>>,
-) => {
-  const [local, others] = splitProps(props as RadioGroupItemProps, [
+const RadioGroup = (props: RadioGroupProps) => {
+  const [local, others] = splitProps(props, [
     "class",
     "children",
+    "value",
+    "defaultValue",
+    "disabled",
+    "onChange",
   ]);
-  return (
-    <RadioGroupPrimitive.Item
-      class={cn("flex items-center space-x-2", local.class)}
-      {...others}
-    >
-      <RadioGroupPrimitive.ItemInput />
-      <RadioGroupPrimitive.ItemControl class="aspect-square size-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-        <RadioGroupPrimitive.ItemIndicator class="flex h-full items-center justify-center ">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="size-2.5 fill-current text-current"
-            aria-hidden="true"
-          >
-            <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
-          </svg>
-        </RadioGroupPrimitive.ItemIndicator>
-      </RadioGroupPrimitive.ItemControl>
-      {local.children}
-    </RadioGroupPrimitive.Item>
-  );
-};
-
-type RadioGroupLabelProps<T extends ValidComponent = "label"> =
-  RadioGroupPrimitive.RadioGroupLabelProps<T> & {
-    class?: string | undefined;
+  const [uncontrolledValue, setUncontrolledValue] = createSignal(local.defaultValue);
+  const value = () => local.value ?? uncontrolledValue();
+  const setValue = (next: string) => {
+    if (local.disabled) return;
+    if (local.value === undefined) setUncontrolledValue(next);
+    local.onChange?.(next);
   };
 
-const RadioGroupItemLabel = <T extends ValidComponent = "label">(
-  props: PolymorphicProps<T, RadioGroupLabelProps<T>>,
-) => {
-  const [local, others] = splitProps(props as RadioGroupLabelProps, ["class"]);
   return (
-    <RadioGroupPrimitive.ItemLabel
-      class={cn(
-        "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
-        local.class,
-      )}
-      {...others}
-    />
+    <RadioGroupContext
+      value={{
+        get disabled() {
+          return local.disabled;
+        },
+        value,
+        setValue,
+      }}
+    >
+      <div
+        role="radiogroup"
+        class={cn("grid gap-2", local.class)}
+        data-disabled={local.disabled ? "" : undefined}
+        {...others}
+      >
+        {local.children}
+      </div>
+    </RadioGroupContext>
   );
 };
 
-/**
- * # RadioGroup
- *
- * A group of radio buttons for single selection.
- *
- * @example
- * ```
- * <RadioGroup defaultValue="option-1">
- *   <RadioGroupItem value="option-1">
- *     <RadioGroupItemLabel>Option 1</RadioGroupItemLabel>
- *   </RadioGroupItem>
- *   <RadioGroupItem value="option-2">
- *     <RadioGroupItemLabel>Option 2</RadioGroupItemLabel>
- *   </RadioGroupItem>
- *   <RadioGroupItem value="option-3">
- *     <RadioGroupItemLabel>Option 3</RadioGroupItemLabel>
- *   </RadioGroupItem>
- * </RadioGroup>
- * ```
- */
+type RadioGroupItemProps = Omit<ComponentProps<"button">, "value"> & {
+  value: string;
+};
+
+const RadioGroupItem = (props: RadioGroupItemProps) => {
+  const [local, others] = splitProps(props, [
+    "class",
+    "children",
+    "value",
+    "disabled",
+    "onClick",
+    "type",
+  ]);
+  const context = useContext(RadioGroupContext);
+  const checked = () => context.value() === local.value;
+  const disabled = () => Boolean(local.disabled || context.disabled);
+
+  const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
+    const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented && !disabled()) context.setValue(local.value);
+  };
+
+  return (
+    <button
+      type={local.type ?? "button"}
+      role="radio"
+      aria-checked={checked() ? "true" : "false"}
+      disabled={disabled()}
+      data-checked={checked() ? "" : undefined}
+      class={cn(
+        "flex cursor-pointer items-center gap-2 text-left disabled:cursor-not-allowed disabled:opacity-50",
+        local.class,
+      )}
+      onClick={onClick}
+      {...others}
+    >
+      <span class="flex aspect-square size-4 shrink-0 items-center justify-center rounded-full border border-primary text-primary ring-offset-background focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+        <span class={cn("hidden", checked() && "block")}>
+          <Circle class="size-2.5 fill-current text-current" aria-hidden="true" />
+        </span>
+      </span>
+      {local.children}
+    </button>
+  );
+};
+
+type RadioGroupLabelProps = ComponentProps<"span">;
+
+const RadioGroupItemLabel = (props: RadioGroupLabelProps) => {
+  const [local, others] = splitProps(props, ["class"]);
+
+  return <span class={cn("text-sm font-medium leading-none", local.class)} {...others} />;
+};
+
 export { RadioGroup, RadioGroupItem, RadioGroupItemLabel };
+export type { RadioGroupItemProps, RadioGroupLabelProps, RadioGroupProps };

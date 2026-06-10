@@ -1,4 +1,5 @@
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+
 import { Show } from "solid-js";
 import { cn } from "../../cn.ts";
 import { FieldLabel } from "./field-label.tsx";

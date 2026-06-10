@@ -1,12 +1,8 @@
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
 import { cva } from "class-variance-authority";
-import { Download, Edit, Plus, Save, X, ZoomIn, ZoomOut } from "lucide-solid";
-import {
-  type Component,
-  createMemo,
-  type JSX,
-  Show,
-  splitProps,
-} from "solid-js";
+import { Download, Edit, Plus, Save, X, ZoomIn, ZoomOut } from "../icons.index";
+import { type Component, createMemo, Show } from "solid-js";
 import { Button } from "../forms/button.tsx";
 
 /**
@@ -53,7 +49,7 @@ type DocumentToolbarProps = {
 };
 
 const barVariants = cva(
-  "w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75",
+  "w-full border-b border-border-subtle bg-surface-raised text-surface-raised-foreground",
 );
 
 export const DocumentToolbar: Component<DocumentToolbarProps> = (props) => {
@@ -123,12 +119,7 @@ export const DocumentToolbar: Component<DocumentToolbarProps> = (props) => {
                 <Download class="w-4 h-4" />
                 Download
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!local.canEdit}
-                onClick={local.onEdit}
-              >
+              <Button size="sm" variant="outline" disabled={!local.canEdit} onClick={local.onEdit}>
                 <Edit class="w-4 h-4" />
                 Edit
               </Button>

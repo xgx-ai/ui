@@ -1,4 +1,6 @@
-import { type JSX, type ParentProps, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface TextLinkProps extends ParentProps {
@@ -21,13 +23,7 @@ export interface TextLinkProps extends ParentProps {
  * ```
  */
 export function TextLink(props: TextLinkProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "href",
-    "onClick",
-    "size",
-    "children",
-  ]);
+  const [local, rest] = splitProps(props, ["class", "href", "onClick", "size", "children"]);
 
   const sizeClass = () => {
     switch (local.size) {

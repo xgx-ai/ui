@@ -1,3 +1,4 @@
+import type { JSX } from "@solidjs/web";
 import { cn } from "../cn";
 import {
   Combobox,
@@ -11,9 +12,10 @@ import {
   ComboboxTrigger,
 } from "./combobox";
 import { Skeleton } from "../feedback/skeleton";
-import { type JSX, Suspense } from "solid-js";
+import { Loading as Suspense } from "solid-js";
 import { useFormAttributesProvider } from "./form-attribute-context";
 import { Label } from "./label";
+import { ChevronsUpDown } from "../icons.index";
 
 type SelectProps<T> = {
   options: T[];
@@ -49,8 +51,7 @@ function getDisplayValue<T>(item: T, optionTextValue?: keyof T): string {
 
 export function SelectWrapper<T>(props: SelectProps<T>) {
   const extraProps = useFormAttributesProvider();
-  const isReadOnly =
-    props.readOnly || (extraProps?.props && extraProps.props.readOnly);
+  const isReadOnly = props.readOnly || (extraProps?.props && extraProps.props.readOnly);
 
   const displaySelectedValues = () => {
     if (!props.value) return props.placeholder || "";
@@ -76,7 +77,7 @@ export function SelectWrapper<T>(props: SelectProps<T>) {
         {isReadOnly ? (
           <div
             class={cn(
-              "flex h-9 rounded-md border border-input bg-gray-50 px-3 py-2 text-xs",
+              "flex h-9 rounded-md border border-input bg-muted px-3 py-2 text-xs text-muted-foreground",
             )}
           >
             {displaySelectedValues()}
@@ -85,7 +86,7 @@ export function SelectWrapper<T>(props: SelectProps<T>) {
           <div class={cn("relative", props.controlClass)}>
             <select
               class={cn(
-                "flex h-9 w-full appearance-none rounded-md border border-input bg-background px-3 py-2 text-xs pr-8",
+                "flex h-9 w-full appearance-none rounded-md border border-input bg-background px-3 py-2 pr-8 text-xs text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
                 props.readOnly && "opacity-50 pointer-events-none",
               )}
               disabled={props.disabled}
@@ -134,19 +135,7 @@ export function SelectWrapper<T>(props: SelectProps<T>) {
               })}
             </select>
             <div class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="size-4"
-              >
-                <path d="M8 9l4 -4l4 4" />
-                <path d="M16 15l-4 4l-4 -4" />
-              </svg>
+              <ChevronsUpDown class="size-4" />
             </div>
           </div>
         ) : (
@@ -171,24 +160,14 @@ export function SelectWrapper<T>(props: SelectProps<T>) {
                 return true;
               }
               // For regular options, use the default filtering
-              const displayValue = getDisplayValue<T>(
-                option as T,
-                props.optionTextValue,
-              );
-              return displayValue
-                .toLowerCase()
-                .includes(inputValue.toLowerCase());
+              const displayValue = getDisplayValue<T>(option as T, props.optionTextValue);
+              return displayValue.toLowerCase().includes(inputValue.toLowerCase());
             }}
             itemComponent={(p: any) => {
-              const isExtraButton = (
-                p.item.rawValue as unknown as ExtraButtonOption
-              )?.isExtraButton;
+              const isExtraButton = (p.item.rawValue as unknown as ExtraButtonOption)
+                ?.isExtraButton;
               if (isExtraButton) {
-                return (
-                  <div class="flex flex-col gap-2 border-t">
-                    {props.extraButton!()}
-                  </div>
-                );
+                return <div class="flex flex-col gap-2 border-t">{props.extraButton!()}</div>;
               }
               return (
                 <ComboboxItem item={p.item}>
@@ -201,7 +180,7 @@ export function SelectWrapper<T>(props: SelectProps<T>) {
                 </ComboboxItem>
               );
             }}
-            sectionComponent={(p) => (
+            sectionComponent={(p: any) => (
               <ComboboxSection>
                 {props.optionTextValue
                   ? p.section.rawValue[props.optionTextValue]
@@ -216,11 +195,7 @@ export function SelectWrapper<T>(props: SelectProps<T>) {
                 props.readOnly && "opacity-50 pointer-events-none",
               )}
             >
-              <div
-                class={cn(
-                  "flex flex-row flex-wrap items-center py-1 pl-2 pr-8 gap-1 w-full",
-                )}
-              >
+              <div class={cn("flex flex-row flex-wrap items-center py-1 pl-2 pr-8 gap-1 w-full")}>
                 <ComboboxInput
                   onInput={(e) => {
                     if (!props.onInput) return;
@@ -237,7 +212,7 @@ export function SelectWrapper<T>(props: SelectProps<T>) {
       </Suspense>
       <div
         class={cn(
-          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-destructive",
+          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-error",
           props.error && "opacity-100 h-4 ",
         )}
       >

@@ -1,10 +1,5 @@
-import {
-  type Accessor,
-  createContext,
-  createSignal,
-  type JSX,
-  useContext,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, createContext, createSignal, useContext } from "solid-js";
 import type { DragData } from "../core/types";
 
 /**
@@ -109,9 +104,7 @@ let containerIdCounter = 0;
  * </SortableProvider>
  * ```
  */
-export function SortableProvider<T>(
-  props: SortableProviderProps<T>,
-): JSX.Element {
+export function SortableProvider<T>(props: SortableProviderProps<T>): JSX.Element {
   const containerId = props.id ?? `sortable-${++containerIdCounter}`;
 
   const [dragState, setDragStateSignal] = createSignal<SortableDragState>({
@@ -130,9 +123,7 @@ export function SortableProvider<T>(
     const anyItem = item as Record<string, unknown>;
     if (typeof anyItem.id === "string") return anyItem.id;
     if (typeof anyItem.id === "number") return String(anyItem.id);
-    throw new Error(
-      "SortableProvider: Could not determine item ID. Please provide getId prop.",
-    );
+    throw new Error("SortableProvider: Could not determine item ID. Please provide getId prop.");
   };
 
   const setDragState = (partial: Partial<SortableDragState>) => {
@@ -150,9 +141,7 @@ export function SortableProvider<T>(
   };
 
   return (
-    <SortableContext.Provider value={contextValue as SortableContextValue}>
-      {props.children}
-    </SortableContext.Provider>
+    <SortableContext value={contextValue as SortableContextValue}>{props.children}</SortableContext>
   );
 }
 
@@ -162,9 +151,7 @@ export function SortableProvider<T>(
 export function useSortableContext<T = unknown>(): SortableContextValue<T> {
   const context = useContext(SortableContext);
   if (!context) {
-    throw new Error(
-      "useSortableContext must be used within a SortableProvider",
-    );
+    throw new Error("useSortableContext must be used within a SortableProvider");
   }
   return context as SortableContextValue<T>;
 }

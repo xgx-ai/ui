@@ -1,10 +1,10 @@
+import { cn } from "../cn";
 import {
-  cn,
   NumberField,
   NumberFieldDecrementTrigger,
   NumberFieldIncrementTrigger,
   NumberFieldInput,
-} from "@xgx/ui";
+} from "../forms/number-field";
 import { Show } from "solid-js";
 import { FieldError } from "./field-error";
 import { FieldLabel } from "./field-label";
@@ -83,9 +83,7 @@ export function FormNumberField(props: FormNumberFieldProps) {
                   <FieldLabel required={isRequired()}>{props.label}</FieldLabel>
                 </Show>
                 <Show when={props.description}>
-                  <p class="text-xs text-muted-foreground">
-                    {props.description}
-                  </p>
+                  <p class="text-xs text-muted-foreground">{props.description}</p>
                 </Show>
               </div>
             </Show>

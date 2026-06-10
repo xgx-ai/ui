@@ -1,4 +1,4 @@
-import { cn } from "@xgx/ui";
+import { cn } from "../cn";
 import type { Component } from "solid-js";
 import { Show } from "solid-js";
 
@@ -23,9 +23,7 @@ export const TableColumnHeader: Component<TableColumnHeaderProps> = (props) => {
     >
       <span class="font-medium">{props.title}</span>
       <Show when={props.sorted}>
-        {(sorted) => (
-          <span class="text-xs">{sorted() === "asc" ? "↑" : "↓"}</span>
-        )}
+        {(sorted) => <span class="text-xs">{sorted() === "asc" ? "↑" : "↓"}</span>}
       </Show>
     </button>
   );

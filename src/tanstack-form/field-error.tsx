@@ -1,4 +1,4 @@
-import { cn } from "@xgx/ui";
+import { cn } from "../cn";
 import { For, Show } from "solid-js";
 
 export interface FieldErrorProps {
@@ -20,12 +20,7 @@ export function FieldError(props: FieldErrorProps) {
 
   return (
     <Show when={normalizedErrors().length > 0}>
-      <div
-        class={cn(
-          "text-xs text-destructive transition-all duration-200",
-          props.class,
-        )}
-      >
+      <div class={cn("text-xs text-error transition-all duration-200", props.class)}>
         <For each={normalizedErrors()}>{(error) => <p>{error}</p>}</For>
       </div>
     </Show>

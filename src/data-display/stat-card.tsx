@@ -1,4 +1,6 @@
-import { type JSX, type ParentProps, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { type ParentProps } from "solid-js";
 import { cn } from "../cn";
 import { Card, CardContent } from "../layout/card";
 
@@ -36,10 +38,7 @@ const colClasses = {
 export function StatCardGroup(props: StatCardGroupProps): JSX.Element {
   const [local, rest] = splitProps(props, ["class", "cols", "children"]);
   return (
-    <div
-      class={cn("grid gap-4", colClasses[local.cols ?? "3"], local.class)}
-      {...rest}
-    >
+    <div class={cn("grid gap-4", colClasses[local.cols ?? "3"], local.class)} {...rest}>
       {local.children}
     </div>
   );

@@ -1,5 +1,6 @@
-import { ChevronDown } from "lucide-solid";
-import type { JSX, ParentProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { ChevronDown } from "../icons.index";
+import type { ParentProps } from "solid-js";
 import { Show } from "solid-js";
 import {
   DropdownMenu,
@@ -32,10 +33,7 @@ export function ButtonDropdown(props: ButtonDropdownProps) {
         {props.label}
       </Button>
       <DropdownMenu placement="bottom-end">
-        <DropdownMenuTrigger
-          class="flex items-center justify-center"
-          disabled={props.disabled}
-        >
+        <DropdownMenuTrigger class="flex items-center justify-center" disabled={props.disabled}>
           <Button
             size="sm"
             class="text-xs rounded-l-none"

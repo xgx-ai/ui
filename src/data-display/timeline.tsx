@@ -1,13 +1,8 @@
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
 import { cn } from "../cn";
-import type { ComponentProps, ParentComponent } from "solid-js";
-import {
-  type Component,
-  For,
-  type JSXElement,
-  mergeProps,
-  Show,
-  splitProps,
-} from "solid-js";
+import type { ParentComponent } from "solid-js";
+import { type Component, For, merge as mergeProps, Show } from "solid-js";
 
 export type TimelinePropsItem = Omit<
   TimelineItemProps,
@@ -47,12 +42,8 @@ const Timeline: Component<TimelineProps> = (rawProps) => {
             bullet={item.bullet}
             bulletClass={item.bulletClass}
             isLast={index() === props.items.length - 1}
-            isActive={
-              props.activeItem === -1 ? false : props.activeItem >= index() + 1
-            }
-            isActiveBullet={
-              props.activeItem === -1 ? false : props.activeItem >= index()
-            }
+            isActive={props.activeItem === -1 ? false : props.activeItem >= index() + 1}
+            isActiveBullet={props.activeItem === -1 ? false : props.activeItem >= index()}
             bulletSize={props.bulletSize}
             lineSize={props.lineSize}
           />
@@ -63,9 +54,9 @@ const Timeline: Component<TimelineProps> = (rawProps) => {
 };
 
 export type TimelineItemProps = {
-  title: JSXElement;
-  description?: JSXElement;
-  bullet?: JSXElement;
+  title: JSX.Element;
+  description?: JSX.Element;
+  bullet?: JSX.Element;
   bulletClass?: string;
   isLast?: boolean;
   isActive: boolean;
@@ -118,7 +109,7 @@ const TimelineItem: Component<TimelineItemProps> = (props) => {
 };
 
 export type TimelineItemBulletProps = {
-  children?: JSXElement;
+  children?: JSX.Element;
   isActive?: boolean;
   bulletSize: number;
   lineSize: number;
@@ -147,11 +138,7 @@ const TimelineItemBullet: Component<TimelineItemBulletProps> = (props) => {
 };
 
 const TimelineItemTitle: ParentComponent = (props) => {
-  return (
-    <div class="mb-1 text-base font-semibold leading-none">
-      {props.children}
-    </div>
-  );
+  return <div class="mb-1 text-base font-semibold leading-none">{props.children}</div>;
 };
 
 const TimelineItemDescription: Component<ComponentProps<"p">> = (props) => {

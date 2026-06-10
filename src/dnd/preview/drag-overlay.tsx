@@ -1,6 +1,7 @@
-import type { Component, JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import type { Component } from "solid-js";
 import { createMemo, Show } from "solid-js";
-import { Portal } from "solid-js/web";
+import { Portal } from "@solidjs/web";
 import { useDndConfig, useDndMonitor } from "../core/context";
 import type { DragData } from "../core/types";
 import { DefaultPreview } from "./default-preview";
@@ -53,10 +54,7 @@ export const DragOverlay: Component<DragOverlayProps> = (props) => {
             class={`fixed top-0 left-0 pointer-events-none z-[9999] will-change-transform ${props.class ?? ""}`}
             style={{ transform: transform() }}
           >
-            <Show
-              when={props.children}
-              fallback={<PreviewComponent item={item()} />}
-            >
+            <Show when={props.children} fallback={<PreviewComponent item={item()} />}>
               {(renderFn) => renderFn()(item())}
             </Show>
           </div>

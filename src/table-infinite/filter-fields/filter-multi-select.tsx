@@ -1,5 +1,5 @@
+import { Label } from "../../forms/label";
 import {
-  Label,
   Search,
   SearchContent,
   SearchControl,
@@ -8,8 +8,8 @@ import {
   SearchItemLabel,
   SearchListbox,
   SearchNoResult,
-} from "@xgx/ui";
-import { ChevronDown } from "lucide-solid";
+} from "../../forms/search";
+import { ChevronDown } from "../../icons.index";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import type { UseTableFiltersReturn } from "../use-table-filters";
 
@@ -18,9 +18,7 @@ export interface FilterMultiSelectOption {
   label: string;
 }
 
-export interface FilterMultiSelectProps<
-  TFilters extends Record<string, unknown>,
-> {
+export interface FilterMultiSelectProps<TFilters extends Record<string, unknown>> {
   /**
    * The label to display for the filter
    */
@@ -74,9 +72,7 @@ export function FilterMultiSelect<TFilters extends Record<string, unknown>>(
 
   // Parse the comma-separated filter value into an array of selected options
   const selectedValues = createMemo(() => {
-    const filterValue = props.filterHook.filters()[props.filterKey] as
-      | string
-      | undefined;
+    const filterValue = props.filterHook.filters()[props.filterKey] as string | undefined;
     if (!filterValue) return [];
     return filterValue.split(",").filter(Boolean);
   });
@@ -91,9 +87,7 @@ export function FilterMultiSelect<TFilters extends Record<string, unknown>>(
   const filteredOptions = createMemo(() => {
     const query = searchQuery().toLowerCase().trim();
     if (!query) return props.options;
-    return props.options.filter((opt) =>
-      opt.label.toLowerCase().includes(query),
-    );
+    return props.options.filter((opt) => opt.label.toLowerCase().includes(query));
   });
 
   const handleSelect = (selected: FilterMultiSelectOption[] | null) => {
@@ -108,10 +102,7 @@ export function FilterMultiSelect<TFilters extends Record<string, unknown>>(
     const updatedValues = [...currentValues, newItem.value];
     const newFilterValue = updatedValues.join(",");
 
-    props.filterHook.setFilter(
-      props.filterKey,
-      newFilterValue as TFilters[typeof props.filterKey],
-    );
+    props.filterHook.setFilter(props.filterKey, newFilterValue as TFilters[typeof props.filterKey]);
 
     // Clear input after selection
     if (inputRef) {
@@ -123,18 +114,14 @@ export function FilterMultiSelect<TFilters extends Record<string, unknown>>(
   const handleRemove = (option: FilterMultiSelectOption) => {
     const currentValues = selectedValues();
     const updatedValues = currentValues.filter((v) => v !== option.value);
-    const newFilterValue =
-      updatedValues.length > 0 ? updatedValues.join(",") : undefined;
+    const newFilterValue = updatedValues.length > 0 ? updatedValues.join(",") : undefined;
 
-    props.filterHook.setFilter(
-      props.filterKey,
-      newFilterValue as TFilters[typeof props.filterKey],
-    );
+    props.filterHook.setFilter(props.filterKey, newFilterValue as TFilters[typeof props.filterKey]);
   };
 
   return (
     <div class="space-y-1.5 py-1">
-      <Label class="text-xs text-gray-600">{props.label}</Label>
+      <Label class="text-xs text-muted-foreground">{props.label}</Label>
       <Search<FilterMultiSelectOption>
         triggerMode="focus"
         multiple={true}
@@ -146,7 +133,7 @@ export function FilterMultiSelect<TFilters extends Record<string, unknown>>(
         placeholder={props.placeholder ?? "Search and select..."}
         onChange={handleSelect}
         onInputChange={setSearchQuery}
-        itemComponent={(itemProps) => (
+        itemComponent={(itemProps: any) => (
           <SearchItem item={itemProps.item}>
             <SearchItemLabel>{itemProps.item.rawValue.label}</SearchItemLabel>
           </SearchItem>
@@ -155,12 +142,12 @@ export function FilterMultiSelect<TFilters extends Record<string, unknown>>(
         <SearchControl class="relative flex flex-wrap items-center min-h-8 gap-1 pr-8">
           <Show when={selectedOptions().length > 0}>
             <For each={selectedOptions()}>
-              {(option) => (
-                <span class="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-xs">
+              {(option: any) => (
+                <span class="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                   {option.label}
                   <button
                     type="button"
-                    class="ml-0.5 cursor-pointer text-gray-500 hover:text-gray-700"
+                    class="ml-0.5 cursor-pointer text-muted-foreground hover:text-foreground"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleRemove(option);
@@ -176,14 +163,12 @@ export function FilterMultiSelect<TFilters extends Record<string, unknown>>(
             ref={inputRef}
             class="min-w-[60px] flex-1 bg-transparent py-1 text-xs outline-none"
           />
-          <ChevronDown class="absolute right-2 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+          <ChevronDown class="absolute right-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         </SearchControl>
 
         <SearchContent onCloseAutoFocus={(e) => e.preventDefault()}>
           <SearchListbox />
-          <SearchNoResult>
-            {props.noResultText ?? "No results found"}
-          </SearchNoResult>
+          <SearchNoResult>{props.noResultText ?? "No results found"}</SearchNoResult>
         </SearchContent>
       </Search>
     </div>

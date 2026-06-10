@@ -1,280 +1,295 @@
-import * as ContextMenuPrimitive from "@kobalte/core/context-menu";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import type { Component, ComponentProps, JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";
+import { Check, ChevronRight, Circle } from "../icons.index";
 import { cn } from "../cn";
+import { splitProps } from "../utils/split-props";
+import { PortalMount } from "../overlays/portal";
+import { createMenuKeyboard, focusFirstMenuItem } from "./menu-behavior";
 
-/**
- * # Context Menu
- *
- * Right-click menu with actions.
- *
- * @example
- * ```
- * <ContextMenu>
- *   <ContextMenuTrigger class="flex h-32 w-64 items-center justify-center rounded-md border border-dashed">
- *     Right click here
- *   </ContextMenuTrigger>
- *   <ContextMenuContent>
- *     <ContextMenuItem>Cut</ContextMenuItem>
- *     <ContextMenuItem>Copy</ContextMenuItem>
- *     <ContextMenuItem>Paste</ContextMenuItem>
- *     <ContextMenuSeparator />
- *     <ContextMenuItem>Delete</ContextMenuItem>
- *   </ContextMenuContent>
- * </ContextMenu>
- * ```
- */
-
-const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
-const ContextMenuPortal = ContextMenuPrimitive.Portal;
-const ContextMenuSub = ContextMenuPrimitive.Sub;
-const ContextMenuGroup = ContextMenuPrimitive.Group;
-const ContextMenuRadioGroup = ContextMenuPrimitive.RadioGroup;
-
-const ContextMenu: Component<ContextMenuPrimitive.ContextMenuRootProps> = (
-  props,
-) => {
-  return <ContextMenuPrimitive.Root gutter={4} {...props} />;
+type ContextMenuContextValue = {
+  close: () => void;
+  contentRef: () => HTMLElement | undefined;
+  open: () => boolean;
+  position: () => { x: number; y: number };
+  setContentRef: (element: HTMLElement) => void;
+  showAt: (x: number, y: number) => void;
 };
 
-type ContextMenuContentProps<T extends ValidComponent = "div"> =
-  ContextMenuPrimitive.ContextMenuContentProps<T> & {
-    class?: string | undefined;
+const ContextMenuContext = createContext<ContextMenuContextValue>();
+
+function useContextMenu() {
+  const context = useContext(ContextMenuContext);
+  if (!context) throw new Error("ContextMenu parts must be used inside ContextMenu.");
+  return context;
+}
+
+type ContextMenuRootProps = ComponentProps<"div"> & {
+  children?: JSX.Element;
+  defaultOpen?: boolean;
+  gutter?: number;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
+};
+
+const ContextMenu = (props: ContextMenuRootProps) => {
+  const [local, others] = splitProps(props, ["children", "defaultOpen", "onOpenChange", "open"]);
+  const [uncontrolledOpen, setUncontrolledOpen] = createSignal(Boolean(local.defaultOpen));
+  const [position, setPosition] = createSignal({ x: 0, y: 0 });
+  const [contentRef, setContentRef] = createSignal<HTMLElement>();
+  const open = () => local.open ?? uncontrolledOpen();
+  const setOpen = (next: boolean) => {
+    if (local.open === undefined) setUncontrolledOpen(next);
+    local.onOpenChange?.(next);
+  };
+  const showAt = (x: number, y: number) => {
+    setPosition({ x, y });
+    setOpen(true);
   };
 
-const ContextMenuContent = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, ContextMenuContentProps<T>>,
-) => {
-  const [local, others] = splitProps(props as ContextMenuContentProps, [
-    "class",
-  ]);
+  createEffect(open, (isOpen) => {
+    if (!isOpen) return;
+    const onPointerDown = () => setOpen(false);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  });
+
   return (
-    <ContextMenuPrimitive.Portal>
-      <ContextMenuPrimitive.Content
+    <ContextMenuContext
+      value={{
+        close: () => setOpen(false),
+        contentRef,
+        open,
+        position,
+        setContentRef,
+        showAt,
+      }}
+    >
+      <div {...others}>{local.children}</div>
+    </ContextMenuContext>
+  );
+};
+
+const ContextMenuTrigger = (props: ComponentProps<"div">) => {
+  const menu = useContextMenu();
+  const [local, others] = splitProps(props, ["onContextMenu"]);
+  const onContextMenu: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
+    const handler = local.onContextMenu as JSX.EventHandler<HTMLDivElement, MouseEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented) {
+      event.preventDefault();
+      menu.showAt(event.clientX, event.clientY);
+    }
+  };
+
+  return <div onContextMenu={onContextMenu} {...others} />;
+};
+
+const ContextMenuPortal = (props: { children?: JSX.Element }) => (
+  <PortalMount>{props.children}</PortalMount>
+);
+const ContextMenuSub = (props: ComponentProps<"div">) => <div {...props} />;
+const ContextMenuGroup = (props: ComponentProps<"div">) => <div role="group" {...props} />;
+const ContextMenuRadioGroup = (props: ComponentProps<"div">) => <div role="group" {...props} />;
+
+type ContextMenuContentProps = ComponentProps<"div">;
+
+const ContextMenuContent = (props: ContextMenuContentProps) => {
+  const menu = useContextMenu();
+  const [local, others] = splitProps(props, ["class", "onKeyDown", "onPointerDown", "ref"]);
+  const menuKeyboard = createMenuKeyboard({
+    close: menu.close,
+    root: menu.contentRef,
+  });
+  const onPointerDown: JSX.EventHandler<HTMLDivElement, PointerEvent> = (event) => {
+    event.stopPropagation();
+    const handler = local.onPointerDown as
+      | JSX.EventHandler<HTMLDivElement, PointerEvent>
+      | undefined;
+    handler?.(event);
+  };
+  const onKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (event) => {
+    const handler = local.onKeyDown as JSX.EventHandler<HTMLDivElement, KeyboardEvent> | undefined;
+    handler?.(event);
+    menuKeyboard(event);
+  };
+
+  createEffect(menu.open, (open) => {
+    if (open) requestAnimationFrame(() => focusFirstMenuItem(menu.contentRef()));
+  });
+
+  return (
+    <Show when={menu.open()}>
+      <div
+        role="menu"
+        tabindex={-1}
+        ref={(element) => {
+          menu.setContentRef(element);
+          const ref = local.ref;
+          if (typeof ref === "function") ref(element);
+          requestAnimationFrame(() => focusFirstMenuItem(element));
+        }}
         class={cn(
-          "z-50 min-w-32 origin-[var(--kb-menu-content-transform-origin)] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in",
+          "fixed z-50 min-w-32 overflow-hidden rounded-md border border-border-subtle bg-popover p-1 text-popover-foreground shadow-elevation-medium",
           local.class,
         )}
+        style={{
+          left: `${menu.position().x}px`,
+          top: `${menu.position().y}px`,
+        }}
+        onKeyDown={onKeyDown}
+        onPointerDown={onPointerDown}
         {...others}
       />
-    </ContextMenuPrimitive.Portal>
+    </Show>
   );
 };
 
-type ContextMenuItemProps<T extends ValidComponent = "div"> =
-  ContextMenuPrimitive.ContextMenuItemProps<T> & {
-    class?: string | undefined;
+type ContextMenuItemProps = ComponentProps<"div"> & {
+  closeOnSelect?: boolean;
+  disabled?: boolean;
+};
+
+const ContextMenuItem = (props: ContextMenuItemProps) => {
+  const menu = useContextMenu();
+  const [local, others] = splitProps(props, ["class", "closeOnSelect", "disabled", "onClick"]);
+  const onClick: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
+    const handler = local.onClick as JSX.EventHandler<HTMLDivElement, MouseEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented && !local.disabled && local.closeOnSelect !== false) {
+      menu.close();
+    }
   };
 
-const ContextMenuItem = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, ContextMenuItemProps<T>>,
-) => {
-  const [local, others] = splitProps(props as ContextMenuItemProps, ["class"]);
   return (
-    <ContextMenuPrimitive.Item
+    <div
+      data-disabled={local.disabled ? "" : undefined}
+      role="menuitem"
+      tabindex={local.disabled ? undefined : -1}
       class={cn(
-        "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
+        "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         local.class,
       )}
+      onClick={onClick}
       {...others}
     />
   );
 };
 
-const ContextMenuShortcut: Component<ComponentProps<"span">> = (props) => {
+const ContextMenuShortcut = (props: ComponentProps<"span">) => {
   const [local, others] = splitProps(props, ["class"]);
-  return (
-    <span
-      class={cn("ml-auto text-xs tracking-widest opacity-60", local.class)}
-      {...others}
-    />
-  );
+  return <span class={cn("ml-auto text-xs tracking-widest opacity-60", local.class)} {...others} />;
 };
 
-type ContextMenuSeparatorProps<T extends ValidComponent = "hr"> =
-  ContextMenuPrimitive.ContextMenuSeparatorProps<T> & {
-    class?: string | undefined;
-  };
-
-const ContextMenuSeparator = <T extends ValidComponent = "hr">(
-  props: PolymorphicProps<T, ContextMenuSeparatorProps<T>>,
-) => {
-  const [local, others] = splitProps(props as ContextMenuSeparatorProps, [
-    "class",
-  ]);
-  return (
-    <ContextMenuPrimitive.Separator
-      class={cn("-mx-1 my-1 h-px bg-muted", local.class)}
-      {...others}
-    />
-  );
+const ContextMenuSeparator = (props: ComponentProps<"hr">) => {
+  const [local, others] = splitProps(props, ["class"]);
+  return <hr class={cn("-mx-1 my-1 h-px border-0 bg-muted", local.class)} {...others} />;
 };
 
-type ContextMenuSubTriggerProps<T extends ValidComponent = "div"> =
-  ContextMenuPrimitive.ContextMenuSubTriggerProps<T> & {
-    class?: string | undefined;
-    children?: JSX.Element;
-  };
-
-const ContextMenuSubTrigger = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, ContextMenuSubTriggerProps<T>>,
+const ContextMenuSubTrigger = (
+  props: ComponentProps<"div"> & { children?: JSX.Element; inset?: boolean },
 ) => {
-  const [local, others] = splitProps(props as ContextMenuSubTriggerProps, [
-    "class",
-    "children",
-  ]);
+  const [local, others] = splitProps(props, ["class", "children", "inset"]);
   return (
-    <ContextMenuPrimitive.SubTrigger
+    <div
+      role="menuitem"
+      tabindex={-1}
       class={cn(
-        "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-accent data-[state=open]:bg-accent",
+        "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+        local.inset && "pl-8",
         local.class,
       )}
       {...others}
     >
       {local.children}
-      <svg
-        aria-hidden="true"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        class="ml-auto size-4"
-      >
-        <path d="M9 6l6 6l-6 6" />
-      </svg>
-    </ContextMenuPrimitive.SubTrigger>
+      <ChevronRight aria-hidden="true" class="ml-auto size-4" />
+    </div>
   );
 };
 
-type ContextMenuSubContentProps<T extends ValidComponent = "div"> =
-  ContextMenuPrimitive.ContextMenuSubContentProps<T> & {
-    class?: string | undefined;
-  };
+const ContextMenuSubContent = ContextMenuContent;
 
-const ContextMenuSubContent = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, ContextMenuSubContentProps<T>>,
-) => {
-  const [local, others] = splitProps(props as ContextMenuSubContentProps, [
-    "class",
-  ]);
-  return (
-    <ContextMenuPrimitive.SubContent
-      class={cn(
-        "z-50 min-w-32 origin-[var(--kb-menu-content-transform-origin)] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in",
-        local.class,
-      )}
-      {...others}
-    />
-  );
+type ContextMenuCheckboxItemProps = Omit<ComponentProps<"div">, "onChange"> & {
+  checked?: boolean;
+  closeOnSelect?: boolean;
+  disabled?: boolean;
+  onChange?: (checked: boolean) => void;
+  onCheckedChange?: (checked: boolean) => void;
 };
 
-type ContextMenuCheckboxItemProps<T extends ValidComponent = "div"> =
-  ContextMenuPrimitive.ContextMenuCheckboxItemProps<T> & {
-    class?: string | undefined;
-    children?: JSX.Element;
-  };
-
-const ContextMenuCheckboxItem = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, ContextMenuCheckboxItemProps<T>>,
-) => {
-  const [local, others] = splitProps(props as ContextMenuCheckboxItemProps, [
-    "class",
+const ContextMenuCheckboxItem = (props: ContextMenuCheckboxItemProps) => {
+  const [local, others] = splitProps(props, [
+    "checked",
     "children",
+    "class",
+    "closeOnSelect",
+    "disabled",
+    "onChange",
+    "onCheckedChange",
   ]);
+  const onClick = () => {
+    if (local.disabled) return;
+    const checked = !local.checked;
+    local.onChange?.(checked);
+    local.onCheckedChange?.(checked);
+  };
+
   return (
-    <ContextMenuPrimitive.CheckboxItem
-      class={cn(
-        "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
-        local.class,
-      )}
+    <ContextMenuItem
+      closeOnSelect={local.closeOnSelect}
+      data-checked={local.checked ? "true" : "false"}
+      role="menuitemcheckbox"
+      aria-checked={local.checked ? "true" : "false"}
+      disabled={local.disabled}
+      class={cn("pl-8", local.class)}
+      onClick={onClick}
       {...others}
     >
       <span class="absolute left-2 flex size-3.5 items-center justify-center">
-        <ContextMenuPrimitive.ItemIndicator>
-          <svg
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="size-4"
-          >
-            <path d="M5 12l5 5l10 -10" />
-          </svg>
-        </ContextMenuPrimitive.ItemIndicator>
+        <Show when={local.checked}>
+          <Check aria-hidden="true" class="size-4" />
+        </Show>
       </span>
       {local.children}
-    </ContextMenuPrimitive.CheckboxItem>
+    </ContextMenuItem>
   );
 };
 
-type ContextMenuGroupLabelProps<T extends ValidComponent = "span"> =
-  ContextMenuPrimitive.ContextMenuGroupLabelProps<T> & {
-    class?: string | undefined;
-  };
-
-const ContextMenuGroupLabel = <T extends ValidComponent = "span">(
-  props: PolymorphicProps<T, ContextMenuGroupLabelProps<T>>,
-) => {
-  const [local, others] = splitProps(props as ContextMenuGroupLabelProps, [
-    "class",
-  ]);
-  return (
-    <ContextMenuPrimitive.GroupLabel
-      class={cn("px-2 py-1.5 text-sm font-semibold", local.class)}
-      {...others}
-    />
-  );
+const ContextMenuGroupLabel = (props: ComponentProps<"span">) => {
+  const [local, others] = splitProps(props, ["class"]);
+  return <span class={cn("px-2 py-1.5 text-sm font-semibold", local.class)} {...others} />;
 };
 
-type ContextMenuRadioItemProps<T extends ValidComponent = "div"> =
-  ContextMenuPrimitive.ContextMenuRadioItemProps<T> & {
-    class?: string | undefined;
-    children?: JSX.Element;
-  };
+type ContextMenuRadioItemProps = ComponentProps<"div"> & {
+  checked?: boolean;
+  disabled?: boolean;
+};
 
-const ContextMenuRadioItem = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, ContextMenuRadioItemProps<T>>,
-) => {
-  const [local, others] = splitProps(props as ContextMenuRadioItemProps, [
-    "class",
-    "children",
-  ]);
+const ContextMenuRadioItem = (props: ContextMenuRadioItemProps) => {
+  const [local, others] = splitProps(props, ["checked", "children", "class", "disabled"]);
+
   return (
-    <ContextMenuPrimitive.RadioItem
-      class={cn(
-        "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
-        local.class,
-      )}
+    <ContextMenuItem
+      data-checked={local.checked ? "true" : "false"}
+      role="menuitemradio"
+      aria-checked={local.checked ? "true" : "false"}
+      disabled={local.disabled}
+      class={cn("pl-8", local.class)}
       {...others}
     >
       <span class="absolute left-2 flex size-3.5 items-center justify-center">
-        <ContextMenuPrimitive.ItemIndicator>
-          <svg
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="size-2 fill-current"
-          >
-            <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
-          </svg>
-        </ContextMenuPrimitive.ItemIndicator>
+        <Show when={local.checked}>
+          <Circle aria-hidden="true" class="size-2 fill-current" />
+        </Show>
       </span>
       {local.children}
-    </ContextMenuPrimitive.RadioItem>
+    </ContextMenuItem>
   );
 };
 
@@ -294,4 +309,10 @@ export {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
   ContextMenuTrigger,
+};
+export type {
+  ContextMenuCheckboxItemProps,
+  ContextMenuContentProps,
+  ContextMenuItemProps,
+  ContextMenuRootProps,
 };

@@ -1,4 +1,5 @@
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+
 import { createMemo, Show } from "solid-js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../feedback/tooltip";
 import { useCalendarContext } from "./calendar-context";
@@ -7,14 +8,8 @@ import type { CalendarEvent, LayoutedEvent } from "./types";
 
 export interface CalendarHeaderEntryProps {
   layoutEvent: LayoutedEvent;
-  renderContent?: (
-    event: CalendarEvent,
-    context: CalendarEntryContext,
-  ) => JSX.Element;
-  renderTooltip?: (
-    event: CalendarEvent,
-    context: CalendarEntryContext,
-  ) => JSX.Element;
+  renderContent?: (event: CalendarEvent, context: CalendarEntryContext) => JSX.Element;
+  renderTooltip?: (event: CalendarEvent, context: CalendarEntryContext) => JSX.Element;
 }
 
 export function CalendarHeaderEntry(props: CalendarHeaderEntryProps) {
@@ -25,9 +20,9 @@ export function CalendarHeaderEntry(props: CalendarHeaderEntryProps) {
 
   const isCompleted = () => !!event().isCompleted;
   const isSelected = () => selectedEventId() === event().id;
-  const colour = () => event().colour || "#3b82f6";
-  const colourLight = () => `${colour()}20`;
-  const colourMedium = () => `${colour()}40`;
+  const colour = () => event().colour || "var(--primary)";
+  const colourLight = () => `color-mix(in oklch, ${colour()} 18%, transparent)`;
+  const colourMedium = () => `color-mix(in oklch, ${colour()} 34%, transparent)`;
 
   const positionStyle = createMemo(() => {
     const lane = layoutEvent().lane;
@@ -48,8 +43,8 @@ export function CalendarHeaderEntry(props: CalendarHeaderEntryProps) {
     if (isCompleted()) {
       return {
         ...pos,
-        "background-color": "#f0fdf4",
-        "border-color": "#bbf7d0",
+        "background-color": "var(--success)",
+        "border-color": "var(--success-foreground)",
       };
     }
 
@@ -81,7 +76,7 @@ export function CalendarHeaderEntry(props: CalendarHeaderEntryProps) {
   const defaultContent = () => (
     <span
       class={`text-[10px] font-medium truncate px-2 ${
-        isCompleted() ? "line-through text-green-800" : ""
+        isCompleted() ? "line-through text-success-foreground" : ""
       }`}
       style={{ color: isCompleted() ? undefined : colour() }}
     >
@@ -96,7 +91,7 @@ export function CalendarHeaderEntry(props: CalendarHeaderEntryProps) {
       <TooltipTrigger
         as="div"
         class={`absolute left-1 right-1 cursor-pointer transition-all duration-200 hover:shadow-lg rounded border flex items-center ${
-          isSelected() ? "ring-2 ring-primary" : ""
+          isSelected() ? "ring-2 ring-selected" : ""
         }`}
         style={entryStyle()}
         onClick={(e: MouseEvent) => {

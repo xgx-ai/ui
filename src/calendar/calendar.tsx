@@ -1,4 +1,5 @@
-import type { Accessor, JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import type { Accessor } from "solid-js";
 import { Show } from "solid-js";
 import { Button } from "../forms/button";
 import { Card } from "../layout/card";
@@ -14,8 +15,7 @@ import { CalendarMonthView } from "./calendar-month-view";
 import { CalendarWeekView } from "./calendar-week-view";
 import type { CalendarEvent } from "./types";
 
-export interface CalendarProps
-  extends Omit<CalendarProviderProps, "children" | "events"> {
+export interface CalendarProps extends Omit<CalendarProviderProps, "children" | "events"> {
   events: CalendarEvent[] | Accessor<CalendarEvent[]>;
   /** Controlled view mode */
   viewMode?: CalendarProviderProps["viewMode"];
@@ -32,14 +32,8 @@ export interface CalendarProps
   startHour?: number;
   /** Last visible hour in day/week views (default 24) */
   endHour?: number;
-  renderEventContent?: (
-    event: CalendarEvent,
-    context: CalendarEntryContext,
-  ) => JSX.Element;
-  renderTooltip?: (
-    event: CalendarEvent,
-    context: CalendarEntryContext,
-  ) => JSX.Element;
+  renderEventContent?: (event: CalendarEvent, context: CalendarEntryContext) => JSX.Element;
+  renderTooltip?: (event: CalendarEvent, context: CalendarEntryContext) => JSX.Element;
   headerLeft?: JSX.Element;
   headerRight?: JSX.Element;
 }
@@ -59,12 +53,8 @@ function CalendarInner(props: {
 
   return (
     <Card class={`h-full flex flex-col overflow-hidden ${props.class ?? ""}`}>
-      <div class="flex items-center justify-between px-4 py-3 border-b border-black/[0.06]">
-        <div
-          class={
-            props.hideViewModeToggle ? "" : props.headerLeft ? "w-32" : "w-10"
-          }
-        >
+      <div class="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
+        <div class={props.hideViewModeToggle ? "" : props.headerLeft ? "w-32" : "w-10"}>
           {props.headerLeft}
         </div>
 
@@ -73,7 +63,7 @@ function CalendarInner(props: {
         <div class="flex items-center gap-1.5">
           {props.headerRight}
           <Show when={!props.hideViewModeToggle}>
-            <div class="bg-muted/70 rounded-md overflow-hidden flex border border-black/[0.06]">
+            <div class="flex overflow-hidden rounded-md border border-control-border bg-control-muted">
               <Button
                 variant={viewMode() === "day" ? "default" : "ghost"}
                 size="sm"
@@ -133,8 +123,7 @@ function CalendarInner(props: {
 }
 
 export function Calendar(props: CalendarProps) {
-  const eventsAccessor =
-    typeof props.events === "function" ? props.events : () => props.events;
+  const eventsAccessor = typeof props.events === "function" ? props.events : () => props.events;
 
   return (
     <CalendarProvider

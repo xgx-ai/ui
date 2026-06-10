@@ -1,5 +1,6 @@
-import { Check } from "lucide-solid";
-import { type Component, For, Show, splitProps } from "solid-js";
+import { splitProps } from "../utils/split-props";
+import { Check } from "../icons.index";
+import { type Component, For, Show } from "solid-js";
 import { cn } from "../cn";
 
 export type StepStatus = "pending" | "current" | "completed";
@@ -87,22 +88,17 @@ function getStepStatus(index: number, currentStep: number): StepStatus {
  * ```
  */
 export const Stepper: Component<StepperProps> = (props) => {
-  const [local, others] = splitProps(props, [
-    "class",
-    "variant",
-    "size",
-    "currentStep",
-  ]);
+  const [local, _others] = splitProps(props, ["class", "variant", "size", "currentStep"]);
 
   const variant = () => local.variant ?? "dots";
   const size = () => local.size ?? "default";
   const config = () => sizeConfig[size()];
 
   const steps = (): Step[] => {
-    if ("steps" in others) {
-      return others.steps;
+    if ("steps" in props) {
+      return props.steps;
     }
-    return Array.from({ length: others.totalSteps }, (_, i) => ({
+    return Array.from({ length: props.totalSteps }, (_, i) => ({
       id: String(i),
     }));
   };
@@ -126,17 +122,14 @@ export const Stepper: Component<StepperProps> = (props) => {
                           "flex items-center justify-center rounded-full border-2 font-semibold transition-all",
                           config().indicator,
                           status() === "completed" &&
-                            "border-primary bg-primary text-primary-foreground",
+                            "border-selected bg-selected text-selected-foreground",
                           status() === "current" &&
-                            "border-primary bg-transparent text-foreground ring-4 ring-primary/20",
+                            "border-selected bg-transparent text-foreground ring-4 ring-selected/20",
                           status() === "pending" &&
                             "border-muted-foreground/30 bg-transparent text-muted-foreground",
                         )}
                       >
-                        <Show
-                          when={status() === "completed"}
-                          fallback={<span>{index() + 1}</span>}
-                        >
+                        <Show when={status() === "completed"} fallback={<span>{index() + 1}</span>}>
                           <Check class="size-4" strokeWidth={3} />
                         </Show>
                       </div>
@@ -159,8 +152,8 @@ export const Stepper: Component<StepperProps> = (props) => {
                     class={cn(
                       "rounded-full transition-colors",
                       config().dot,
-                      status() === "completed" && "bg-primary/60",
-                      status() === "current" && "bg-primary",
+                      status() === "completed" && "bg-selected/60",
+                      status() === "current" && "bg-selected",
                       status() === "pending" && "bg-muted-foreground/30",
                     )}
                   />
@@ -172,9 +165,7 @@ export const Stepper: Component<StepperProps> = (props) => {
                       "h-0.5 mx-1 transition-colors",
                       config().connectorWidth,
                       variant() === "labeled" && "mt-[-24px]",
-                      status() === "completed"
-                        ? "bg-primary"
-                        : "bg-muted-foreground/20",
+                      status() === "completed" ? "bg-primary" : "bg-muted-foreground/20",
                     )}
                   />
                 </Show>

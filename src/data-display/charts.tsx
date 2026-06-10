@@ -1,5 +1,6 @@
-import type { Ref } from "@solid-primitives/refs";
-import { mergeRefs } from "@solid-primitives/refs";
+import { createMountEffect } from "../utils/lifecycle";
+import type { Ref } from "../utils/refs";
+import { mergeRefs } from "../utils/refs";
 import type {
   ChartComponent,
   ChartData,
@@ -33,15 +34,8 @@ import {
   Tooltip,
 } from "chart.js";
 import type { Component } from "solid-js";
-import {
-  createEffect,
-  createSignal,
-  mergeProps,
-  on,
-  onCleanup,
-  onMount,
-} from "solid-js";
-import { unwrap } from "solid-js/store";
+import { createRenderEffect, createSignal, merge as mergeProps, onCleanup } from "solid-js";
+import { snapshot as unwrap } from "solid-js";
 
 type TypedChartProps = {
   data: ChartData;
@@ -54,12 +48,26 @@ type TypedChartProps = {
 
 type ChartProps = TypedChartProps & {
   type: ChartType;
+  components?: ChartComponent[];
 };
 
 type ChartContext = {
   chart: Chart;
   tooltip: TooltipModel<keyof ChartTypeRegistry>;
 };
+
+const registeredChartTypes = new Set<string>();
+
+function ensureChartRegistered(type: ChartType, components: ChartComponent[] = []) {
+  if (registeredChartTypes.has(type)) return;
+  Chart.register(Colors, Filler, Legend, Tooltip, ...components);
+  registeredChartTypes.add(type);
+}
+
+function readChartToken(name: string, fallback: string) {
+  if (typeof document === "undefined") return fallback;
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
 
 const BaseChart: Component<ChartProps> = (rawProps) => {
   const [canvasRef, setCanvasRef] = createSignal<HTMLCanvasElement | null>();
@@ -76,6 +84,7 @@ const BaseChart: Component<ChartProps> = (rawProps) => {
   );
 
   const init = () => {
+    ensureChartRegistered(props.type, props.components);
     const ctx = canvasRef()?.getContext("2d") as ChartItem;
     const config = unwrap(props);
     const chart = new Chart(ctx, {
@@ -87,51 +96,43 @@ const BaseChart: Component<ChartProps> = (rawProps) => {
     setChart(chart);
   };
 
-  onMount(() => init());
+  createMountEffect(() => init());
 
-  createEffect(
-    on(
-      () => props.data,
-      () => {
-        chart()!.data = props.data;
-        chart()!.update();
-      },
-      { defer: true },
-    ),
+  createRenderEffect(
+    () => props.data,
+    () => {
+      chart()!.data = props.data;
+      chart()!.update();
+    },
+    { defer: true },
   );
 
-  createEffect(
-    on(
-      () => props.options,
-      () => {
-        chart()!.options = props.options;
-        chart()!.update();
-      },
-      { defer: true },
-    ),
+  createRenderEffect(
+    () => props.options,
+    () => {
+      chart()!.options = props.options;
+      chart()!.update();
+    },
+    { defer: true },
   );
 
-  createEffect(
-    on(
-      [() => props.width, () => props.height],
-      () => {
-        chart()!.resize(props.width, props.height);
-      },
-      { defer: true },
-    ),
+  createRenderEffect(
+    () => [props.width, props.height] as const,
+    () => {
+      chart()!.resize(props.width, props.height);
+    },
+    { defer: true },
   );
 
-  createEffect(
-    on(
-      () => props.type,
-      () => {
-        const dimensions = [chart()!.width, chart()!.height];
-        chart()!.destroy();
-        init();
-        chart()!.resize(...dimensions);
-      },
-      { defer: true },
-    ),
+  createRenderEffect(
+    () => props.type,
+    () => {
+      const dimensions = [chart()!.width, chart()!.height] as const;
+      chart()!.destroy();
+      init();
+      chart()!.resize(...dimensions);
+    },
+    { defer: true },
   );
 
   onCleanup(() => {
@@ -139,7 +140,6 @@ const BaseChart: Component<ChartProps> = (rawProps) => {
     mergeRefs(props.ref, null);
   });
 
-  Chart.register(Colors, Filler, Legend, Tooltip);
   return (
     <canvas
       ref={mergeRefs(props.ref, (el) => setCanvasRef(el))}
@@ -167,25 +167,34 @@ function showTooltip(context: ChartContext) {
     model.yAlign ?? `no-transform`
   }`;
 
-  let content = "";
-
+  el.replaceChildren();
   model.title.forEach((title) => {
-    content += `<h3 class="font-semibold leading-none tracking-tight">${title}</h3>`;
+    const titleEl = document.createElement("h3");
+    titleEl.className = "font-semibold leading-none tracking-tight";
+    titleEl.textContent = title;
+    el.appendChild(titleEl);
   });
 
-  content += `<div class="mt-1 text-muted-foreground">`;
+  const bodyEl = document.createElement("div");
+  bodyEl.className = "mt-1 text-muted-foreground";
   const body = model.body.flatMap((body) => body.lines);
   body.forEach((line, i) => {
     const colors = model.labelColors[i];
-    content += `
-        <div class="flex items-center">
-          <span class="inline-block h-2 w-2 mr-1 rounded-full border" style="background: ${colors.backgroundColor}; border-color: ${colors.borderColor}"></span>
-          ${line}
-        </div>`;
-  });
-  content += `</div>`;
+    const rowEl = document.createElement("div");
+    rowEl.className = "flex items-center";
 
-  el.innerHTML = content;
+    const swatchEl = document.createElement("span");
+    swatchEl.className = "inline-block h-2 w-2 mr-1 rounded-full border";
+    swatchEl.style.background = String(colors.backgroundColor);
+    swatchEl.style.borderColor = String(colors.borderColor);
+
+    const labelEl = document.createElement("span");
+    labelEl.textContent = line;
+
+    rowEl.append(swatchEl, labelEl);
+    bodyEl.appendChild(rowEl);
+  });
+  el.appendChild(bodyEl);
 
   const pos = context.chart.canvas.getBoundingClientRect();
   el.style.opacity = "1";
@@ -202,56 +211,70 @@ function createTypedChart(
   const chartsWithScales: ChartType[] = ["bar", "line", "scatter"];
   const chartsWithLegends: ChartType[] = ["bar"];
 
-  const options: ChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: chartsWithScales.includes(type)
-      ? {
-          x: {
-            border: { display: false },
-            grid: { display: false },
-          },
-          y: {
-            beginAtZero: true,
-            min: 0,
-            border: {
-              dash: [3],
-              dashOffset: 3,
-              display: false,
-            },
-            grid: {
-              color: "hsla(240, 3.8%, 46.1%, 0.1)",
-            },
-            ticks: {
-              stepSize: 1,
-              precision: 0,
-            },
-          },
-        }
-      : {},
-    plugins: {
-      legend: chartsWithLegends.includes(type)
+  const options = (): ChartOptions => {
+    const gridColor = readChartToken(
+      "--chart-grid-color",
+      "color-mix(in oklch, var(--muted-foreground) 18%, transparent)",
+    );
+    const labelColor = readChartToken("--chart-label-color", "var(--muted-foreground)");
+
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: chartsWithScales.includes(type)
         ? {
-            display: true,
-            align: "end",
-            labels: {
-              usePointStyle: true,
-              boxWidth: 6,
-              boxHeight: 6,
-              color: "hsl(240, 3.8%, 46.1%)",
-              font: { size: 14 },
+            x: {
+              border: { display: false },
+              grid: { display: false },
+            },
+            y: {
+              beginAtZero: true,
+              min: 0,
+              border: {
+                dash: [3],
+                dashOffset: 3,
+                display: false,
+              },
+              grid: {
+                color: gridColor,
+              },
+              ticks: {
+                stepSize: 1,
+                precision: 0,
+              },
             },
           }
-        : { display: false },
-      tooltip: {
-        enabled: false,
-        external: (context: any) => showTooltip(context),
+        : {},
+      plugins: {
+        legend: chartsWithLegends.includes(type)
+          ? {
+              display: true,
+              align: "end",
+              labels: {
+                usePointStyle: true,
+                boxWidth: 6,
+                boxHeight: 6,
+                color: labelColor,
+                font: { size: 14 },
+              },
+            }
+          : { display: false },
+        tooltip: {
+          enabled: false,
+          external: (context: any) => showTooltip(context),
+        },
       },
-    },
+    };
   };
 
-  Chart.register(...components);
-  return (props) => <BaseChart type={type} options={options} {...props} />;
+  return (props) => (
+    <BaseChart
+      type={type}
+      components={components}
+      options={props.options ?? options()}
+      {...props}
+    />
+  );
 }
 
 const BarChart = /* #__PURE__ */ createTypedChart("bar", [
@@ -265,10 +288,7 @@ const BubbleChart = /* #__PURE__ */ createTypedChart("bubble", [
   PointElement,
   LinearScale,
 ]);
-const DonutChart = /* #__PURE__ */ createTypedChart("doughnut", [
-  DoughnutController,
-  ArcElement,
-]);
+const DonutChart = /* #__PURE__ */ createTypedChart("doughnut", [DoughnutController, ArcElement]);
 const LineChart = /* #__PURE__ */ createTypedChart("line", [
   LineController,
   LineElement,
@@ -276,10 +296,7 @@ const LineChart = /* #__PURE__ */ createTypedChart("line", [
   CategoryScale,
   LinearScale,
 ]);
-const PieChart = /* #__PURE__ */ createTypedChart("pie", [
-  PieController,
-  ArcElement,
-]);
+const PieChart = /* #__PURE__ */ createTypedChart("pie", [PieController, ArcElement]);
 const PolarAreaChart = /* #__PURE__ */ createTypedChart("polarArea", [
   PolarAreaController,
   ArcElement,

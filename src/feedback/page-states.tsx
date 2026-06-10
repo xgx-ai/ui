@@ -1,5 +1,9 @@
-import { type JSX, type ParentProps, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { Frown } from "../icons.index";
+import { type ParentProps } from "solid-js";
 import { cn } from "../cn";
+import { Button } from "../forms/button";
 import { Spinner } from "./spinner";
 
 /**
@@ -18,26 +22,21 @@ import { Spinner } from "./spinner";
  * ```
  */
 export interface PageLoadingProps extends ParentProps {
-	class?: string;
+  class?: string;
 }
 
 export function PageLoading(props: PageLoadingProps): JSX.Element {
-	const [local, rest] = splitProps(props, ["class", "children"]);
+  const [local, rest] = splitProps(props, ["class", "children"]);
 
-	return (
-		<div
-			class={cn(
-				"flex h-full flex-col items-center justify-center gap-3",
-				local.class,
-			)}
-			{...rest}
-		>
-			<Spinner class="size-6" />
-			{local.children && (
-				<span class="text-sm text-muted-foreground">{local.children}</span>
-			)}
-		</div>
-	);
+  return (
+    <div
+      class={cn("flex h-full flex-col items-center justify-center gap-3", local.class)}
+      {...rest}
+    >
+      <Spinner class="size-6" />
+      {local.children && <span class="text-sm text-muted-foreground">{local.children}</span>}
+    </div>
+  );
 }
 
 /**
@@ -55,40 +54,29 @@ export function PageLoading(props: PageLoadingProps): JSX.Element {
  * ```
  */
 export interface PageEmptyProps {
-	class?: string;
-	icon?: JSX.Element;
-	title: string;
-	description?: string;
-	action?: JSX.Element;
+  class?: string;
+  icon?: JSX.Element;
+  title: string;
+  description?: string;
+  action?: JSX.Element;
 }
 
 export function PageEmpty(props: PageEmptyProps): JSX.Element {
-	const [local, rest] = splitProps(props, [
-		"class",
-		"icon",
-		"title",
-		"description",
-		"action",
-	]);
+  const [local, rest] = splitProps(props, ["class", "icon", "title", "description", "action"]);
 
-	return (
-		<div
-			class={cn(
-				"flex h-full flex-col items-center justify-center gap-2 p-8",
-				local.class,
-			)}
-			{...rest}
-		>
-			{local.icon && <div class="mb-2 text-muted-foreground">{local.icon}</div>}
-			<h3 class="text-base font-medium text-foreground">{local.title}</h3>
-			{local.description && (
-				<p class="text-sm text-muted-foreground text-center max-w-sm">
-					{local.description}
-				</p>
-			)}
-			{local.action && <div class="mt-4">{local.action}</div>}
-		</div>
-	);
+  return (
+    <div
+      class={cn("flex h-full flex-col items-center justify-center gap-2 p-8", local.class)}
+      {...rest}
+    >
+      {local.icon && <div class="mb-2 text-muted-foreground">{local.icon}</div>}
+      <h3 class="text-base font-medium text-foreground">{local.title}</h3>
+      {local.description && (
+        <p class="text-sm text-muted-foreground text-center max-w-sm">{local.description}</p>
+      )}
+      {local.action && <div class="mt-4">{local.action}</div>}
+    </div>
+  );
 }
 
 /**
@@ -105,39 +93,29 @@ export function PageEmpty(props: PageEmptyProps): JSX.Element {
  * ```
  */
 export interface PageErrorProps {
-	class?: string;
-	title?: string;
-	message?: string;
-	action?: JSX.Element;
+  class?: string;
+  title?: string;
+  message?: string;
+  action?: JSX.Element;
 }
 
 export function PageError(props: PageErrorProps): JSX.Element {
-	const [local, rest] = splitProps(props, [
-		"class",
-		"title",
-		"message",
-		"action",
-	]);
+  const [local, rest] = splitProps(props, ["class", "title", "message", "action"]);
 
-	return (
-		<div
-			class={cn(
-				"flex h-full flex-col items-center justify-center gap-2 p-8",
-				local.class,
-			)}
-			{...rest}
-		>
-			<h3 class="text-lg font-semibold text-destructive">
-				{local.title ?? "Something went wrong"}
-			</h3>
-			{local.message && (
-				<p class="text-sm text-muted-foreground text-center max-w-sm">
-					{local.message}
-				</p>
-			)}
-			{local.action && <div class="mt-4">{local.action}</div>}
-		</div>
-	);
+  return (
+    <div
+      class={cn("flex h-full flex-col items-center justify-center gap-2 p-8", local.class)}
+      {...rest}
+    >
+      <h3 class="text-lg font-semibold text-error-foreground">
+        {local.title ?? "Something went wrong"}
+      </h3>
+      {local.message && (
+        <p class="text-sm text-muted-foreground text-center max-w-sm">{local.message}</p>
+      )}
+      {local.action && <div class="mt-4">{local.action}</div>}
+    </div>
+  );
 }
 
 /**
@@ -158,66 +136,32 @@ export function PageError(props: PageErrorProps): JSX.Element {
  * ```
  */
 export interface PageNotFoundProps {
-	class?: string;
-	title?: string;
-	description?: string;
-	action?: JSX.Element;
-	/** Shorthand: renders a "Go home" button that calls this callback */
-	onGoHome?: () => void;
+  class?: string;
+  title?: string;
+  description?: string;
+  action?: JSX.Element;
+  /** Shorthand: renders a "Go home" button that calls this callback */
+  onGoHome?: () => void;
 }
 
 export function PageNotFound(props: PageNotFoundProps): JSX.Element {
-	const [local, rest] = splitProps(props, [
-		"class",
-		"title",
-		"description",
-		"action",
-		"onGoHome",
-	]);
+  const [local, rest] = splitProps(props, ["class", "title", "description", "action", "onGoHome"]);
 
-	return (
-		<div
-			class={cn(
-				"flex min-h-screen flex-col items-center justify-center gap-2 p-8",
-				local.class,
-			)}
-			{...rest}
-		>
-			<div class="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
-				<svg
-					class="size-8 text-muted-foreground"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-					aria-hidden="true"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-					/>
-				</svg>
-			</div>
-			<h3 class="text-xl font-semibold text-foreground">
-				{local.title ?? "Page not found"}
-			</h3>
-			<p class="text-sm text-muted-foreground text-center max-w-sm">
-				{local.description ??
-					"The page you're looking for doesn't exist or has been moved."}
-			</p>
-			<div class="mt-4">
-				{local.action ??
-					(local.onGoHome && (
-						<button
-							type="button"
-							class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
-							onClick={local.onGoHome}
-						>
-							Go home
-						</button>
-					))}
-			</div>
-		</div>
-	);
+  return (
+    <div
+      class={cn("flex min-h-screen flex-col items-center justify-center gap-2 p-8", local.class)}
+      {...rest}
+    >
+      <div class="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
+        <Frown aria-hidden="true" class="size-8 text-muted-foreground" />
+      </div>
+      <h3 class="text-xl font-semibold text-foreground">{local.title ?? "Page not found"}</h3>
+      <p class="text-sm text-muted-foreground text-center max-w-sm">
+        {local.description ?? "The page you're looking for doesn't exist or has been moved."}
+      </p>
+      <div class="mt-4">
+        {local.action ?? (local.onGoHome && <Button onClick={local.onGoHome}>Go home</Button>)}
+      </div>
+    </div>
+  );
 }

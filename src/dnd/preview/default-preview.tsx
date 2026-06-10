@@ -1,4 +1,5 @@
-import type { Component, JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import type { Component } from "solid-js";
 import { Show } from "solid-js";
 import { dragPreviewClasses } from "../animations/presets";
 import type { DragData, DragPreviewProps } from "../core/types";
@@ -6,8 +7,7 @@ import type { DragData, DragPreviewProps } from "../core/types";
 /**
  * Props for the DefaultPreview component
  */
-export interface DefaultPreviewProps<T extends DragData = DragData>
-  extends DragPreviewProps<T> {
+export interface DefaultPreviewProps<T extends DragData = DragData> extends DragPreviewProps<T> {
   /** Additional CSS classes */
   class?: string;
   /** Custom render function for the preview content */
@@ -39,9 +39,7 @@ export const DefaultPreview: Component<DefaultPreviewProps> = (props) => {
             fallback={
               <div class="flex items-center gap-2">
                 <div class="w-2 h-2 rounded-full bg-primary" />
-                <span class="text-sm font-medium text-foreground">
-                  {props.item.id}
-                </span>
+                <span class="text-sm font-medium text-foreground">{props.item.id}</span>
               </div>
             }
           >

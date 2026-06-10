@@ -1,13 +1,13 @@
-import type { JSX, ParentProps } from "solid-js";
-import { Show, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import type { ParentProps } from "solid-js";
+import { Show } from "solid-js";
 import { cn } from "../cn.ts";
 
 export type ContactLinkType = "phone" | "email";
 
 export interface ContactLinkProps
-  extends ParentProps<
-    Omit<JSX.AnchorHTMLAttributes<HTMLAnchorElement>, "href">
-  > {
+  extends ParentProps<Omit<JSX.AnchorHTMLAttributes<HTMLAnchorElement>, "href">> {
   /** The phone number or email address */
   value: string | null | undefined;
   /** The type of contact link */
@@ -21,13 +21,7 @@ export interface ContactLinkProps
  * Automatically formats the href based on the type prop.
  */
 export function ContactLink(props: ContactLinkProps) {
-  const [local, others] = splitProps(props, [
-    "value",
-    "type",
-    "fallback",
-    "class",
-    "children",
-  ]);
+  const [local, others] = splitProps(props, ["value", "type", "fallback", "class", "children"]);
 
   const getHref = () => {
     if (!local.value) return undefined;
@@ -40,10 +34,7 @@ export function ContactLink(props: ContactLinkProps) {
     <Show when={local.value} fallback={<span>{local.fallback ?? "—"}</span>}>
       <a
         href={getHref()}
-        class={cn(
-          "text-primary hover:underline hover:text-primary/80 transition-colors",
-          local.class,
-        )}
+        class={cn("text-primary transition-opacity hover:underline hover:opacity-80", local.class)}
         {...others}
       >
         {local.children ?? local.value}

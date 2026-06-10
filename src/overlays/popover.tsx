@@ -1,27 +1,11 @@
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import * as PopoverPrimitive from "@kobalte/core/popover";
-import type { JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
+import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
+import { Dynamic } from "@solidjs/web";
+import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";
 import { cn } from "../cn";
-
-/**
- * # Popover
- *
- * Floating content panel triggered by a button.
- *
- * @example
- * ```
- * <Popover>
- *   <PopoverTrigger class="px-4 py-2 rounded bg-primary text-primary-foreground">
- *     Open Popover
- *   </PopoverTrigger>
- *   <PopoverContent>
- *     <PopoverTitle>Popover Title</PopoverTitle>
- *     <PopoverDescription>This is the popover content.</PopoverDescription>
- *   </PopoverContent>
- * </Popover>
- * ```
- */
+import { splitProps } from "../utils/split-props";
+import { assignRef, containsNode } from "./floating";
+import { PopperPositioner, PopperRoot } from "./popper";
+import { PortalMount } from "./portal";
 
 type Placement =
   | "bottom"
@@ -37,12 +21,14 @@ type Placement =
   | "right-start"
   | "right-end";
 
-type PopoverProps = PopoverPrimitive.PopoverRootProps & {
+type PopoverProps = Omit<ComponentProps<"div">, "onChange"> & {
   children?: JSX.Element;
+  open?: boolean;
   isOpen?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
-  /** @deprecated Use placement directly instead */
+  placement?: Placement;
+  gutter?: number;
   positioning?: {
     placement?: Placement;
     gutter?: number;
@@ -50,77 +36,197 @@ type PopoverProps = PopoverPrimitive.PopoverRootProps & {
   };
 };
 
+type PopoverContextValue = {
+  anchorRef: () => HTMLElement | undefined;
+  close: () => void;
+  contentRef: () => HTMLElement | undefined;
+  gutter: () => number;
+  open: () => boolean;
+  placement: () => Placement;
+  setContentRef: (element: HTMLElement) => void;
+  setOpen: (open: boolean) => void;
+  setTriggerRef: (element: HTMLElement) => void;
+};
+
+const PopoverContext = createContext<PopoverContextValue>();
+
+function usePopover() {
+  const context = useContext(PopoverContext);
+  if (!context) throw new Error("Popover parts must be used inside Popover.");
+  return context;
+}
+
 const Popover = (props: PopoverProps) => {
-  const [localProps, others] = splitProps(props, [
+  const [rootRef, setRootRef] = createSignal<HTMLDivElement>();
+  const [triggerRef, setTriggerRef] = createSignal<HTMLElement>();
+  const [contentRef, setContentRef] = createSignal<HTMLElement>();
+  const [local, others] = splitProps(props, [
+    "children",
+    "class",
+    "defaultOpen",
+    "gutter",
     "isOpen",
     "onOpenChange",
-    "defaultOpen",
+    "open",
+    "placement",
     "positioning",
   ]);
-
-  // Extract placement from positioning for backwards compatibility
-  const placement = localProps.positioning?.placement;
-  const gutter = localProps.positioning?.gutter;
-
-  return (
-    <PopoverPrimitive.Root
-      open={localProps.isOpen}
-      defaultOpen={localProps.defaultOpen}
-      onOpenChange={localProps.onOpenChange}
-      placement={placement}
-      gutter={gutter}
-      {...others}
-    />
-  );
-};
-
-type PopoverContentProps<T extends ValidComponent = "div"> =
-  PopoverPrimitive.PopoverContentProps<T> & {
-    class?: string;
-    arrow?: boolean;
-    /** Whether to render the popover in a portal. Set to false when inside floating toolbars. Defaults to true. */
-    portalled?: boolean;
+  const [uncontrolledOpen, setUncontrolledOpen] = createSignal(Boolean(local.defaultOpen));
+  const open = () => local.open ?? local.isOpen ?? uncontrolledOpen();
+  const placement = () => local.placement ?? local.positioning?.placement ?? "bottom-start";
+  const gutter = () => local.gutter ?? local.positioning?.gutter ?? 8;
+  const anchorRef = () => triggerRef() ?? rootRef();
+  const setOpen = (next: boolean) => {
+    if (local.open === undefined && local.isOpen === undefined) {
+      setUncontrolledOpen(next);
+    }
+    local.onOpenChange?.(next);
   };
 
-const PopoverContent = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, PopoverContentProps<T>>,
-) => {
-  const [local, others] = splitProps(props as PopoverContentProps, [
-    "class",
-    "arrow",
-    "portalled",
-  ]);
+  createEffect(open, (isOpen) => {
+    if (!isOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!containsNode(rootRef(), target) && !containsNode(contentRef(), target)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  });
 
-  const content = (
-    <PopoverPrimitive.Content
-      class={cn(
-        "z-50 w-72 max-h-[var(--kb-popper-content-available-height)] overflow-y-auto rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95",
-        local.class,
-      )}
+  return (
+    <PopoverContext
+      value={{
+        anchorRef,
+        close: () => setOpen(false),
+        contentRef,
+        gutter,
+        open,
+        placement,
+        setContentRef,
+        setOpen,
+        setTriggerRef,
+      }}
+    >
+      <PopperRoot
+        anchorRef={anchorRef}
+        contentRef={contentRef}
+        gutter={gutter()}
+        open={open}
+        placement={placement()}
+      >
+        <div
+          ref={setRootRef}
+          data-open={open() ? "" : undefined}
+          class={cn("relative inline-block", local.class)}
+          {...others}
+        >
+          {local.children}
+        </div>
+      </PopperRoot>
+    </PopoverContext>
+  );
+};
+
+type PopoverTriggerProps<T extends ValidComponent = "button"> = ComponentProps<"button"> & {
+  as?: T;
+  children?: JSX.Element;
+};
+
+const PopoverTrigger = <T extends ValidComponent = "button">(props: PopoverTriggerProps<T>) => {
+  const popover = usePopover();
+  const [local, others] = splitProps(props, ["as", "children", "onClick", "ref", "type"]);
+  const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
+    const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented) popover.setOpen(!popover.open());
+  };
+
+  return (
+    <Dynamic
+      component={local.as ?? "button"}
+      type={local.as ? local.type : (local.type ?? "button")}
+      aria-expanded={popover.open() ? "true" : "false"}
+      data-expanded={popover.open() ? "" : undefined}
+      ref={(element: HTMLElement) => {
+        popover.setTriggerRef(element);
+        assignRef(local.ref, element);
+      }}
+      onClick={onClick}
       {...others}
     >
-      {local.arrow && <PopoverPrimitive.Arrow />}
-      {props.children}
-    </PopoverPrimitive.Content>
+      {local.children}
+    </Dynamic>
   );
-
-  if (local.portalled === false) {
-    return content;
-  }
-
-  return <PopoverPrimitive.Portal>{content}</PopoverPrimitive.Portal>;
 };
 
-const PopoverTrigger = PopoverPrimitive.Trigger;
-const PopoverClose = PopoverPrimitive.CloseButton;
-const PopoverTitle = PopoverPrimitive.Title;
-const PopoverDescription = PopoverPrimitive.Description;
-
-export {
-  Popover,
-  PopoverClose,
-  PopoverContent,
-  PopoverDescription,
-  PopoverTitle,
-  PopoverTrigger,
+type PopoverContentProps<T extends ValidComponent = "div"> = ComponentProps<"div"> & {
+  as?: T;
+  arrow?: boolean;
+  portalled?: boolean;
+  children?: JSX.Element;
 };
+
+const PopoverContent = <T extends ValidComponent = "div">(props: PopoverContentProps<T>) => {
+  const popover = usePopover();
+  const [local, others] = splitProps(props, [
+    "as",
+    "arrow",
+    "class",
+    "children",
+    "portalled",
+    "ref",
+  ]);
+
+  return (
+    <Show when={popover.open()}>
+      <PortalMount disabled={local.portalled === false}>
+        <PopperPositioner>
+          <Dynamic
+            component={local.as ?? "div"}
+            ref={(element: HTMLElement) => {
+              popover.setContentRef(element);
+              assignRef(local.ref, element);
+            }}
+            class={cn(
+              "z-50 max-h-[min(28rem,var(--xgx-popper-content-available-height,calc(100vh-4rem)))] w-72 overflow-y-auto rounded-md border border-border-subtle bg-popover p-4 text-popover-foreground shadow-elevation-medium outline-hidden",
+              local.class,
+            )}
+            {...others}
+          >
+            {local.arrow && <div class="absolute size-2 rotate-45 bg-popover" />}
+            {local.children}
+          </Dynamic>
+        </PopperPositioner>
+      </PortalMount>
+    </Show>
+  );
+};
+
+type PopoverCloseProps = ComponentProps<"button">;
+
+const PopoverClose = (props: PopoverCloseProps) => {
+  const popover = usePopover();
+  const [local, others] = splitProps(props, ["onClick", "type"]);
+  const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
+    const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented) popover.close();
+  };
+
+  return <button type={local.type ?? "button"} onClick={onClick} {...others} />;
+};
+
+const PopoverTitle = (props: ComponentProps<"div">) => <div {...props} />;
+const PopoverDescription = (props: ComponentProps<"div">) => <div {...props} />;
+
+export { Popover, PopoverClose, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger };
+export type { Placement, PopoverContentProps, PopoverProps, PopoverTriggerProps };

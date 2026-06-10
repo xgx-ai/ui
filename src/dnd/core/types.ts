@@ -1,4 +1,5 @@
-import type { Accessor, Component, JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import type { Accessor, Component } from "solid-js";
 
 /**
  * Position coordinates for drag operations

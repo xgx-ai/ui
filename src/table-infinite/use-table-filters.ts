@@ -1,8 +1,6 @@
 import { type Accessor, createMemo } from "solid-js";
 
-export interface UseTableFiltersOptions<
-  TFilters extends Record<string, unknown>,
-> {
+export interface UseTableFiltersOptions<TFilters extends Record<string, unknown>> {
   /**
    * Unique identifier for the table, used to namespace filters in the URL
    */
@@ -24,9 +22,7 @@ export interface UseTableFiltersOptions<
   defaultFilters?: Partial<TFilters>;
 }
 
-export interface UseTableFiltersReturn<
-  TFilters extends Record<string, unknown>,
-> {
+export interface UseTableFiltersReturn<TFilters extends Record<string, unknown>> {
   /**
    * Get the current filter values for this table
    */
@@ -34,10 +30,7 @@ export interface UseTableFiltersReturn<
   /**
    * Set a single filter value
    */
-  setFilter: <K extends keyof TFilters>(
-    key: K,
-    value: TFilters[K] | undefined,
-  ) => void;
+  setFilter: <K extends keyof TFilters>(key: K, value: TFilters[K] | undefined) => void;
   /**
    * Reset all filters for this table
    */
@@ -78,12 +71,7 @@ export interface UseTableFiltersReturn<
 export function useTableFilters<TFilters extends Record<string, unknown>>(
   options: UseTableFiltersOptions<TFilters>,
 ): UseTableFiltersReturn<TFilters> {
-  const {
-    tableId,
-    navigate,
-    search,
-    defaultFilters = {} as Partial<TFilters>,
-  } = options;
+  const { tableId, navigate, search, defaultFilters = {} as Partial<TFilters> } = options;
 
   // Get current filters for this table
   const filters = createMemo(() => {
@@ -92,14 +80,10 @@ export function useTableFilters<TFilters extends Record<string, unknown>>(
   });
 
   // Set a single filter value
-  const setFilter = <K extends keyof TFilters>(
-    key: K,
-    value: TFilters[K] | undefined,
-  ) => {
+  const setFilter = <K extends keyof TFilters>(key: K, value: TFilters[K] | undefined) => {
     navigate({
       search: (prev) => {
-        const currentFilters =
-          (prev.filters as Record<string, Record<string, unknown>>) ?? {};
+        const currentFilters = (prev.filters as Record<string, Record<string, unknown>>) ?? {};
         const tableFilters = { ...currentFilters[tableId] };
 
         if (value === undefined) {
@@ -135,8 +119,7 @@ export function useTableFilters<TFilters extends Record<string, unknown>>(
   const resetFilters = () => {
     navigate({
       search: (prev) => {
-        const currentFilters =
-          (prev.filters as Record<string, Record<string, unknown>>) ?? {};
+        const currentFilters = (prev.filters as Record<string, Record<string, unknown>>) ?? {};
         const { [tableId]: _, ...remainingFilters } = currentFilters;
 
         // Clean up empty filters object entirely

@@ -1,4 +1,8 @@
-import { createVisibilityObserver } from "@solid-primitives/intersection-observer";
+import type { ComponentProps } from "@solidjs/web";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { Index } from "../utils/indexed";
+import { createVisibilityObserver } from "../utils/visibility-observer";
 import {
   type Column,
   type ColumnDef,
@@ -9,20 +13,16 @@ import {
   getSortedRowModel,
   type RowSelectionState,
   type SortingState,
-} from "@tanstack/solid-table";
+} from "./solid-table";
 import {
   type Component,
-  type ComponentProps,
-  createEffect,
+  createTrackedEffect,
   createMemo,
   createSignal,
-  Index,
-  type JSX,
-  mergeProps,
+  merge as mergeProps,
   Show,
-  splitProps,
 } from "solid-js";
-import { Dynamic } from "solid-js/web";
+import { Dynamic } from "@solidjs/web";
 import { cn } from "../cn.ts";
 import { Checkbox } from "../forms/checkbox.tsx";
 import type { UseTableReturn } from "./use-table.ts";
@@ -35,10 +35,7 @@ const TableRoot: Component<ComponentProps<"table">> = (props) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
     <div class="relative w-full h-full overflow-x-auto">
-      <table
-        class={cn("w-full caption-bottom !bg-none", local.class)}
-        {...others}
-      />
+      <table class={cn("w-full caption-bottom !bg-none", local.class)} {...others} />
     </div>
   );
 };
@@ -50,16 +47,14 @@ const TableHeader: Component<ComponentProps<"thead">> = (props) => {
 
 const TableBody: Component<ComponentProps<"tbody">> = (props) => {
   const [local, others] = splitProps(props, ["class"]);
-  return (
-    <tbody class={cn("[&_tr:last-child]:border-0", local.class)} {...others} />
-  );
+  return <tbody class={cn("[&_tr:last-child]:border-0", local.class)} {...others} />;
 };
 
 const TableFooter: Component<ComponentProps<"tfoot">> = (props) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
     <tfoot
-      class={cn("bg-primary font-medium text-primary-foreground", local.class)}
+      class={cn("bg-surface-muted font-medium text-surface-muted-foreground", local.class)}
       {...others}
     />
   );
@@ -70,7 +65,7 @@ const TableRow: Component<ComponentProps<"tr">> = (props) => {
   return (
     <tr
       class={cn(
-        "border-b border-gray-200 transition-colors hover:bg-gray-100/50 group",
+        "border-b border-border-subtle transition-colors hover:bg-hover hover:text-hover-foreground data-[state=selected]:bg-selected data-[state=selected]:text-selected-foreground group",
         local.class,
       )}
       {...others}
@@ -83,7 +78,7 @@ const TableHead: Component<ComponentProps<"th">> = (props) => {
   return (
     <th
       class={cn(
-        "h-10 px-2 sm:px-4 text-left align-middle font-medium text-xs text-muted-foreground uppercase tracking-wider [&:has([role=checkbox])]:pr-0",
+        "xgx-text-caption h-10 px-2 text-left align-middle font-semibold uppercase tracking-wider text-muted-foreground sm:px-4 [&:has([role=checkbox])]:pr-0",
         local.class,
       )}
       {...others}
@@ -96,7 +91,7 @@ const TableCell: Component<ComponentProps<"td">> = (props) => {
   return (
     <td
       class={cn(
-        "px-2 sm:px-4 py-2.5 align-middle text-xs text-foreground [&:has([role=checkbox])]:pr-0",
+        "xgx-text-body px-2 py-2.5 align-middle text-foreground sm:px-4 [&:has([role=checkbox])]:pr-0",
         local.class,
       )}
       {...others}
@@ -111,16 +106,11 @@ type TableStatusBarProps = ComponentProps<"div"> & {
 };
 
 const TableStatusBar: Component<TableStatusBarProps> = (props) => {
-  const [local, others] = splitProps(props, [
-    "class",
-    "totalCount",
-    "totalLabel",
-    "emptyMessage",
-  ]);
+  const [local, others] = splitProps(props, ["class", "totalCount", "totalLabel", "emptyMessage"]);
   return (
     <div
       class={cn(
-        "flex flex-col items-center gap-2 px-4 py-3 text-xs text-muted-foreground",
+        "xgx-text-body flex flex-col items-center gap-2 px-4 py-3 text-muted-foreground",
         local.class,
       )}
       {...others}
@@ -165,9 +155,7 @@ interface TableProps<TData> {
 }
 
 // Helper function to get pinning styles for columns
-const getCommonPinningStyles = <TData,>(
-  column: Column<TData, unknown>,
-): JSX.CSSProperties => {
+const getCommonPinningStyles = <TData,>(column: Column<TData, unknown>): JSX.CSSProperties => {
   const isPinned = column.getIsPinned();
   const columnSize = column.getSize();
   const isDefaultSize = columnSize === 150;
@@ -186,16 +174,13 @@ const getCommonPinningStyles = <TData,>(
 };
 
 const Table = <TData,>(rawProps: TableProps<TData>) => {
-  const props = mergeProps(
-    { columns: [] as ColumnDef<TData, unknown>[] },
-    rawProps,
-  );
+  const props = mergeProps({ columns: [] as ColumnDef<TData, unknown>[] }, rawProps);
 
   const [rowSelection, setRowSelection] = createSignal<RowSelectionState>({});
   const [sorting, setSorting] = createSignal<SortingState>([]);
   const [columnOrder, setColumnOrder] = createSignal<ColumnOrderState>([]);
 
-  createEffect(() => {
+  createTrackedEffect(() => {
     setColumnOrder(
       tableColumns().map((col) => {
         const columnRef = col as { id?: string; accessorKey?: string };
@@ -208,10 +193,7 @@ const Table = <TData,>(rawProps: TableProps<TData>) => {
   const [columnPinning, setColumnPinning] = createSignal<ColumnPinningState>({
     left: props.enableRowSelection ? ["select"] : [],
     right: props.columns
-      .filter(
-        (col) =>
-          (col.meta as { pinned?: string } | undefined)?.pinned === "right",
-      )
+      .filter((col) => (col.meta as { pinned?: string } | undefined)?.pinned === "right")
       .map((col) => {
         const columnRef = col as { id?: string; accessorKey?: string };
         return columnRef.id ?? columnRef.accessorKey ?? "";
@@ -224,7 +206,7 @@ const Table = <TData,>(rawProps: TableProps<TData>) => {
   const isVisible = useVisibilityObserver(() => sentinelRef);
 
   // Load more when sentinel becomes visible
-  createEffect(() => {
+  createTrackedEffect(() => {
     if (
       isVisible() &&
       props.table.hasMore() &&
@@ -236,12 +218,9 @@ const Table = <TData,>(rawProps: TableProps<TData>) => {
   });
 
   const shouldShowStatusBar = () => props.showStatusBar ?? false;
-  const totalCount = () =>
-    props.table.totalCount?.() ?? props.table.data().length;
+  const totalCount = () => props.table.totalCount?.() ?? props.table.data().length;
   const showEndOfResults = () =>
-    !props.table.hasMore() &&
-    props.table.data().length > 0 &&
-    !props.table.query.isLoading;
+    !props.table.hasMore() && props.table.data().length > 0 && !props.table.query.isLoading;
 
   const tableColumns = createMemo(() => {
     if (!props.enableRowSelection) {
@@ -253,11 +232,8 @@ const Table = <TData,>(rawProps: TableProps<TData>) => {
       header: () => {
         const currentData = props.table.data();
         const allSelected =
-          currentData.length > 0 &&
-          currentData.every((row) => props.table.isRowSelected(row));
-        const someSelected = currentData.some((row) =>
-          props.table.isRowSelected(row),
-        );
+          currentData.length > 0 && currentData.every((row) => props.table.isRowSelected(row));
+        const someSelected = currentData.some((row) => props.table.isRowSelected(row));
 
         return (
           <div class="flex items-center justify-center h-full">
@@ -275,9 +251,7 @@ const Table = <TData,>(rawProps: TableProps<TData>) => {
         <div class="flex items-center justify-center h-full">
           <Checkbox
             checked={props.table.isRowSelected(info.row.original)}
-            onChange={(value) =>
-              props.table.toggleRowSelection(info.row.original, value)
-            }
+            onChange={(value) => props.table.toggleRowSelection(info.row.original, value)}
             aria-label="Select row"
             size="md"
           />
@@ -314,9 +288,7 @@ const Table = <TData,>(rawProps: TableProps<TData>) => {
       },
     },
     onColumnOrderChange: setColumnOrder,
-    onRowSelectionChange: props.enableRowSelection
-      ? setRowSelection
-      : undefined,
+    onRowSelectionChange: props.enableRowSelection ? setRowSelection : undefined,
     onSortingChange: props.enableSorting ? setSorting : undefined,
     onColumnPinningChange: setColumnPinning,
     getRowId: props.getRowId,
@@ -341,10 +313,7 @@ const Table = <TData,>(rawProps: TableProps<TData>) => {
                   <Index each={headerGroup().headers}>
                     {(header) => (
                       <TableHead
-                        class={cn(
-                          header().column.getCanSort() &&
-                            "cursor-pointer select-none",
-                        )}
+                        class={cn(header().column.getCanSort() && "cursor-pointer select-none")}
                         onClick={header().column.getToggleSortingHandler()}
                         style={getCommonPinningStyles(header().column)}
                       >
@@ -353,11 +322,7 @@ const Table = <TData,>(rawProps: TableProps<TData>) => {
                           {...header().getContext()}
                         />
                         <Show when={header().column.getIsSorted()}>
-                          {(sorted) => (
-                            <span class="ml-2">
-                              {sorted() === "asc" ? "↑" : "↓"}
-                            </span>
-                          )}
+                          {(sorted) => <span class="ml-2">{sorted() === "asc" ? "↑" : "↓"}</span>}
                         </Show>
                       </TableHead>
                     )}
@@ -372,7 +337,7 @@ const Table = <TData,>(rawProps: TableProps<TData>) => {
               fallback={
                 <TableRow class="border-none bg-none cursor-default hover:bg-transparent">
                   <TableCell
-                    colSpan={props.columns.length}
+                    colspan={props.columns.length}
                     class="h-24 text-center text-xs text-muted-foreground"
                   >
                     {props.table.query.isLoading ? "Loading..." : "No results."}
@@ -385,23 +350,11 @@ const Table = <TData,>(rawProps: TableProps<TData>) => {
                   <TableRow
                     data-state={row().getIsSelected() ? "selected" : undefined}
                     onClick={() => props.onRowClick?.(row().original)}
-                    class={
-                      props.onRowClick
-                        ? "cursor-pointer hover:bg-gray-100/50"
-                        : undefined
-                    }
-                    style={{
-                      "mask-image":
-                        "linear-gradient(to right, transparent 0px, black 50px, black calc(100% - 50px), transparent 100%)",
-                      "-webkit-mask-image":
-                        "linear-gradient(to right, transparent 0px, black 50px, black calc(100% - 50px), transparent 100%)",
-                    }}
+                    class={props.onRowClick ? "cursor-pointer" : undefined}
                   >
                     <Index each={row().getVisibleCells()}>
                       {(cell) => (
-                        <TableCell
-                          style={getCommonPinningStyles(cell().column)}
-                        >
+                        <TableCell style={getCommonPinningStyles(cell().column)}>
                           <Dynamic
                             component={cell().column.columnDef.cell}
                             {...cell().getContext()}
@@ -414,17 +367,15 @@ const Table = <TData,>(rawProps: TableProps<TData>) => {
               </Index>
             </Show>
           </TableBody>
-          <TableFooter class="bg-white/0">
+          <TableFooter class="bg-transparent">
             <TableRow class="border-none cursor-default hover:bg-transparent">
-              <TableCell colSpan={props.columns.length} class="text-center">
+              <TableCell colspan={props.columns.length} class="text-center">
                 <div
                   ref={sentinelRef}
                   class="flex justify-center py-4"
                   hidden={!props.table.hasMore() || props.table.query.isLoading}
                 >
-                  <div class="text-xs text-muted-foreground">
-                    Loading more...
-                  </div>
+                  <div class="text-xs text-muted-foreground">Loading more...</div>
                 </div>
                 <Show when={showEndOfResults()}>
                   <div class="flex justify-center py-4">
@@ -467,7 +418,7 @@ const Table = <TData,>(rawProps: TableProps<TData>) => {
  */
 export {
   Table,
-  TableRoot as TableCaption, // Alias for backwards compatibility
+  TableRoot as TableCaption, // Alias for the older TableCaption import
   TableRoot,
   TableHeader,
   TableBody,
@@ -506,9 +457,7 @@ function SimpleTable<TData>(props: SimpleTableProps<TData>) {
     <TableRoot class={props.class}>
       <TableHeader>
         <TableRow class="border-b border-border cursor-default hover:bg-transparent">
-          <Index each={props.columns}>
-            {(column) => <TableHead>{column().header}</TableHead>}
-          </Index>
+          <Index each={props.columns}>{(column) => <TableHead>{column().header}</TableHead>}</Index>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -516,9 +465,7 @@ function SimpleTable<TData>(props: SimpleTableProps<TData>) {
           {(row) => (
             <TableRow>
               <Index each={props.columns}>
-                {(column) => (
-                  <TableCell>{getCellValue(row(), column())}</TableCell>
-                )}
+                {(column) => <TableCell>{getCellValue(row(), column())}</TableCell>}
               </Index>
             </TableRow>
           )}

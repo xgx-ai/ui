@@ -64,9 +64,7 @@ export function zodFieldValidator<T extends z.ZodType>(schema: T) {
  * />
  * ```
  */
-export function compose<T>(
-  ...validators: Array<(ctx: { value: T }) => string | undefined>
-) {
+export function compose<T>(...validators: Array<(ctx: { value: T }) => string | undefined>) {
   return (ctx: { value: T }) => {
     for (const validator of validators) {
       const error = validator(ctx);

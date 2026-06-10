@@ -1,85 +1,90 @@
-import * as ImagePrimitive from "@kobalte/core/image";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import type { ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { createContext, createSignal, Show, useContext } from "solid-js";
 import { cn } from "../cn";
+import { splitProps } from "../utils/split-props";
 
-type AvatarRootProps<T extends ValidComponent = "span"> =
-  ImagePrimitive.ImageRootProps<T> & {
-    class?: string | undefined;
+type AvatarRootProps = ComponentProps<"span"> & {
+  children?: JSX.Element;
+};
+
+const AvatarContext = createContext<{
+  failed: () => boolean;
+  loaded: () => boolean;
+  setFailed: (failed: boolean) => void;
+  setLoaded: (loaded: boolean) => void;
+}>({
+  failed: () => false,
+  loaded: () => false,
+  setFailed: () => {},
+  setLoaded: () => {},
+});
+
+const Avatar = (props: AvatarRootProps) => {
+  const [local, others] = splitProps(props, ["class", "children"]);
+  const [loaded, setLoaded] = createSignal(false);
+  const [failed, setFailed] = createSignal(false);
+
+  return (
+    <AvatarContext value={{ loaded, failed, setLoaded, setFailed }}>
+      <span
+        class={cn("relative flex size-10 shrink-0 overflow-hidden rounded-full", local.class)}
+        {...others}
+      >
+        {local.children}
+      </span>
+    </AvatarContext>
+  );
+};
+
+type AvatarImageProps = ComponentProps<"img">;
+
+const AvatarImage = (props: AvatarImageProps) => {
+  const context = useContext(AvatarContext);
+  const [local, others] = splitProps(props, ["class", "onError", "onLoad"]);
+
+  const onLoad: JSX.EventHandler<HTMLImageElement, Event> = (event) => {
+    context.setLoaded(true);
+    context.setFailed(false);
+    const handler = local.onLoad as JSX.EventHandler<HTMLImageElement, Event> | undefined;
+    handler?.(event);
+  };
+  const onError: JSX.EventHandler<HTMLImageElement, Event> = (event) => {
+    context.setFailed(true);
+    context.setLoaded(false);
+    const handler = local.onError as JSX.EventHandler<HTMLImageElement, Event> | undefined;
+    handler?.(event);
   };
 
-const Avatar = <T extends ValidComponent = "span">(
-  props: PolymorphicProps<T, AvatarRootProps<T>>,
-) => {
-  const [local, others] = splitProps(props as AvatarRootProps, ["class"]);
   return (
-    <ImagePrimitive.Root
-      class={cn(
-        "relative flex size-10 shrink-0 overflow-hidden rounded-full",
-        local.class,
-      )}
-      {...others}
-    />
+    <Show when={!context.failed()}>
+      <img
+        class={cn("aspect-square size-full object-cover", local.class)}
+        onLoad={onLoad}
+        onError={onError}
+        {...others}
+      />
+    </Show>
   );
 };
 
-type AvatarImageProps<T extends ValidComponent = "img"> =
-  ImagePrimitive.ImageImgProps<T> & {
-    class?: string | undefined;
-  };
+type AvatarFallbackProps = ComponentProps<"span">;
 
-const AvatarImage = <T extends ValidComponent = "img">(
-  props: PolymorphicProps<T, AvatarImageProps<T>>,
-) => {
-  const [local, others] = splitProps(props as AvatarImageProps, ["class"]);
+const AvatarFallback = (props: AvatarFallbackProps) => {
+  const context = useContext(AvatarContext);
+  const [local, others] = splitProps(props, ["class"]);
+
   return (
-    <ImagePrimitive.Img
-      class={cn("aspect-square size-full object-cover", local.class)}
-      {...others}
-    />
+    <Show when={!context.loaded() || context.failed()}>
+      <span
+        class={cn(
+          "absolute inset-0 flex size-full items-center justify-center bg-muted",
+          local.class,
+        )}
+        {...others}
+      />
+    </Show>
   );
 };
 
-type AvatarFallbackProps<T extends ValidComponent = "span"> =
-  ImagePrimitive.ImageFallbackProps<T> & { class?: string | undefined };
-
-const AvatarFallback = <T extends ValidComponent = "span">(
-  props: PolymorphicProps<T, AvatarFallbackProps<T>>,
-) => {
-  const [local, others] = splitProps(props as AvatarFallbackProps, ["class"]);
-  return (
-    <ImagePrimitive.Fallback
-      class={cn(
-        "flex size-full items-center justify-center bg-muted",
-        local.class,
-      )}
-      {...others}
-    />
-  );
-};
-
-/**
- * # Avatar
- *
- * User avatar with image and fallback support.
- *
- * @example
- * ```
- * <div class="flex items-center gap-4">
- *   <Avatar>
- *     <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
- *     <AvatarFallback>CN</AvatarFallback>
- *   </Avatar>
- *   <Avatar>
- *     <AvatarFallback>JD</AvatarFallback>
- *   </Avatar>
- *   <Avatar class="size-14">
- *     <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
- *     <AvatarFallback>CN</AvatarFallback>
- *   </Avatar>
- * </div>
- * ```
- */
 export { Avatar, AvatarFallback, AvatarImage };
+export type { AvatarFallbackProps, AvatarImageProps, AvatarRootProps };

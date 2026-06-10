@@ -1,12 +1,8 @@
-import type { Component, ComponentProps } from "solid-js";
-import {
-  createContext,
-  createSignal,
-  onCleanup,
-  Show,
-  splitProps,
-  useContext,
-} from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { GripVertical } from "../icons.index";
+import type { Component } from "solid-js";
+import { createContext, createSignal, onCleanup, Show, useContext } from "solid-js";
 import { cn } from "../cn";
 
 type Orientation = "horizontal" | "vertical";
@@ -45,17 +41,12 @@ type ResizableProps = ComponentProps<"div"> & {
 };
 
 const Resizable: Component<ResizableProps> = (props) => {
-  const [local, others] = splitProps(props, [
-    "class",
-    "orientation",
-    "onResize",
-    "children",
-  ]);
+  const [local, others] = splitProps(props, ["class", "orientation", "onResize", "children"]);
 
   const orientation = () => local.orientation || "horizontal";
-  const [panels, setPanels] = createSignal<
-    Map<string, { options: PanelOptions; size: number }>
-  >(new Map());
+  const [panels, setPanels] = createSignal<Map<string, { options: PanelOptions; size: number }>>(
+    new Map(),
+  );
   const [isResizing, setIsResizing] = createSignal(false);
   const [_activeHandle, setActiveHandle] = createSignal<string | null>(null);
 
@@ -105,19 +96,13 @@ const Resizable: Component<ResizableProps> = (props) => {
 
       const newCurrentSize = Math.max(
         currentPanel.options.minSize ?? 0,
-        Math.min(
-          currentPanel.options.maxSize ?? 100,
-          currentPanel.size + delta,
-        ),
+        Math.min(currentPanel.options.maxSize ?? 100, currentPanel.size + delta),
       );
       const actualDelta = newCurrentSize - currentPanel.size;
 
       const newNextSize = Math.max(
         nextPanel.options.minSize ?? 0,
-        Math.min(
-          nextPanel.options.maxSize ?? 100,
-          nextPanel.size - actualDelta,
-        ),
+        Math.min(nextPanel.options.maxSize ?? 100, nextPanel.size - actualDelta),
       );
       const actualNextDelta = nextPanel.size - newNextSize;
 
@@ -157,19 +142,15 @@ const Resizable: Component<ResizableProps> = (props) => {
   };
 
   return (
-    <ResizableContext.Provider value={contextValue}>
+    <ResizableContext value={contextValue}>
       <div
-        class={cn(
-          "flex size-full",
-          orientation() === "vertical" && "flex-col",
-          local.class,
-        )}
+        class={cn("flex size-full", orientation() === "vertical" && "flex-col", local.class)}
         data-orientation={orientation()}
         {...others}
       >
         {local.children}
       </div>
-    </ResizableContext.Provider>
+    </ResizableContext>
   );
 };
 
@@ -211,9 +192,7 @@ const ResizablePanel: Component<ResizablePanelProps> = (props) => {
 
   const sizeStyle = () => {
     const size = ctx.getPanelSize(panelId);
-    return ctx.orientation() === "horizontal"
-      ? { width: `${size}%` }
-      : { height: `${size}%` };
+    return ctx.orientation() === "horizontal" ? { width: `${size}%` } : { height: `${size}%` };
   };
 
   return (
@@ -258,17 +237,14 @@ const ResizableHandle: Component<ResizableHandleProps> = (props) => {
     if (!container) return;
 
     containerSize =
-      ctx.orientation() === "horizontal"
-        ? container.offsetWidth
-        : container.offsetHeight;
+      ctx.orientation() === "horizontal" ? container.offsetWidth : container.offsetHeight;
     startPos = ctx.orientation() === "horizontal" ? e.clientX : e.clientY;
   };
 
   const handlePointerMove = (e: PointerEvent) => {
     if (!ctx.isResizing()) return;
 
-    const currentPos =
-      ctx.orientation() === "horizontal" ? e.clientX : e.clientY;
+    const currentPos = ctx.orientation() === "horizontal" ? e.clientX : e.clientY;
     const delta = currentPos - startPos;
     const deltaPercent = (delta / containerSize) * 100;
 
@@ -314,24 +290,7 @@ const ResizableHandle: Component<ResizableHandleProps> = (props) => {
             ctx.orientation() === "vertical" && "rotate-90",
           )}
         >
-          <svg
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="size-2.5"
-          >
-            <path d="M9 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M9 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M9 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M15 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M15 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-            <path d="M15 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-          </svg>
+          <GripVertical aria-hidden="true" class="size-2.5" />
         </div>
       </Show>
     </div>

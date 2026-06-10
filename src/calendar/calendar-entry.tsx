@@ -1,19 +1,8 @@
+import type { JSX } from "@solidjs/web";
 import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import {
-  addDays,
-  addMinutes,
-  differenceInMinutes,
-  format,
-  startOfDay,
-} from "date-fns";
-import type { JSX } from "solid-js";
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  onCleanup,
-  Show,
-} from "solid-js";
+import { addDays, addMinutes, differenceInMinutes, format, startOfDay } from "date-fns";
+
+import { createTrackedEffect, createMemo, createSignal, Show } from "solid-js";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../feedback/tooltip";
 import { useCalendarContext } from "./calendar-context";
 import type { CalendarEvent, LayoutedEvent } from "./types";
@@ -26,14 +15,8 @@ export interface CalendarEntryProps {
   headerSpace: number;
   startHour: number;
   visibleHours: number;
-  renderContent?: (
-    event: CalendarEvent,
-    context: CalendarEntryContext,
-  ) => JSX.Element;
-  renderTooltip?: (
-    event: CalendarEvent,
-    context: CalendarEntryContext,
-  ) => JSX.Element;
+  renderContent?: (event: CalendarEvent, context: CalendarEntryContext) => JSX.Element;
+  renderTooltip?: (event: CalendarEvent, context: CalendarEntryContext) => JSX.Element;
 }
 
 export interface CalendarEntryContext {
@@ -48,8 +31,7 @@ const PIXELS_PER_HOUR = 48;
 const SNAP_MINUTES = 15;
 
 export function CalendarEntry(props: CalendarEntryProps) {
-  const { onEventClick, selectedEventId, onEventMove, onEventResize } =
-    useCalendarContext();
+  const { onEventClick, selectedEventId, onEventMove, onEventResize } = useCalendarContext();
 
   const event = () => props.layoutEvent.event;
   const layoutEvent = () => props.layoutEvent;
@@ -67,17 +49,15 @@ export function CalendarEntry(props: CalendarEntryProps) {
     return addMinutes(event().startDate, 30);
   });
 
-  const durationMinutes = createMemo(() =>
-    differenceInMinutes(displayEnd(), displayStart()),
-  );
+  const durationMinutes = createMemo(() => differenceInMinutes(displayEnd(), displayStart()));
   const isShort = () => durationMinutes() <= 30;
   const hasOverlaps = () => layoutEvent().totalColumns > 1;
   const isCompleted = () => !!event().isCompleted;
   const isSelected = () => selectedEventId() === event().id;
 
-  const colour = () => event().colour || "#3b82f6";
-  const colourLight = () => `${colour()}20`;
-  const colourMedium = () => `${colour()}40`;
+  const colour = () => event().colour || "var(--primary)";
+  const colourLight = () => `color-mix(in oklch, ${colour()} 18%, transparent)`;
+  const colourMedium = () => `color-mix(in oklch, ${colour()} 34%, transparent)`;
 
   // Drag state
   const [dragMode, setDragMode] = createSignal<DragMode>(null);
@@ -113,11 +93,7 @@ export function CalendarEntry(props: CalendarEntryProps) {
     return 0;
   };
 
-  const handleDragMove = (
-    clientX: number,
-    clientY: number,
-    mode: NonNullable<DragMode>,
-  ) => {
+  const handleDragMove = (clientX: number, clientY: number, mode: NonNullable<DragMode>) => {
     const deltaY = clientY - dragStartY;
     const deltaMinutes = (deltaY / PIXELS_PER_HOUR) * 60;
     const snappedMinutes = snapToGrid(deltaMinutes);
@@ -186,7 +162,7 @@ export function CalendarEntry(props: CalendarEntryProps) {
   };
 
   // Set up draggable for main entry (move)
-  createEffect(() => {
+  createTrackedEffect(() => {
     const el = entryRef;
     if (!el || !canDrag()) return;
 
@@ -214,22 +190,18 @@ export function CalendarEntry(props: CalendarEntryProps) {
         setDragMode("move");
       },
       onDrag: ({ location }) => {
-        handleDragMove(
-          location.current.input.clientX,
-          location.current.input.clientY,
-          "move",
-        );
+        handleDragMove(location.current.input.clientX, location.current.input.clientY, "move");
       },
       onDrop: () => {
         handleDragEnd("move");
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   // Set up draggable for top resize handle
-  createEffect(() => {
+  createTrackedEffect(() => {
     const el = topHandleRef;
     if (!el || !canResize()) return;
 
@@ -264,11 +236,11 @@ export function CalendarEntry(props: CalendarEntryProps) {
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   // Set up draggable for bottom resize handle
-  createEffect(() => {
+  createTrackedEffect(() => {
     const el = bottomHandleRef;
     if (!el || !canResize()) return;
 
@@ -303,12 +275,11 @@ export function CalendarEntry(props: CalendarEntryProps) {
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   const timeDisplay = createMemo(
-    () =>
-      `${format(displayStart(), "HH:mm")} - ${format(displayEnd(), "HH:mm")}`,
+    () => `${format(displayStart(), "HH:mm")} - ${format(displayEnd(), "HH:mm")}`,
   );
 
   const basePositionStyle = createMemo(() => {
@@ -366,8 +337,8 @@ export function CalendarEntry(props: CalendarEntryProps) {
     if (isCompleted()) {
       return {
         ...pos,
-        "background-color": "#f0fdf4",
-        "border-color": "#bbf7d0",
+        "background-color": "var(--success)",
+        "border-color": "var(--success-foreground)",
         opacity: isDragging() ? 0.8 : 0.9,
       };
     }
@@ -400,10 +371,7 @@ export function CalendarEntry(props: CalendarEntryProps) {
 
   const defaultContent = () => (
     <div class="flex items-center gap-1 min-w-0 h-full px-2 pointer-events-none">
-      <div
-        class="w-2 h-2 rounded-full shrink-0"
-        style={{ "background-color": colour() }}
-      />
+      <div class="w-2 h-2 rounded-full shrink-0" style={{ "background-color": colour() }} />
       <span
         class={`text-[10px] font-medium truncate ${isCompleted() ? "line-through" : ""}`}
         style={{ color: colour() }}
@@ -435,7 +403,7 @@ export function CalendarEntry(props: CalendarEntryProps) {
       <TooltipTrigger
         as="div"
         class={`absolute border rounded-md group select-none ${
-          isSelected() ? "ring-2 ring-primary" : ""
+          isSelected() ? "ring-2 ring-selected" : ""
         } ${isDragging() ? "shadow-lg z-50 cursor-grabbing" : "transition-all duration-200 hover:shadow-lg hover:z-30 cursor-grab"}`}
         style={entryStyle()}
         onClick={handleClick}
@@ -447,10 +415,7 @@ export function CalendarEntry(props: CalendarEntryProps) {
             ref={topHandleRef}
             class="absolute top-0 left-0 right-0 h-3 cursor-ns-resize opacity-0 group-hover:opacity-100 z-10 flex items-start justify-center"
           >
-            <div
-              class="mt-1 w-8 h-1 rounded-full"
-              style={{ "background-color": colour() }}
-            />
+            <div class="mt-1 w-8 h-1 rounded-full" style={{ "background-color": colour() }} />
           </div>
         </Show>
 
@@ -464,10 +429,7 @@ export function CalendarEntry(props: CalendarEntryProps) {
             ref={bottomHandleRef}
             class="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize opacity-0 group-hover:opacity-100 z-10 flex items-end justify-center"
           >
-            <div
-              class="mb-1 w-8 h-1 rounded-full"
-              style={{ "background-color": colour() }}
-            />
+            <div class="mb-1 w-8 h-1 rounded-full" style={{ "background-color": colour() }} />
           </div>
         </Show>
       </TooltipTrigger>

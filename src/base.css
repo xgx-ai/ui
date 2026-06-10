@@ -6,48 +6,97 @@
  */
 
 @source ".";
-@plugin "@kobalte/tailwindcss";
 
 /* Tailwind theme mappings */
 @theme {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+  --color-background: var(--background, Canvas);
+  --color-foreground: var(--foreground, CanvasText);
+  --color-card: var(--card, var(--background, Canvas));
+  --color-card-foreground: var(--card-foreground, var(--foreground, CanvasText));
+  --color-popover: var(--popover, var(--surface-raised, var(--card, var(--background, Canvas))));
+  --color-popover-foreground: var(
+    --popover-foreground,
+    var(--surface-raised-foreground, var(--foreground, CanvasText))
+  );
+  --color-primary: var(--primary, var(--foreground, CanvasText));
+  --color-primary-foreground: var(--primary-foreground, var(--background, Canvas));
+  --color-secondary: var(--secondary, var(--muted, var(--background, Canvas)));
+  --color-secondary-foreground: var(--secondary-foreground, var(--foreground, CanvasText));
+  --color-muted: var(--muted, var(--background, Canvas));
+  --color-muted-foreground: var(--muted-foreground, var(--foreground, CanvasText));
+  --color-accent: var(--accent, var(--muted, var(--background, Canvas)));
+  --color-accent-foreground: var(--accent-foreground, var(--foreground, CanvasText));
+  --color-destructive: var(--destructive, var(--danger, var(--foreground, CanvasText)));
+  --color-destructive-foreground: var(--destructive-foreground, var(--background, Canvas));
 
-  --color-info: var(--info);
-  --color-info-foreground: var(--info-foreground);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
-  --color-error: var(--error);
-  --color-error-foreground: var(--error-foreground);
+  --color-surface: var(--surface, var(--card, var(--background)));
+  --color-surface-foreground: var(--surface-foreground, var(--card-foreground, var(--foreground)));
+  --color-surface-muted: var(--surface-muted, var(--muted));
+  --color-surface-muted-foreground: var(--surface-muted-foreground, var(--muted-foreground));
+  --color-surface-raised: var(--surface-raised, var(--popover, var(--card, var(--background))));
+  --color-surface-raised-foreground: var(
+    --surface-raised-foreground,
+    var(--popover-foreground, var(--foreground))
+  );
 
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  --color-border-subtle: var(--border-subtle, color-mix(in oklch, var(--border) 70%, transparent));
+  --color-border-strong: var(--border-strong, var(--border));
+  --color-focus: var(--focus, var(--ring));
+  --color-hover: var(--hover, var(--accent));
+  --color-hover-foreground: var(--hover-foreground, var(--accent-foreground));
+  --color-selected: var(--selected, var(--primary));
+  --color-selected-foreground: var(--selected-foreground, var(--primary-foreground));
+  --color-disabled: var(--disabled, var(--muted));
+  --color-disabled-foreground: var(--disabled-foreground, var(--muted-foreground));
+  --color-danger: var(--danger, var(--destructive));
+  --color-danger-foreground: var(--danger-foreground, var(--destructive-foreground));
 
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  --color-control: var(--control, var(--primary));
+  --color-control-foreground: var(--control-foreground, var(--foreground));
+  --color-control-muted: var(--control-muted, transparent);
+  --color-control-muted-foreground: var(--control-muted-foreground, var(--muted-foreground));
+  --color-control-hover: var(--control-hover, var(--accent));
+  --color-control-hover-foreground: var(--control-hover-foreground, var(--accent-foreground));
+  --color-control-active: var(--control-active, var(--background));
+  --color-control-active-foreground: var(--control-active-foreground, var(--foreground));
+  --color-control-border: var(--control-border, var(--border));
+
+  --color-info: var(--info, var(--primary));
+  --color-info-foreground: var(--info-foreground, var(--primary-foreground));
+  --color-success: var(--success, var(--primary));
+  --color-success-foreground: var(--success-foreground, var(--primary-foreground));
+  --color-warning: var(--warning, var(--primary));
+  --color-warning-foreground: var(--warning-foreground, var(--primary-foreground));
+  --color-error: var(--error, var(--destructive));
+  --color-error-foreground: var(--error-foreground, var(--destructive-foreground));
+
+  --color-border: var(
+    --border,
+    color-mix(in oklch, var(--foreground, CanvasText) 14%, transparent)
+  );
+  --color-input: var(
+    --input,
+    var(--border, color-mix(in oklch, var(--foreground, CanvasText) 16%, transparent))
+  );
+  --color-ring: var(--ring, var(--primary, var(--foreground, CanvasText)));
+
+  --color-sidebar: var(--sidebar, var(--background));
+  --color-sidebar-foreground: var(--sidebar-foreground, var(--foreground));
+  --color-sidebar-primary: var(--sidebar-primary, var(--primary));
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground, var(--primary-foreground));
+  --color-sidebar-accent: var(--sidebar-accent, var(--accent));
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground, var(--accent-foreground));
+  --color-sidebar-border: var(--sidebar-border, var(--border));
+  --color-sidebar-ring: var(--sidebar-ring, var(--ring));
+
+  --color-chart-1: var(--chart-1, var(--color-primary));
+  --color-chart-2: var(--chart-2, var(--color-info));
+  --color-chart-3: var(--chart-3, var(--color-success));
+  --color-chart-4: var(--chart-4, var(--color-warning));
+  --color-chart-5: var(--chart-5, var(--color-error));
+  --color-chart-6: var(--chart-6, var(--color-secondary));
+  --color-chart-grid: var(--chart-grid, var(--color-border-subtle));
+  --color-chart-axis: var(--chart-axis, var(--color-muted-foreground));
 
   --radius: 0.5rem;
   --radius-sm: calc(var(--radius) - 4px);
@@ -55,24 +104,16 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Component keyframes */
-  @keyframes accordion-down {
-    from {
-      height: 0;
-    }
-    to {
-      height: var(--kb-accordion-content-height);
-    }
-  }
+  --spacing-density-compact: var(--density-compact, 0.5rem);
+  --spacing-density-default: var(--density-default, 0.75rem);
+  --spacing-density-comfortable: var(--density-comfortable, 1rem);
 
-  @keyframes accordion-up {
-    from {
-      height: var(--kb-accordion-content-height);
-    }
-    to {
-      height: 0;
-    }
-  }
+  --font-ui: var(--typography-ui, Inter, ui-sans-serif, system-ui, sans-serif);
+  --font-mono: var(--typography-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+
+  --shadow-elevation-low: var(--elevation-low, 0 1px 2px 0 rgb(0 0 0 / 0.06));
+  --shadow-elevation-medium: var(--elevation-medium, 0 8px 24px -16px rgb(0 0 0 / 0.28));
+  --shadow-elevation-high: var(--elevation-high, 0 24px 48px -24px rgb(0 0 0 / 0.32));
 
   @keyframes content-show {
     from {
@@ -97,6 +138,115 @@
   }
 }
 
+/* Runtime token bridge.
+ * Tailwind generates utilities against --color-* variables, while apps own the
+ * raw theme values. Keep this mapping in normal CSS so app-scoped variables
+ * resolve without requiring apps to duplicate Tailwind internals.
+ */
+:root,
+:host,
+[data-xgx-theme] {
+  --color-background: var(--background, Canvas);
+  --color-foreground: var(--foreground, CanvasText);
+  --color-card: var(--card, var(--background, Canvas));
+  --color-card-foreground: var(--card-foreground, var(--foreground, CanvasText));
+  --color-popover: var(--popover, var(--surface-raised, var(--card, var(--background, Canvas))));
+  --color-popover-foreground: var(
+    --popover-foreground,
+    var(--surface-raised-foreground, var(--foreground, CanvasText))
+  );
+  --color-primary: var(--primary, var(--foreground, CanvasText));
+  --color-primary-foreground: var(--primary-foreground, var(--background, Canvas));
+  --color-secondary: var(--secondary, var(--muted, var(--background, Canvas)));
+  --color-secondary-foreground: var(--secondary-foreground, var(--foreground, CanvasText));
+  --color-muted: var(--muted, var(--background, Canvas));
+  --color-muted-foreground: var(--muted-foreground, var(--foreground, CanvasText));
+  --color-accent: var(--accent, var(--muted, var(--background, Canvas)));
+  --color-accent-foreground: var(--accent-foreground, var(--foreground, CanvasText));
+  --color-destructive: var(--destructive, var(--danger, var(--foreground, CanvasText)));
+  --color-destructive-foreground: var(--destructive-foreground, var(--background, Canvas));
+
+  --color-surface: var(--surface, var(--card, var(--background)));
+  --color-surface-foreground: var(--surface-foreground, var(--card-foreground, var(--foreground)));
+  --color-surface-muted: var(--surface-muted, var(--muted));
+  --color-surface-muted-foreground: var(--surface-muted-foreground, var(--muted-foreground));
+  --color-surface-raised: var(--surface-raised, var(--popover, var(--card, var(--background))));
+  --color-surface-raised-foreground: var(
+    --surface-raised-foreground,
+    var(--popover-foreground, var(--foreground))
+  );
+
+  --color-border-subtle: var(--border-subtle, color-mix(in oklch, var(--border) 70%, transparent));
+  --color-border-strong: var(--border-strong, var(--border));
+  --color-focus: var(--focus, var(--ring));
+  --color-hover: var(--hover, var(--accent));
+  --color-hover-foreground: var(--hover-foreground, var(--accent-foreground));
+  --color-selected: var(--selected, var(--primary));
+  --color-selected-foreground: var(--selected-foreground, var(--primary-foreground));
+  --color-disabled: var(--disabled, var(--muted));
+  --color-disabled-foreground: var(--disabled-foreground, var(--muted-foreground));
+  --color-danger: var(--danger, var(--destructive));
+  --color-danger-foreground: var(--danger-foreground, var(--destructive-foreground));
+
+  --color-control: var(--control, var(--primary));
+  --color-control-foreground: var(--control-foreground, var(--foreground));
+  --color-control-muted: var(--control-muted, transparent);
+  --color-control-muted-foreground: var(--control-muted-foreground, var(--muted-foreground));
+  --color-control-hover: var(--control-hover, var(--accent));
+  --color-control-hover-foreground: var(--control-hover-foreground, var(--accent-foreground));
+  --color-control-active: var(--control-active, var(--background));
+  --color-control-active-foreground: var(--control-active-foreground, var(--foreground));
+  --color-control-border: var(--control-border, var(--border));
+
+  --color-info: var(--info, var(--primary));
+  --color-info-foreground: var(--info-foreground, var(--primary-foreground));
+  --color-success: var(--success, var(--primary));
+  --color-success-foreground: var(--success-foreground, var(--primary-foreground));
+  --color-warning: var(--warning, var(--primary));
+  --color-warning-foreground: var(--warning-foreground, var(--primary-foreground));
+  --color-error: var(--error, var(--destructive));
+  --color-error-foreground: var(--error-foreground, var(--destructive-foreground));
+
+  --color-border: var(
+    --border,
+    color-mix(in oklch, var(--foreground, CanvasText) 14%, transparent)
+  );
+  --color-input: var(
+    --input,
+    var(--border, color-mix(in oklch, var(--foreground, CanvasText) 16%, transparent))
+  );
+  --color-ring: var(--ring, var(--primary, var(--foreground, CanvasText)));
+
+  --color-sidebar: var(--sidebar, var(--background));
+  --color-sidebar-foreground: var(--sidebar-foreground, var(--foreground));
+  --color-sidebar-primary: var(--sidebar-primary, var(--primary));
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground, var(--primary-foreground));
+  --color-sidebar-accent: var(--sidebar-accent, var(--accent));
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground, var(--accent-foreground));
+  --color-sidebar-border: var(--sidebar-border, var(--border));
+  --color-sidebar-ring: var(--sidebar-ring, var(--ring));
+
+  --color-chart-1: var(--chart-1, var(--color-primary));
+  --color-chart-2: var(--chart-2, var(--color-info));
+  --color-chart-3: var(--chart-3, var(--color-success));
+  --color-chart-4: var(--chart-4, var(--color-warning));
+  --color-chart-5: var(--chart-5, var(--color-error));
+  --color-chart-6: var(--chart-6, var(--color-secondary));
+  --color-chart-grid: var(--chart-grid, var(--color-border-subtle));
+  --color-chart-axis: var(--chart-axis, var(--color-muted-foreground));
+
+  --spacing-density-compact: var(--density-compact, 0.5rem);
+  --spacing-density-default: var(--density-default, 0.75rem);
+  --spacing-density-comfortable: var(--density-comfortable, 1rem);
+
+  --font-ui: var(--typography-ui, Inter, ui-sans-serif, system-ui, sans-serif);
+  --font-mono: var(--typography-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+
+  --shadow-elevation-low: var(--elevation-low, 0 1px 2px 0 rgb(0 0 0 / 0.06));
+  --shadow-elevation-medium: var(--elevation-medium, 0 8px 24px -16px rgb(0 0 0 / 0.28));
+  --shadow-elevation-high: var(--elevation-high, 0 24px 48px -24px rgb(0 0 0 / 0.32));
+}
+
 /* Component base styles */
 * {
   @apply border-border outline-ring/50;
@@ -104,6 +254,75 @@
 
 button {
   @apply cursor-pointer;
+}
+
+.xgx-text-caption {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+}
+
+.xgx-text-body {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.xgx-text-body-tight {
+  font-size: 0.8125rem;
+  line-height: 1rem;
+}
+
+.xgx-text-title {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.xgx-text-page-title {
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+}
+
+.xgx-control-text-sm,
+.xgx-control-text-md {
+  font-size: 0.8125rem;
+  line-height: 1;
+}
+
+[data-xgx-dropdown-open="false"] [data-xgx-dropdown-content] {
+  display: none;
+}
+
+[data-xgx-dropdown-placement$="end"] [data-xgx-dropdown-content] {
+  right: 0;
+  left: auto;
+}
+
+[data-xgx-dropdown-placement^="top"] [data-xgx-dropdown-content] {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+}
+
+input[aria-invalid="true"],
+textarea[aria-invalid="true"],
+select[aria-invalid="true"] {
+  border-color: var(--color-error-foreground);
+}
+
+.xgx-field-focus:focus,
+.xgx-field-focus:focus-within {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px var(--color-background),
+    0 0 0 4px var(--color-ring);
+}
+
+.xgx-field-focus:read-only:focus,
+.xgx-field-focus:read-only:focus-within,
+.xgx-field-focus:disabled:focus,
+.xgx-field-focus:disabled:focus-within {
+  box-shadow: none;
 }
 
 /* Mobile-friendly sizing: bigger touch targets and readable text */

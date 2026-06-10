@@ -1,4 +1,4 @@
-import { keepPreviousData, useInfiniteQuery } from "@tanstack/solid-query";
+import { keepPreviousData, useInfiniteQuery } from "../query";
 import { type Accessor, createMemo, createSignal } from "solid-js";
 
 export interface UseTableInfiniteParams<TData, TParams = any> {
@@ -48,6 +48,12 @@ export interface UseTableInfiniteReturn<TData> {
   tableId: string;
 }
 
+type TableInfinitePage<TData> = {
+  data: TData[];
+  count: number;
+  totalCount?: number;
+};
+
 // Helper to resolve queryKey whether it's an accessor or static array
 function resolveQueryKey(queryKey: Accessor<any[]> | any[]): any[] {
   return typeof queryKey === "function" ? queryKey() : queryKey;
@@ -72,14 +78,18 @@ export function useTableInfinite<TData = any, TParams = any>(
 
   const query = useInfiniteQuery(() => ({
     queryKey: resolveQueryKey(params.queryKey),
-    queryFn: ({ pageParam }) =>
+    queryFn: ({ pageParam }: { pageParam: number }) =>
       params.queryFn({
         ...initialParams,
         limit,
         page: pageParam,
       } as TParams & { limit: number; page: number }),
     initialPageParam: 0,
-    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+    getNextPageParam: (
+      lastPage: TableInfinitePage<TData>,
+      _allPages: TableInfinitePage<TData>[],
+      lastPageParam: number,
+    ) => {
       // If the last page returned fewer items than the limit, there's no more data
       if (!lastPage || !lastPage.data || lastPage.data.length < limit) {
         return undefined;
@@ -88,13 +98,11 @@ export function useTableInfinite<TData = any, TParams = any>(
       return lastPageParam + 1;
     },
     get enabled() {
-      return typeof params.enabled === "function"
-        ? params.enabled()
-        : (params.enabled ?? true);
+      return typeof params.enabled === "function" ? params.enabled() : (params.enabled ?? true);
     },
     // Keep showing previous data while new data is loading (prevents Suspense flash)
     placeholderData: keepPreviousData,
-  }));
+  })) as UseTableInfiniteReturn<TData>["query"];
 
   // Flatten all pages into a single array
   const data = createMemo(() => {
@@ -157,9 +165,7 @@ export function useTableInfinite<TData = any, TParams = any>(
 
     if (allSelected()) {
       if (!checked) {
-        setExcludedIds((prev) =>
-          prev.includes(rowId) ? prev : [...prev, rowId],
-        );
+        setExcludedIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
       } else {
         setExcludedIds((prev) => prev.filter((id) => id !== rowId));
       }

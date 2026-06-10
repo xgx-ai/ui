@@ -1,7 +1,7 @@
-import { type ComponentProps, type JSX, splitProps } from "solid-js";
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
 
-export interface HiddenFileInputProps
-  extends Omit<ComponentProps<"input">, "type"> {
+export interface HiddenFileInputProps extends Omit<ComponentProps<"input">, "type"> {
   ref?: HTMLInputElement | ((el: HTMLInputElement) => void);
 }
 
@@ -11,12 +11,5 @@ export interface HiddenFileInputProps
  */
 export function HiddenFileInput(props: HiddenFileInputProps): JSX.Element {
   const [local, rest] = splitProps(props, ["ref", "class"]);
-  return (
-    <input
-      ref={local.ref}
-      type="file"
-      class={local.class ?? "hidden"}
-      {...rest}
-    />
-  );
+  return <input ref={local.ref} type="file" class={local.class ?? "hidden"} {...rest} />;
 }

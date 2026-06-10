@@ -1,8 +1,13 @@
-import * as DropdownMenuPrimitive from "@kobalte/core/dropdown-menu";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import type { ComponentProps, JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";
+import { splitProps } from "../utils/split-props";
+import { Check, ChevronRight, Circle } from "../icons.index";
+
 import { cn } from "../cn";
+import { assignRef, containsNode } from "../overlays/floating";
+import { PopperPositioner, PopperRoot } from "../overlays/popper";
+import { PortalMount } from "../overlays/portal";
+import { createMenuKeyboard, focusFirstMenuItem } from "./menu-behavior";
 
 type Placement =
   | "bottom"
@@ -18,69 +23,238 @@ type Placement =
   | "right-start"
   | "right-end";
 
-type DropdownMenuProps = DropdownMenuPrimitive.DropdownMenuRootProps & {
+type DropdownMenuProps = Omit<ComponentProps<"div">, "onChange"> & {
+  children?: JSX.Element;
+  defaultOpen?: boolean;
+  gutter?: number;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
   placement?: Placement;
   /** @deprecated Use placement directly instead */
   positioning?: { placement?: Placement };
 };
 
+type DropdownMenuContextValue = {
+  contentRef: () => HTMLElement | undefined;
+  gutter: () => number;
+  open: () => boolean;
+  placement: () => Placement;
+  setOpen: (open: boolean) => void;
+  setContentRef: (element: HTMLElement) => void;
+  setTriggerRef: (element: HTMLElement) => void;
+  triggerRef: () => HTMLElement | undefined;
+};
+
+const DropdownMenuContext = createContext<DropdownMenuContextValue>();
+
+function useDropdownMenu() {
+  const context = useContext(DropdownMenuContext);
+  if (!context) throw new Error("DropdownMenu parts must be used inside DropdownMenu.");
+  return context;
+}
+
 const DropdownMenu = (props: DropdownMenuProps) => {
-  const [local, rest] = splitProps(props, ["placement", "positioning"]);
-  // Support both `placement` and legacy `positioning.placement`
-  const resolvedPlacement =
-    local.placement || local.positioning?.placement || "bottom";
+  const [local, rest] = splitProps(props, [
+    "children",
+    "class",
+    "defaultOpen",
+    "gutter",
+    "onOpenChange",
+    "open",
+    "placement",
+    "positioning",
+  ]);
+  const [uncontrolledOpen, setUncontrolledOpen] = createSignal(local.defaultOpen ?? false);
+  const [triggerRef, setTriggerRef] = createSignal<HTMLElement>();
+  const [contentRef, setContentRef] = createSignal<HTMLElement>();
+  const isOpen = () => local.open ?? uncontrolledOpen();
+  const setOpen = (open: boolean) => {
+    if (local.open === undefined) setUncontrolledOpen(open);
+    local.onOpenChange?.(open);
+  };
+  const placement = () => local.placement || local.positioning?.placement || "bottom";
+  const gutter = () => local.gutter ?? 4;
+  let rootRef!: HTMLDivElement;
+
+  createEffect(isOpen, (open) => {
+    if (!open) return;
+
+    const closeOutside = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!containsNode(rootRef, target) && !containsNode(contentRef(), target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  });
+
+  const onClick = (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+
+    if (target.closest("[data-xgx-dropdown-trigger]")) {
+      setOpen(!isOpen());
+      return;
+    }
+
+    const checkbox = target.closest<HTMLElement>("[data-xgx-dropdown-checkbox]");
+    if (checkbox) return;
+
+    const item = target.closest<HTMLElement>("[data-xgx-dropdown-item]");
+    if (item && item.dataset.closeOnSelect !== "false") setOpen(false);
+  };
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      setOpen(false);
+      triggerRef()?.focus();
+    }
+  };
+
   return (
-    <DropdownMenuPrimitive.Root
-      gutter={4}
-      placement={resolvedPlacement}
+    <DropdownMenuContext
+      value={{
+        contentRef,
+        gutter,
+        open: isOpen,
+        placement,
+        setOpen,
+        setContentRef,
+        setTriggerRef,
+        triggerRef,
+      }}
+    >
+      <PopperRoot
+        anchorRef={() => triggerRef() ?? rootRef}
+        contentRef={contentRef}
+        gutter={gutter()}
+        open={isOpen}
+        placement={placement()}
+      >
+        <div
+          ref={rootRef}
+          class={cn("relative inline-block", local.class)}
+          data-xgx-dropdown-open={isOpen() ? "true" : "false"}
+          data-xgx-dropdown-placement={placement()}
+          onClick={onClick}
+          onKeyDown={onKeyDown}
+          {...rest}
+        >
+          {local.children}
+        </div>
+      </PopperRoot>
+    </DropdownMenuContext>
+  );
+};
+
+const DropdownMenuTrigger = (props: ComponentProps<"button">) => {
+  const menu = useDropdownMenu();
+  const [local, rest] = splitProps(props, ["class", "onKeyDown", "ref", "type"]);
+  const onKeyDown: JSX.EventHandler<HTMLButtonElement, KeyboardEvent> = (event) => {
+    const handler = local.onKeyDown as
+      | JSX.EventHandler<HTMLButtonElement, KeyboardEvent>
+      | undefined;
+    handler?.(event);
+    if (event.defaultPrevented) return;
+
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      menu.setOpen(true);
+      requestAnimationFrame(() => focusFirstMenuItem(menu.contentRef()));
+    }
+  };
+
+  return (
+    <button
+      data-xgx-dropdown-trigger
+      type={local.type ?? "button"}
+      aria-expanded={menu.open() ? "true" : "false"}
+      data-expanded={menu.open() ? "" : undefined}
+      ref={(element) => {
+        menu.setTriggerRef(element);
+        assignRef(local.ref, element);
+      }}
+      class={local.class}
+      onKeyDown={onKeyDown}
       {...rest}
     />
   );
 };
 
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
-const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
-const DropdownMenuSub = DropdownMenuPrimitive.Sub;
-const DropdownMenuGroup = DropdownMenuPrimitive.Group;
-const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
+const DropdownMenuPortal = (props: { children?: JSX.Element }) => (
+  <PortalMount>{props.children}</PortalMount>
+);
+const DropdownMenuSub = (props: ComponentProps<"div">) => <div {...props} />;
+const DropdownMenuGroup = (props: ComponentProps<"div">) => <div role="group" {...props} />;
+const DropdownMenuRadioGroup = (props: ComponentProps<"div">) => <div role="group" {...props} />;
 
-type DropdownMenuContentProps<T extends ValidComponent = "div"> =
-  DropdownMenuPrimitive.DropdownMenuContentProps<T> & {
-    class?: string | undefined;
+type DropdownMenuContentProps = ComponentProps<"div"> & {
+  class?: string | undefined;
+};
+
+const DropdownMenuContent = (props: DropdownMenuContentProps) => {
+  const menu = useDropdownMenu();
+  const [local, rest] = splitProps(props, ["class", "onKeyDown", "ref"]);
+  const menuKeyboard = createMenuKeyboard({
+    close: () => menu.setOpen(false),
+    root: menu.contentRef,
+    trigger: menu.triggerRef,
+  });
+  const onKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (event) => {
+    const handler = local.onKeyDown as JSX.EventHandler<HTMLDivElement, KeyboardEvent> | undefined;
+    handler?.(event);
+    menuKeyboard(event);
   };
 
-const DropdownMenuContent = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, DropdownMenuContentProps<T>>,
-) => {
-  const [local, rest] = splitProps(props as DropdownMenuContentProps, [
-    "class",
-  ]);
+  createEffect(menu.open, (open) => {
+    if (open) queueMicrotask(() => focusFirstMenuItem(menu.contentRef()));
+  });
+
   return (
-    <DropdownMenuPrimitive.Portal>
-      <DropdownMenuPrimitive.Content
-        class={cn(
-          "z-50 min-w-32 origin-(--kb-menu-content-transform-origin) animate-content-hide overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md ui-expanded:animate-content-show outline-hidden",
-          local.class,
-        )}
-        {...rest}
-      />
-    </DropdownMenuPrimitive.Portal>
+    <Show when={menu.open()}>
+      <PopperPositioner>
+        <div
+          data-xgx-dropdown-content
+          role="menu"
+          tabindex={-1}
+          ref={(element) => {
+            menu.setContentRef(element);
+            assignRef(local.ref, element);
+            requestAnimationFrame(() => focusFirstMenuItem(element));
+          }}
+          onKeyDown={onKeyDown}
+          class={cn(
+            "z-50 min-w-32 origin-top overflow-hidden rounded-md border border-border-subtle bg-popover p-1 text-popover-foreground shadow-elevation-medium outline-hidden",
+            local.class,
+          )}
+          {...rest}
+        />
+      </PopperPositioner>
+    </Show>
   );
 };
 
-type DropdownMenuItemProps<T extends ValidComponent = "div"> =
-  DropdownMenuPrimitive.DropdownMenuItemProps<T> & {
-    class?: string | undefined;
-  };
+type DropdownMenuItemProps = ComponentProps<"div"> & {
+  closeOnSelect?: boolean;
+  disabled?: boolean;
+  value?: string;
+};
 
-const DropdownMenuItem = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, DropdownMenuItemProps<T>>,
-) => {
-  const [local, rest] = splitProps(props as DropdownMenuItemProps, ["class"]);
+const DropdownMenuItem = (props: DropdownMenuItemProps) => {
+  const [local, rest] = splitProps(props, ["class", "closeOnSelect", "disabled", "value"]);
+
   return (
-    <DropdownMenuPrimitive.Item
+    <div
+      data-close-on-select={local.closeOnSelect === false ? "false" : "true"}
+      data-disabled={local.disabled ? "" : undefined}
+      data-value={local.value}
+      data-xgx-dropdown-item
+      role="menuitem"
+      tabindex={local.disabled ? undefined : -1}
       class={cn(
-        "relative hover:bg-accent! flex select-none items-center gap-2 rounded-sm px-2 py-1.5 text-xs outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground ui-disabled:pointer-events-none data-[disabled]:opacity-50 cursor-pointer [&_svg]:hidden",
+        "relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-xs outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:hidden",
         local.class,
       )}
       {...rest}
@@ -88,238 +262,144 @@ const DropdownMenuItem = <T extends ValidComponent = "div">(
   );
 };
 
-type DropdownMenuCheckboxItemProps<T extends ValidComponent = "div"> =
-  DropdownMenuPrimitive.DropdownMenuCheckboxItemProps<T> & {
-    class?: string | undefined;
-    children?: JSX.Element;
+type DropdownMenuCheckboxItemProps = Omit<ComponentProps<"div">, "onChange"> & {
+  checked?: boolean;
+  closeOnSelect?: boolean;
+  disabled?: boolean;
+  onChange?: (checked: boolean) => void;
+  onCheckedChange?: (checked: boolean) => void;
+  value?: string;
+};
+
+const DropdownMenuCheckboxItem = (props: DropdownMenuCheckboxItemProps) => {
+  const [local, rest] = splitProps(props, [
+    "checked",
+    "children",
+    "class",
+    "closeOnSelect",
+    "disabled",
+    "onChange",
+    "onCheckedChange",
+    "value",
+  ]);
+
+  const onClick = () => {
+    if (local.disabled) return;
+    const checked = !local.checked;
+    local.onCheckedChange?.(checked);
+    local.onChange?.(checked);
   };
 
-const DropdownMenuCheckboxItem = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, DropdownMenuCheckboxItemProps<T>>,
-) => {
-  const [local, rest] = splitProps(props as DropdownMenuCheckboxItemProps, [
-    "class",
-    "children",
-  ]);
   return (
-    <DropdownMenuPrimitive.CheckboxItem
+    <div
+      data-checked={local.checked ? "true" : "false"}
+      data-close-on-select={local.closeOnSelect === false ? "false" : "true"}
+      data-disabled={local.disabled ? "" : undefined}
+      data-value={local.value}
+      data-xgx-dropdown-checkbox
+      data-xgx-dropdown-item
+      role="menuitemcheckbox"
+      aria-checked={local.checked ? "true" : "false"}
+      tabindex={local.disabled ? undefined : -1}
+      onClick={onClick}
       class={cn(
-        "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         local.class,
       )}
       {...rest}
     >
       <span class="absolute left-2 flex size-3.5 items-center justify-center">
-        <DropdownMenuPrimitive.ItemIndicator>
-          <svg
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="size-4"
-          >
-            <path d="M5 12l5 5l10 -10" />
-          </svg>
-        </DropdownMenuPrimitive.ItemIndicator>
+        <Show when={local.checked}>
+          <Check aria-hidden="true" class="size-4" />
+        </Show>
       </span>
       {local.children}
-    </DropdownMenuPrimitive.CheckboxItem>
+    </div>
   );
 };
 
-type DropdownMenuRadioItemProps<T extends ValidComponent = "div"> =
-  DropdownMenuPrimitive.DropdownMenuRadioItemProps<T> & {
-    class?: string | undefined;
-    children?: JSX.Element;
-  };
+type DropdownMenuRadioItemProps = ComponentProps<"div"> & {
+  checked?: boolean;
+  disabled?: boolean;
+  value?: string;
+};
 
-const DropdownMenuRadioItem = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, DropdownMenuRadioItemProps<T>>,
-) => {
-  const [local, rest] = splitProps(props as DropdownMenuRadioItemProps, [
-    "class",
-    "children",
-  ]);
+const DropdownMenuRadioItem = (props: DropdownMenuRadioItemProps) => {
+  const [local, rest] = splitProps(props, ["checked", "children", "class", "disabled", "value"]);
+
   return (
-    <DropdownMenuPrimitive.RadioItem
+    <div
+      data-checked={local.checked ? "true" : "false"}
+      data-disabled={local.disabled ? "" : undefined}
+      data-value={local.value}
+      data-xgx-dropdown-item
+      role="menuitemradio"
+      aria-checked={local.checked ? "true" : "false"}
+      tabindex={local.disabled ? undefined : -1}
       class={cn(
-        "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         local.class,
       )}
       {...rest}
     >
       <span class="absolute left-2 flex size-3.5 items-center justify-center">
-        <DropdownMenuPrimitive.ItemIndicator>
-          <svg
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="size-2 fill-current"
-          >
-            <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
-          </svg>
-        </DropdownMenuPrimitive.ItemIndicator>
+        <Show when={local.checked}>
+          <Circle aria-hidden="true" class="size-2 fill-current" />
+        </Show>
       </span>
       {local.children}
-    </DropdownMenuPrimitive.RadioItem>
+    </div>
   );
 };
 
-const DropdownMenuLabel = (
-  props: ComponentProps<"div"> & { inset?: boolean },
-) => {
+const DropdownMenuLabel = (props: ComponentProps<"div"> & { inset?: boolean }) => {
   const [local, rest] = splitProps(props, ["class", "inset"]);
   return (
     <div
-      class={cn(
-        "px-2 py-1.5 text-sm font-semibold",
-        local.inset && "pl-8",
-        local.class,
-      )}
+      class={cn("px-2 py-1.5 text-sm font-semibold", local.inset && "pl-8", local.class)}
       {...rest}
     />
   );
 };
 
-type DropdownMenuSeparatorProps<T extends ValidComponent = "hr"> =
-  DropdownMenuPrimitive.DropdownMenuSeparatorProps<T> & {
-    class?: string | undefined;
-  };
+const DropdownMenuSeparator = (props: ComponentProps<"hr">) => {
+  const [local, rest] = splitProps(props, ["class"]);
 
-const DropdownMenuSeparator = <T extends ValidComponent = "hr">(
-  props: PolymorphicProps<T, DropdownMenuSeparatorProps<T>>,
-) => {
-  const [local, rest] = splitProps(props as DropdownMenuSeparatorProps, [
-    "class",
-  ]);
-  return (
-    <DropdownMenuPrimitive.Separator
-      class={cn("-mx-1 my-1 h-px bg-muted", local.class)}
-      {...rest}
-    />
-  );
+  return <hr class={cn("-mx-1 my-1 h-px bg-muted", local.class)} {...rest} />;
 };
 
 const DropdownMenuShortcut = (props: ComponentProps<"span">) => {
   const [local, rest] = splitProps(props, ["class"]);
-  return (
-    <span
-      class={cn("ml-auto text-xs tracking-widest opacity-60", local.class)}
-      {...rest}
-    />
-  );
+  return <span class={cn("ml-auto text-xs tracking-widest opacity-60", local.class)} {...rest} />;
 };
 
-type DropdownMenuGroupLabelProps<T extends ValidComponent = "span"> =
-  DropdownMenuPrimitive.DropdownMenuGroupLabelProps<T> & {
-    class?: string | undefined;
-  };
+const DropdownMenuGroupLabel = (props: ComponentProps<"span">) => {
+  const [local, rest] = splitProps(props, ["class"]);
 
-const DropdownMenuGroupLabel = <T extends ValidComponent = "span">(
-  props: PolymorphicProps<T, DropdownMenuGroupLabelProps<T>>,
-) => {
-  const [local, rest] = splitProps(props as DropdownMenuGroupLabelProps, [
-    "class",
-  ]);
-  return (
-    <DropdownMenuPrimitive.GroupLabel
-      class={cn("px-2 py-1.5 text-sm font-semibold", local.class)}
-      {...rest}
-    />
-  );
+  return <span class={cn("px-2 py-1.5 text-sm font-semibold", local.class)} {...rest} />;
 };
 
-type DropdownMenuSubTriggerProps<T extends ValidComponent = "div"> =
-  DropdownMenuPrimitive.DropdownMenuSubTriggerProps<T> & {
-    class?: string | undefined;
-    children?: JSX.Element;
-  };
-
-const DropdownMenuSubTrigger = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, DropdownMenuSubTriggerProps<T>>,
-) => {
-  const [local, rest] = splitProps(props as DropdownMenuSubTriggerProps, [
-    "class",
-    "children",
-  ]);
+const DropdownMenuSubTrigger = (props: ComponentProps<"div"> & { children?: JSX.Element }) => {
+  const [local, rest] = splitProps(props, ["class", "children"]);
   return (
-    <DropdownMenuPrimitive.SubTrigger
+    <div
+      data-xgx-dropdown-item
+      role="menuitem"
+      tabindex={-1}
       class={cn(
-        "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-xs outline-hidden focus:bg-accent data-[expanded]:bg-accent hover:bg-accent hover:text-accent-foreground",
+        "flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-xs outline-hidden hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
         local.class,
       )}
       {...rest}
     >
       {local.children}
-      <svg
-        aria-hidden="true"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        class="ml-auto size-4"
-      >
-        <path d="M9 6l6 6l-6 6" />
-      </svg>
-    </DropdownMenuPrimitive.SubTrigger>
+      <ChevronRight aria-hidden="true" class="ml-auto size-4" />
+    </div>
   );
 };
 
-type DropdownMenuSubContentProps<T extends ValidComponent = "div"> =
-  DropdownMenuPrimitive.DropdownMenuSubContentProps<T> & {
-    class?: string | undefined;
-  };
+const DropdownMenuSubContent = DropdownMenuContent;
 
-const DropdownMenuSubContent = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, DropdownMenuSubContentProps<T>>,
-) => {
-  const [local, rest] = splitProps(props as DropdownMenuSubContentProps, [
-    "class",
-  ]);
-  return (
-    <DropdownMenuPrimitive.SubContent
-      class={cn(
-        "z-50 min-w-32 origin-[var(--kb-menu-content-transform-origin)] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in outline-hidden",
-        local.class,
-      )}
-      {...rest}
-    />
-  );
-};
-
-/**
- * # DropdownMenu
- *
- * Dropdown menu with items and actions.
- *
- * @example
- * ```
- * <DropdownMenu>
- *   <DropdownMenuTrigger class="px-4 py-2 border rounded">Open Menu</DropdownMenuTrigger>
- *   <DropdownMenuContent>
- *     <DropdownMenuLabel>My Account</DropdownMenuLabel>
- *     <DropdownMenuSeparator />
- *     <DropdownMenuItem>Profile</DropdownMenuItem>
- *     <DropdownMenuItem>Settings</DropdownMenuItem>
- *     <DropdownMenuItem>Billing</DropdownMenuItem>
- *     <DropdownMenuSeparator />
- *     <DropdownMenuItem>Log out</DropdownMenuItem>
- *   </DropdownMenuContent>
- * </DropdownMenu>
- * ```
- */
 export {
   DropdownMenu,
   DropdownMenuCheckboxItem,

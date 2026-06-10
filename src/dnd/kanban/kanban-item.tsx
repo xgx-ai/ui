@@ -1,3 +1,4 @@
+import type { JSX } from "@solidjs/web";
 import {
   draggable,
   dropTargetForElements,
@@ -10,17 +11,12 @@ import {
 import {
   type Accessor,
   type Component,
-  createEffect,
+  createTrackedEffect,
   createMemo,
   createSignal,
-  type JSX,
-  onCleanup,
   Show,
 } from "solid-js";
-import {
-  draggingSourceClasses,
-  reorderTransitionClasses,
-} from "../animations/presets";
+import { draggingSourceClasses, reorderTransitionClasses } from "../animations/presets";
 import { type KanbanItemData, useKanbanContext } from "./kanban-context";
 
 /**
@@ -113,7 +109,7 @@ export const KanbanItem: Component<KanbanItemProps> = (props) => {
   });
 
   // Set up draggable
-  createEffect(() => {
+  createTrackedEffect(() => {
     const el = elementRef;
     if (!el) return;
     if (props.disabled) return;
@@ -136,7 +132,7 @@ export const KanbanItem: Component<KanbanItemProps> = (props) => {
             const clone = source.element.cloneNode(true) as HTMLElement;
             clone.style.width = `${source.element.getBoundingClientRect().width}px`;
             clone.style.opacity = "0.9";
-            clone.style.boxShadow = "0 10px 25px -5px rgba(0, 0, 0, 0.2)";
+            clone.style.boxShadow = "var(--shadow-elevation-medium)";
             clone.style.transform = "rotate(2deg)";
             container.appendChild(clone);
           },
@@ -167,11 +163,11 @@ export const KanbanItem: Component<KanbanItemProps> = (props) => {
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   // Set up drop target
-  createEffect(() => {
+  createTrackedEffect(() => {
     const el = elementRef;
     if (!el) return;
 
@@ -200,10 +196,7 @@ export const KanbanItem: Component<KanbanItemProps> = (props) => {
         }
 
         // Adjust for same column moves
-        if (
-          sourceData.columnId === props.columnId &&
-          sourceData.index < props.index
-        ) {
+        if (sourceData.columnId === props.columnId && sourceData.index < props.index) {
           targetIndex = edge === "top" ? props.index - 1 : props.index;
         }
 
@@ -231,10 +224,7 @@ export const KanbanItem: Component<KanbanItemProps> = (props) => {
             targetIndex = props.index + 1;
           }
 
-          if (
-            sourceData.columnId === props.columnId &&
-            sourceData.index < props.index
-          ) {
+          if (sourceData.columnId === props.columnId && sourceData.index < props.index) {
             targetIndex = edge === "top" ? props.index - 1 : props.index;
           }
 
@@ -281,7 +271,7 @@ export const KanbanItem: Component<KanbanItemProps> = (props) => {
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   const itemClass = createMemo(() => {

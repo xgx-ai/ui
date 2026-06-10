@@ -1,15 +1,9 @@
-import {
-  cn,
-  type DialogContentProps,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  useResponseDialog,
-} from "@xgx/ui";
-import { Plus } from "lucide-solid";
-import { createMemo, type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { cn } from "../cn";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../forms/select";
+import { type DialogContentProps, useResponseDialog } from "../overlays/dialog/dialog-response";
+import { Plus } from "../icons.index";
+import { createMemo, Show } from "solid-js";
 import { FieldError } from "./field-error";
 import { FieldLabel } from "./field-label";
 import { useFieldRequired } from "./form-group";
@@ -73,9 +67,7 @@ export interface FormSelectFieldWithCreateProps extends BaseFieldProps {
  * />
  * ```
  */
-export function FormSelectFieldWithCreate(
-  props: FormSelectFieldWithCreateProps,
-) {
+export function FormSelectFieldWithCreate(props: FormSelectFieldWithCreateProps) {
   const isRequired = useFieldRequired(
     () => props.name,
     () => props.required,
@@ -136,21 +128,17 @@ export function FormSelectFieldWithCreate(
               <Show when={props.label || props.description}>
                 <div class="flex flex-col gap-0.5">
                   <Show when={props.label}>
-                    <FieldLabel required={isRequired()}>
-                      {props.label}
-                    </FieldLabel>
+                    <FieldLabel required={isRequired()}>{props.label}</FieldLabel>
                   </Show>
                   <Show when={props.description}>
-                    <p class="text-xs text-muted-foreground">
-                      {props.description}
-                    </p>
+                    <p class="text-xs text-muted-foreground">{props.description}</p>
                   </Show>
                 </div>
               </Show>
 
               <Select<SelectOption>
                 value={selectedOption()}
-                onChange={(option) => {
+                onChange={(option: any) => {
                   if (option?.value === ADD_NEW_OPTION_VALUE) {
                     // Handle "Add new" option - open dialog instead of selecting
                     handleCreateNew(field());
@@ -164,19 +152,13 @@ export function FormSelectFieldWithCreate(
                 optionTextValue="label"
                 optionDisabled="disabled"
                 disabled={props.disabled}
-                placeholder={
-                  props.placeholder ?? props.label ?? props.emptyText
-                }
-                itemComponent={(itemProps) => {
-                  const isAddNew =
-                    itemProps.item.rawValue.value === ADD_NEW_OPTION_VALUE;
+                placeholder={props.placeholder ?? props.label ?? props.emptyText}
+                itemComponent={(itemProps: any) => {
+                  const isAddNew = itemProps.item.rawValue.value === ADD_NEW_OPTION_VALUE;
                   return (
                     <SelectItem
                       item={itemProps.item}
-                      class={cn(
-                        isAddNew &&
-                          "text-primary font-medium border-t mt-1 pt-1",
-                      )}
+                      class={cn(isAddNew && "text-primary font-medium border-t mt-1 pt-1")}
                     >
                       <span class="flex items-center gap-2">
                         <Show when={isAddNew}>
@@ -189,7 +171,7 @@ export function FormSelectFieldWithCreate(
                 }}
               >
                 <SelectTrigger
-                  class={cn(hasError() && "border-destructive")}
+                  class={cn(hasError() && "border-error")}
                   onBlur={() => field().handleBlur()}
                 >
                   <SelectValue<SelectOption>>

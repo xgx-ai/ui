@@ -1,4 +1,4 @@
-import { TextField, TextFieldInput, TextFieldLabel } from "@xgx/ui";
+import { TextField, TextFieldInput, TextFieldLabel } from "../../forms/text-field";
 import type { UseTableFiltersReturn } from "../use-table-filters";
 
 export interface FilterTextProps<TFilters extends Record<string, unknown>> {
@@ -36,8 +36,7 @@ export interface FilterTextProps<TFilters extends Record<string, unknown>> {
 export function FilterText<TFilters extends Record<string, unknown>>(
   props: FilterTextProps<TFilters>,
 ) {
-  const value = () =>
-    (props.filterHook.filters()[props.filterKey] as string) ?? "";
+  const value = () => (props.filterHook.filters()[props.filterKey] as string) ?? "";
 
   const handleChange = (newValue: string) => {
     props.filterHook.setFilter(
@@ -49,14 +48,8 @@ export function FilterText<TFilters extends Record<string, unknown>>(
   return (
     <div class="space-y-1.5 py-1">
       <TextField value={value()} onChange={handleChange}>
-        <TextFieldLabel class="text-xs text-gray-600">
-          {props.label}
-        </TextFieldLabel>
-        <TextFieldInput
-          type="text"
-          class="h-8 px-2 py-1"
-          placeholder={props.placeholder ?? ""}
-        />
+        <TextFieldLabel class="text-xs text-muted-foreground">{props.label}</TextFieldLabel>
+        <TextFieldInput type="text" class="h-8 px-2 py-1" placeholder={props.placeholder ?? ""} />
       </TextField>
     </div>
   );

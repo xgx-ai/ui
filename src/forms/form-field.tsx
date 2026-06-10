@@ -1,14 +1,7 @@
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
 import type { TextFieldInputProps } from "./text-field";
-import {
-  type Component,
-  createMemo,
-  createUniqueId,
-  type JSX,
-  Match,
-  Show,
-  Switch,
-  splitProps,
-} from "solid-js";
+import { type Component, createMemo, createUniqueId, Match, Show, Switch } from "solid-js";
 import { ZodArray, ZodDefault, ZodNullable, ZodObject, ZodOptional } from "zod";
 import { FieldLabel } from "./form-components/field-label";
 import { TextFieldForm } from "./form-components/text-field-form";
@@ -31,12 +24,7 @@ type FormFieldProps = {
   field: FormFieldApi;
   label: string;
   placeholder?: string;
-  type?:
-    | TextFieldInputProps["type"]
-    | "textarea"
-    | "select"
-    | "tags"
-    | "tiptap";
+  type?: TextFieldInputProps["type"] | "textarea" | "select" | "tags" | "tiptap";
   prefix?: string | JSX.Element | Component;
   suffix?: string;
   options?: { value: string; label: string }[];
@@ -53,15 +41,7 @@ type FormFieldProps = {
   min?: string | number;
   max?: string | number;
   step?: string | number;
-  inputMode?:
-    | "none"
-    | "text"
-    | "decimal"
-    | "numeric"
-    | "tel"
-    | "search"
-    | "email"
-    | "url";
+  inputMode?: "none" | "text" | "decimal" | "numeric" | "tel" | "search" | "email" | "url";
   description?: string;
 };
 
@@ -95,16 +75,12 @@ function getZodSchemaAtPath(schema: any, path: string): any {
     } // If the current schema is an array, we expect the key to be a number
     else if (current instanceof ZodArray) {
       if (isNaN(parseInt(key, 10))) {
-        throw new Error(
-          `Path error: Expected a numeric index for array, but got "${key}".`,
-        );
+        throw new Error(`Path error: Expected a numeric index for array, but got "${key}".`);
       }
       current = current.element;
     } // If it's neither an object nor an array, we cannot go deeper
     else {
-      throw new Error(
-        `Path error: Cannot descend into schema at key "${key}".`,
-      );
+      throw new Error(`Path error: Cannot descend into schema at key "${key}".`);
     }
   }
 
@@ -144,10 +120,7 @@ export default function FormField(props: FormFieldProps) {
         return !fieldSchema.safeParse(undefined).success;
       } catch (e) {
         // If we can't parse the path, assume not required
-        console.warn(
-          `Could not determine if field ${fieldPath} is required:`,
-          e,
-        );
+        console.warn(`Could not determine if field ${fieldPath} is required:`, e);
         return false;
       }
     }
@@ -219,7 +192,7 @@ export default function FormField(props: FormFieldProps) {
           <input
             id={createUniqueId()}
             type="checkbox"
-            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            class="h-4 w-4 rounded border-input bg-background text-primary focus:ring-ring"
             checked={!!local.field.state.value}
             onChange={(e) => {
               local.field.handleChange(e.currentTarget.checked);
@@ -231,16 +204,14 @@ export default function FormField(props: FormFieldProps) {
           <div class="flex flex-col">
             <span class="text-sm">
               {local.label}
-              {isRequired() && <span class="text-red-500 ml-1">*</span>}
+              {isRequired() && <span class="text-error-foreground ml-1">*</span>}
             </span>
             <Show when={local.description}>
-              <p class="text-[10px] text-gray-500">{local.description}</p>
+              <p class="text-[10px] text-muted-foreground">{local.description}</p>
             </Show>
           </div>
           {errors() && (
-            <span class="ml-2 text-xs text-red-500">
-              {errors()!.join(", ")}
-            </span>
+            <span class="ml-2 text-xs text-error-foreground">{errors()!.join(", ")}</span>
           )}
         </label>
       </Match>
@@ -248,11 +219,11 @@ export default function FormField(props: FormFieldProps) {
         <div class="flex flex-col gap-2">
           <FieldLabel required={isRequired()}>{local.label}</FieldLabel>
           <Show when={local.description}>
-            <p class="text-[10px] text-gray-500">{local.description}</p>
+            <p class="text-[10px] text-muted-foreground">{local.description}</p>
           </Show>
           <textarea
             id={createUniqueId()}
-            class={`w-full p-2 border border-gray-200 rounded-lg bg-white text-xs ${
+            class={`w-full rounded-md border border-input bg-background p-2 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${
               props.height || "h-32"
             } ${local.class || ""}`}
             placeholder={local.placeholder}
@@ -264,18 +235,18 @@ export default function FormField(props: FormFieldProps) {
             onBlur={() => local.field.handleBlur()}
             disabled={local.disabled}
           />
-          {errors() && <div class="text-sm text-red-500">{errors()}</div>}
+          {errors() && <div class="text-sm text-error-foreground">{errors()}</div>}
         </div>
       </Match>
       <Match when={props.type === "select"}>
         <div class="flex flex-col gap-2 text-xs">
           <FieldLabel required={isRequired()}>{local.label}</FieldLabel>
           <Show when={local.description}>
-            <p class="text-[10px] text-gray-500">{local.description}</p>
+            <p class="text-[10px] text-muted-foreground">{local.description}</p>
           </Show>
           <select
             id={createUniqueId()}
-            class={`w-full p-2 border border-gray-200 rounded-lg bg-white text-xs ${
+            class={`w-full rounded-md border border-input bg-background p-2 text-xs text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${
               local.class || ""
             }`}
             value={(local.field.state.value as string) ?? ""}
@@ -291,7 +262,7 @@ export default function FormField(props: FormFieldProps) {
               <option value={option.value}>{option.label}</option>
             ))}
           </select>
-          {errors() && <div class="text-xs text-red-500">{errors()}</div>}
+          {errors() && <div class="text-xs text-error-foreground">{errors()}</div>}
         </div>
       </Match>
     </Switch>

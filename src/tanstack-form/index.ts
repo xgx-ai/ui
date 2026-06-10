@@ -1,15 +1,15 @@
 // Re-export TanStack Form primitives for convenience
 
 export type {
+  AnyFieldMeta as FieldMeta,
   FieldApi,
-  FieldMeta,
+  FieldLikeState as FieldState,
   FieldOptions,
-  FieldState,
   FormApi,
   FormOptions,
   FormState,
-} from "@tanstack/solid-form";
-export { createField, createForm } from "@tanstack/solid-form";
+} from "./adapter";
+export { createField, createForm } from "./adapter";
 export type { FieldErrorProps } from "./field-error";
 export { FieldError } from "./field-error";
 export type { FieldLabelProps } from "./field-label";

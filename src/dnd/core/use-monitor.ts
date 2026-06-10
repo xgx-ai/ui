@@ -1,5 +1,5 @@
 import { monitorForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import { type Accessor, createEffect, createSignal, onCleanup } from "solid-js";
+import { type Accessor, createTrackedEffect, createSignal } from "solid-js";
 import type { DragData, DragMonitorState, Position } from "./types";
 
 /**
@@ -57,7 +57,7 @@ export function createMonitor(options: MonitorOptions = {}): MonitorResult {
     overTarget: null,
   });
 
-  createEffect(() => {
+  createTrackedEffect(() => {
     const cleanup = monitorForElements({
       canMonitor: ({ source }) => {
         if (options.canMonitor) {
@@ -110,7 +110,7 @@ export function createMonitor(options: MonitorOptions = {}): MonitorResult {
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   return {

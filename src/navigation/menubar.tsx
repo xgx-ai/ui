@@ -1,54 +1,36 @@
-import * as MenubarPrimitive from "@kobalte/core/menubar";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import type { Component, ComponentProps, JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";
+import { Check, ChevronRight, Circle } from "../icons.index";
 import { cn } from "../cn";
+import { splitProps } from "../utils/split-props";
+import { PortalMount } from "../overlays/portal";
+import { createMenuKeyboard, focusFirstMenuItem } from "./menu-behavior";
 
-/**
- * # Menubar
- *
- * Horizontal menu bar with dropdown menus.
- *
- * @example
- * ```
- * <Menubar>
- *   <MenubarMenu>
- *     <MenubarTrigger>File</MenubarTrigger>
- *     <MenubarContent>
- *       <MenubarItem>New File</MenubarItem>
- *       <MenubarItem>Open</MenubarItem>
- *       <MenubarSeparator />
- *       <MenubarItem>Save</MenubarItem>
- *     </MenubarContent>
- *   </MenubarMenu>
- *   <MenubarMenu>
- *     <MenubarTrigger>Edit</MenubarTrigger>
- *     <MenubarContent>
- *       <MenubarItem>Undo</MenubarItem>
- *       <MenubarItem>Redo</MenubarItem>
- *     </MenubarContent>
- *   </MenubarMenu>
- * </Menubar>
- * ```
- */
+type Menubar = {
+  close: () => void;
+  contentRef: () => HTMLElement | undefined;
+  open: () => boolean;
+  setContentRef: (element: HTMLElement) => void;
+  setOpen: (open: boolean) => void;
+  setTriggerRef: (element: HTMLElement) => void;
+  triggerRef: () => HTMLElement | undefined;
+};
 
-const MenubarGroup = MenubarPrimitive.Group;
-const MenubarPortal = MenubarPrimitive.Portal;
-const MenubarSub = MenubarPrimitive.Sub;
-const MenubarRadioGroup = MenubarPrimitive.RadioGroup;
+const MenubarMenuContext = createContext<Menubar>();
 
-type MenubarRootProps<T extends ValidComponent = "div"> =
-  MenubarPrimitive.MenubarRootProps<T> & {
-    class?: string | undefined;
-  };
+function useMenubarMenu() {
+  const context = useContext(MenubarMenuContext);
+  if (!context) throw new Error("Menubar menu parts must be used inside MenubarMenu.");
+  return context;
+}
 
-const Menubar = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, MenubarRootProps<T>>,
-) => {
-  const [local, others] = splitProps(props as MenubarRootProps, ["class"]);
+type MenubarRootProps = ComponentProps<"div">;
+
+const Menubar = (props: MenubarRootProps) => {
+  const [local, others] = splitProps(props, ["class"]);
   return (
-    <MenubarPrimitive.Root
+    <div
+      role="menubar"
       class={cn(
         "flex h-10 items-center space-x-1 rounded-md border bg-background p-1",
         local.class,
@@ -58,298 +40,316 @@ const Menubar = <T extends ValidComponent = "div">(
   );
 };
 
-const MenubarMenu: Component<MenubarPrimitive.MenubarMenuProps> = (props) => {
-  return <MenubarPrimitive.Menu gutter={8} {...props} />;
+type MenubarMenuProps = ComponentProps<"div"> & {
+  children?: JSX.Element;
+  gutter?: number;
 };
 
-type MenubarTriggerProps<T extends ValidComponent = "button"> =
-  MenubarPrimitive.MenubarTriggerProps<T> & { class?: string | undefined };
+const MenubarMenu = (props: MenubarMenuProps) => {
+  let root: HTMLDivElement | undefined;
+  const [local, others] = splitProps(props, ["children", "class"]);
+  const [open, setOpen] = createSignal(false);
+  const [contentRef, setContentRef] = createSignal<HTMLElement>();
+  const [triggerRef, setTriggerRef] = createSignal<HTMLElement>();
 
-const MenubarTrigger = <T extends ValidComponent = "button">(
-  props: PolymorphicProps<T, MenubarTriggerProps<T>>,
-) => {
-  const [local, others] = splitProps(props as MenubarTriggerProps, ["class"]);
+  createEffect(open, (isOpen) => {
+    if (!isOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (root && !root.contains(target) && !contentRef()?.contains(target)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef()?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  });
+
   return (
-    <MenubarPrimitive.Trigger
-      class={cn(
-        "flex cursor-default select-none items-center rounded-sm px-3 py-1.5 text-sm font-medium outline-hidden focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground",
-        local.class,
-      )}
-      {...others}
-    />
-  );
-};
-
-type MenubarContentProps<T extends ValidComponent = "div"> =
-  MenubarPrimitive.MenubarContentProps<T> & { class?: string | undefined };
-
-const MenubarContent = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, MenubarContentProps<T>>,
-) => {
-  const [local, others] = splitProps(props as MenubarContentProps, ["class"]);
-  return (
-    <MenubarPrimitive.Portal>
-      <MenubarPrimitive.Content
-        class={cn(
-          "z-50 min-w-48 origin-[var(--kb-menu-content-transform-origin)] animate-content-hide overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-expanded:animate-content-show",
-          local.class,
-        )}
-        {...others}
-      />
-    </MenubarPrimitive.Portal>
-  );
-};
-
-type MenubarSubTriggerProps<T extends ValidComponent = "div"> =
-  MenubarPrimitive.MenubarSubTriggerProps<T> & {
-    class?: string | undefined;
-    children?: JSX.Element;
-    inset?: boolean;
-  };
-
-const MenubarSubTrigger = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, MenubarSubTriggerProps<T>>,
-) => {
-  const [local, others] = splitProps(props as MenubarSubTriggerProps, [
-    "class",
-    "children",
-    "inset",
-  ]);
-  return (
-    <MenubarPrimitive.SubTrigger
-      class={cn(
-        "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground",
-        local.inset && "pl-8",
-        local.class,
-      )}
-      {...others}
+    <MenubarMenuContext
+      value={{
+        close: () => setOpen(false),
+        contentRef,
+        open,
+        setContentRef,
+        setOpen,
+        setTriggerRef,
+        triggerRef,
+      }}
     >
-      {local.children}
-      <svg
-        aria-hidden="true"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        class="ml-auto size-4"
+      <div
+        ref={(element) => {
+          root = element;
+        }}
+        class={cn("relative", local.class)}
+        {...others}
       >
-        <path d="M9 6l6 6l-6 6" />
-      </svg>
-    </MenubarPrimitive.SubTrigger>
+        {local.children}
+      </div>
+    </MenubarMenuContext>
   );
 };
 
-type MenubarSubContentProps<T extends ValidComponent = "div"> =
-  MenubarPrimitive.MenubarSubContentProps<T> & {
-    class?: string | undefined;
+type MenubarTriggerProps = ComponentProps<"button">;
+
+const MenubarTrigger = (props: MenubarTriggerProps) => {
+  const menu = useMenubarMenu();
+  const [local, others] = splitProps(props, ["class", "onClick", "onKeyDown", "ref", "type"]);
+  const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
+    const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented) menu.setOpen(!menu.open());
+  };
+  const onKeyDown: JSX.EventHandler<HTMLButtonElement, KeyboardEvent> = (event) => {
+    const handler = local.onKeyDown as
+      | JSX.EventHandler<HTMLButtonElement, KeyboardEvent>
+      | undefined;
+    handler?.(event);
+    if (event.defaultPrevented) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      menu.setOpen(true);
+      requestAnimationFrame(() => focusFirstMenuItem(menu.contentRef()));
+    }
   };
 
-const MenubarSubContent = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, MenubarSubContentProps<T>>,
-) => {
-  const [local, others] = splitProps(props as MenubarSubContentProps, [
-    "class",
-  ]);
   return (
-    <MenubarPrimitive.Portal>
-      <MenubarPrimitive.SubContent
+    <button
+      type={local.type ?? "button"}
+      aria-expanded={menu.open() ? "true" : "false"}
+      data-expanded={menu.open() ? "" : undefined}
+      class={cn(
+        "flex cursor-default select-none items-center rounded-sm px-3 py-1.5 text-sm font-medium outline-hidden focus:bg-accent focus:text-accent-foreground data-[expanded]:bg-accent data-[expanded]:text-accent-foreground",
+        local.class,
+      )}
+      onClick={onClick}
+      onKeyDown={onKeyDown}
+      ref={(element) => {
+        menu.setTriggerRef(element);
+        const ref = local.ref;
+        if (typeof ref === "function") ref(element);
+      }}
+      {...others}
+    />
+  );
+};
+
+const MenubarPortal = (props: { children?: JSX.Element }) => (
+  <PortalMount>{props.children}</PortalMount>
+);
+const MenubarGroup = (props: ComponentProps<"div">) => <div role="group" {...props} />;
+const MenubarSub = (props: ComponentProps<"div">) => <div {...props} />;
+const MenubarRadioGroup = (props: ComponentProps<"div">) => <div role="group" {...props} />;
+
+type MenubarContentProps = ComponentProps<"div">;
+
+const MenubarContent = (props: MenubarContentProps) => {
+  const menu = useMenubarMenu();
+  const [local, others] = splitProps(props, ["class", "onKeyDown", "ref"]);
+  const menuKeyboard = createMenuKeyboard({
+    close: menu.close,
+    root: menu.contentRef,
+    trigger: menu.triggerRef,
+  });
+  const onKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (event) => {
+    const handler = local.onKeyDown as JSX.EventHandler<HTMLDivElement, KeyboardEvent> | undefined;
+    handler?.(event);
+    menuKeyboard(event);
+  };
+
+  createEffect(menu.open, (open) => {
+    if (open) requestAnimationFrame(() => focusFirstMenuItem(menu.contentRef()));
+  });
+
+  return (
+    <Show when={menu.open()}>
+      <div
+        role="menu"
+        tabindex={-1}
+        ref={(element) => {
+          menu.setContentRef(element);
+          const ref = local.ref;
+          if (typeof ref === "function") ref(element);
+          requestAnimationFrame(() => focusFirstMenuItem(element));
+        }}
         class={cn(
-          "z-50 min-w-32 origin-[var(--kb-menu-content-transform-origin)] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in",
+          "absolute left-0 top-full z-50 mt-1 min-w-48 overflow-hidden rounded-md border border-border-subtle bg-popover p-1 text-popover-foreground shadow-elevation-medium",
           local.class,
         )}
+        onKeyDown={onKeyDown}
         {...others}
       />
-    </MenubarPrimitive.Portal>
+    </Show>
   );
 };
 
-type MenubarItemProps<T extends ValidComponent = "div"> =
-  MenubarPrimitive.MenubarItemProps<T> & {
-    class?: string | undefined;
-    inset?: boolean;
+const MenubarSubContent = MenubarContent;
+
+type MenubarItemProps = ComponentProps<"div"> & {
+  closeOnSelect?: boolean;
+  disabled?: boolean;
+  inset?: boolean;
+};
+
+const MenubarItem = (props: MenubarItemProps) => {
+  const menu = useMenubarMenu();
+  const [local, others] = splitProps(props, [
+    "class",
+    "closeOnSelect",
+    "disabled",
+    "inset",
+    "onClick",
+  ]);
+  const onClick: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
+    const handler = local.onClick as JSX.EventHandler<HTMLDivElement, MouseEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented && !local.disabled && local.closeOnSelect !== false) {
+      menu.close();
+    }
   };
 
-const MenubarItem = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, MenubarItemProps<T>>,
-) => {
-  const [local, others] = splitProps(props as MenubarItemProps, [
-    "class",
-    "inset",
-  ]);
   return (
-    <MenubarPrimitive.Item
+    <div
+      data-disabled={local.disabled ? "" : undefined}
+      role="menuitem"
+      tabindex={local.disabled ? undefined : -1}
       class={cn(
-        "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
+        "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         local.inset && "pl-8",
         local.class,
       )}
+      onClick={onClick}
       {...others}
     />
   );
 };
 
-type MenubarCheckboxItemProps<T extends ValidComponent = "div"> =
-  MenubarPrimitive.MenubarCheckboxItemProps<T> & {
-    class?: string | undefined;
-    children?: JSX.Element;
-  };
-
-const MenubarCheckboxItem = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, MenubarCheckboxItemProps<T>>,
+const MenubarSubTrigger = (
+  props: ComponentProps<"div"> & { children?: JSX.Element; inset?: boolean },
 ) => {
-  const [local, others] = splitProps(props as MenubarCheckboxItemProps, [
-    "class",
-    "children",
-  ]);
+  const [local, others] = splitProps(props, ["class", "children", "inset"]);
   return (
-    <MenubarPrimitive.CheckboxItem
+    <div
+      role="menuitem"
+      tabindex={-1}
       class={cn(
-        "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
+        "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+        local.inset && "pl-8",
         local.class,
       )}
       {...others}
     >
-      <span class="absolute left-2 flex size-3.5 items-center justify-center">
-        <MenubarPrimitive.ItemIndicator>
-          <svg
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="size-4"
-          >
-            <path d="M5 12l5 5l10 -10" />
-          </svg>
-        </MenubarPrimitive.ItemIndicator>
-      </span>
       {local.children}
-    </MenubarPrimitive.CheckboxItem>
+      <ChevronRight aria-hidden="true" class="ml-auto size-4" />
+    </div>
   );
 };
 
-type MenubarRadioItemProps<T extends ValidComponent = "div"> =
-  MenubarPrimitive.MenubarRadioItemProps<T> & {
-    class?: string | undefined;
-    children?: JSX.Element;
-  };
+type MenubarCheckboxItemProps = Omit<ComponentProps<"div">, "onChange"> & {
+  checked?: boolean;
+  disabled?: boolean;
+  onChange?: (checked: boolean) => void;
+  onCheckedChange?: (checked: boolean) => void;
+};
 
-const MenubarRadioItem = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, MenubarRadioItemProps<T>>,
-) => {
-  const [local, others] = splitProps(props as MenubarRadioItemProps, [
-    "class",
+const MenubarCheckboxItem = (props: MenubarCheckboxItemProps) => {
+  const [local, others] = splitProps(props, [
+    "checked",
     "children",
+    "class",
+    "disabled",
+    "onChange",
+    "onCheckedChange",
   ]);
+  const onClick = () => {
+    if (local.disabled) return;
+    const checked = !local.checked;
+    local.onChange?.(checked);
+    local.onCheckedChange?.(checked);
+  };
   return (
-    <MenubarPrimitive.RadioItem
-      class={cn(
-        "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
-        local.class,
-      )}
+    <MenubarItem
+      role="menuitemcheckbox"
+      aria-checked={local.checked ? "true" : "false"}
+      disabled={local.disabled}
+      class={cn("pl-8", local.class)}
+      onClick={onClick}
       {...others}
     >
       <span class="absolute left-2 flex size-3.5 items-center justify-center">
-        <MenubarPrimitive.ItemIndicator>
-          <svg
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="size-2 fill-current"
-          >
-            <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
-          </svg>
-        </MenubarPrimitive.ItemIndicator>
+        <Show when={local.checked}>
+          <Check aria-hidden="true" class="size-4" />
+        </Show>
       </span>
       {local.children}
-    </MenubarPrimitive.RadioItem>
+    </MenubarItem>
   );
 };
 
-type MenubarItemLabelProps<T extends ValidComponent = "div"> =
-  MenubarPrimitive.MenubarItemLabelProps<T> & {
-    class?: string | undefined;
-    inset?: boolean;
-  };
+type MenubarRadioItemProps = ComponentProps<"div"> & {
+  checked?: boolean;
+  disabled?: boolean;
+};
 
-const MenubarItemLabel = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, MenubarItemLabelProps<T>>,
-) => {
-  const [local, others] = splitProps(props as MenubarItemLabelProps, [
-    "class",
-    "inset",
-  ]);
+const MenubarRadioItem = (props: MenubarRadioItemProps) => {
+  const [local, others] = splitProps(props, ["checked", "children", "class", "disabled"]);
   return (
-    <MenubarPrimitive.ItemLabel
-      class={cn(
-        "px-2 py-1.5 text-sm font-semibold",
-        local.inset && "pl-8",
-        local.class,
-      )}
+    <MenubarItem
+      role="menuitemradio"
+      aria-checked={local.checked ? "true" : "false"}
+      disabled={local.disabled}
+      class={cn("pl-8", local.class)}
+      {...others}
+    >
+      <span class="absolute left-2 flex size-3.5 items-center justify-center">
+        <Show when={local.checked}>
+          <Circle aria-hidden="true" class="size-2 fill-current" />
+        </Show>
+      </span>
+      {local.children}
+    </MenubarItem>
+  );
+};
+
+const MenubarItemLabel = (props: ComponentProps<"div"> & { inset?: boolean }) => {
+  const [local, others] = splitProps(props, ["class", "inset"]);
+  return (
+    <div
+      class={cn("px-2 py-1.5 text-sm font-semibold", local.inset && "pl-8", local.class)}
       {...others}
     />
   );
 };
 
-type MenubarGroupLabelProps<T extends ValidComponent = "span"> =
-  MenubarPrimitive.MenubarGroupLabelProps<T> & {
-    class?: string | undefined;
-    inset?: boolean;
-  };
-
-const MenubarGroupLabel = <T extends ValidComponent = "span">(
-  props: PolymorphicProps<T, MenubarGroupLabelProps<T>>,
-) => {
-  const [local, others] = splitProps(props as MenubarGroupLabelProps, [
-    "class",
-    "inset",
-  ]);
+const MenubarGroupLabel = (props: ComponentProps<"span"> & { inset?: boolean }) => {
+  const [local, others] = splitProps(props, ["class", "inset"]);
   return (
-    <MenubarPrimitive.GroupLabel
-      class={cn(
-        "px-2 py-1.5 text-sm font-semibold",
-        local.inset && "pl-8",
-        local.class,
-      )}
+    <span
+      class={cn("px-2 py-1.5 text-sm font-semibold", local.inset && "pl-8", local.class)}
       {...others}
     />
   );
 };
 
-type MenubarSeparatorProps<T extends ValidComponent = "hr"> =
-  MenubarPrimitive.MenubarSeparatorProps<T> & { class?: string | undefined };
-
-const MenubarSeparator = <T extends ValidComponent = "hr">(
-  props: PolymorphicProps<T, MenubarSeparatorProps<T>>,
-) => {
-  const [local, others] = splitProps(props as MenubarSeparatorProps, ["class"]);
-  return (
-    <MenubarPrimitive.Separator
-      class={cn("-mx-1 my-1 h-px bg-muted", local.class)}
-      {...others}
-    />
-  );
+const MenubarSeparator = (props: ComponentProps<"hr">) => {
+  const [local, others] = splitProps(props, ["class"]);
+  return <hr class={cn("-mx-1 my-1 h-px border-0 bg-muted", local.class)} {...others} />;
 };
 
-const MenubarShortcut: Component<ComponentProps<"span">> = (props) => {
+const MenubarShortcut = (props: ComponentProps<"span">) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
     <span
-      class={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground",
-        local.class,
-      )}
+      class={cn("ml-auto text-xs tracking-widest text-muted-foreground", local.class)}
       {...others}
     />
   );
@@ -373,4 +373,12 @@ export {
   MenubarSubContent,
   MenubarSubTrigger,
   MenubarTrigger,
+};
+export type {
+  MenubarCheckboxItemProps,
+  MenubarContentProps,
+  MenubarItemProps,
+  MenubarMenuProps,
+  MenubarRootProps,
+  MenubarTriggerProps,
 };

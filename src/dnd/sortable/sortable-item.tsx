@@ -1,5 +1,7 @@
-import type { Accessor, Component, JSX } from "solid-js";
-import { Show, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../../utils/split-props";
+import type { Accessor, Component } from "solid-js";
+import { Show } from "solid-js";
 import { DropIndicatorLine } from "../preview/drag-overlay";
 import { createSortable, type SortableState } from "./use-sortable";
 

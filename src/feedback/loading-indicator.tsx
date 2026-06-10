@@ -1,4 +1,6 @@
-import { type JSX, type ParentProps, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { type ParentProps } from "solid-js";
 import { cn } from "../cn";
 import { Spinner } from "./spinner";
 
@@ -33,29 +35,15 @@ const paddingMap = {
  * ```
  */
 export function LoadingIndicator(props: LoadingIndicatorProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "size",
-    "padding",
-    "children",
-  ]);
+  const [local, rest] = splitProps(props, ["class", "size", "padding", "children"]);
 
   const spinnerSize = () => sizeMap[local.size ?? "md"];
   const containerPadding = () => paddingMap[local.padding ?? "md"];
 
   return (
-    <div
-      class={cn(
-        "flex items-center justify-center",
-        containerPadding(),
-        local.class,
-      )}
-      {...rest}
-    >
+    <div class={cn("flex items-center justify-center", containerPadding(), local.class)} {...rest}>
       <Spinner class={spinnerSize()} />
-      {local.children && (
-        <span class="ml-2 text-xs text-muted-foreground">{local.children}</span>
-      )}
+      {local.children && <span class="ml-2 text-xs text-muted-foreground">{local.children}</span>}
     </div>
   );
 }

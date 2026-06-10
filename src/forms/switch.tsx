@@ -1,115 +1,154 @@
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import * as SwitchPrimitive from "@kobalte/core/switch";
-import type { JSX, ParentProps, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-import { cn } from "../cn";
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { createContext, createSignal, useContext } from "solid-js";
 
-type SwitchProps<T extends ValidComponent = "div"> =
-  SwitchPrimitive.SwitchRootProps<T> & {
-    class?: string;
-    checked?: boolean;
-    defaultChecked?: boolean;
-    disabled?: boolean;
-    onChange?: (checked: boolean) => void;
-    name?: string;
-    required?: boolean;
-    value?: string;
+import { cn } from "../cn";
+import { splitProps } from "../utils/split-props";
+
+type SwitchContextValue = {
+  checked: () => boolean;
+  disabled: () => boolean;
+};
+
+const SwitchContext = createContext<SwitchContextValue>();
+
+function useSwitchContextValue() {
+  return useContext(SwitchContext);
+}
+
+type SwitchProps = Omit<ComponentProps<"label">, "children" | "onChange"> & {
+  class?: string;
+  checked?: boolean;
+  defaultChecked?: boolean;
+  disabled?: boolean;
+  onChange?: (checked: boolean) => void;
+  name?: string;
+  required?: boolean;
+  value?: string;
+  children?: JSX.Element;
+};
+
+export const Switch = (props: SwitchProps) => {
+  const [local] = splitProps(props, [
+    "class",
+    "children",
+    "checked",
+    "defaultChecked",
+    "disabled",
+    "onChange",
+    "name",
+    "required",
+    "value",
+  ]);
+  const [internalChecked, setInternalChecked] = createSignal(local.defaultChecked === true);
+  const checked = () => local.checked ?? internalChecked();
+  const disabled = () => local.disabled === true;
+  const handleInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
+    const next = event.currentTarget.checked;
+    setInternalChecked(next);
+    local.onChange?.(next);
   };
 
-export const Switch = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, SwitchProps<T>>,
-) => {
-  const [local, rest] = splitProps(props as SwitchProps, ["class", "children"]);
-
   return (
-    <SwitchPrimitive.Root
-      class={cn("flex items-center gap-2 relative", local.class)}
-      {...rest}
-    >
-      <SwitchPrimitive.Input />
-      {local.children as JSX.Element}
-    </SwitchPrimitive.Root>
+    <SwitchContext value={{ checked, disabled }}>
+      <label
+        data-checked={checked() ? "" : undefined}
+        data-disabled={disabled() ? "" : undefined}
+        class={cn(
+          "relative inline-flex h-7 items-center gap-2 align-middle text-sm leading-none",
+          disabled() ? "cursor-not-allowed opacity-70" : "cursor-pointer",
+          local.class,
+        )}
+      >
+        <input
+          type="checkbox"
+          checked={checked()}
+          disabled={disabled()}
+          name={local.name}
+          required={local.required}
+          value={local.value ?? "on"}
+          onInput={handleInput}
+          class="peer sr-only"
+        />
+        {local.children}
+      </label>
+    </SwitchContext>
   );
 };
 
-type SwitchControlProps = ParentProps<{ class?: string }>;
+type SwitchControlProps = ComponentProps<"span"> & {
+  class?: string;
+  children?: JSX.Element;
+};
+
 export const SwitchControl = (props: SwitchControlProps) => {
+  const context = useSwitchContextValue();
   const [local, others] = splitProps(props, ["class", "children"]);
+
   return (
-    <SwitchPrimitive.Control
+    <span
+      data-checked={context?.checked() ? "" : undefined}
+      data-disabled={context?.disabled() ? "" : undefined}
       class={cn(
-        "duration-300 inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-muted transition-colors ui-disabled:cursor-not-allowed ui-checked:bg-primary ui-disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-transparent bg-muted p-0.5 transition-colors data-[checked]:bg-primary data-[disabled]:opacity-50 peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background",
         local.class,
       )}
       {...others}
     >
       {local.children}
-    </SwitchPrimitive.Control>
+    </span>
   );
 };
 
-type SwitchThumbProps = ParentProps<{ class?: string }>;
+type SwitchThumbProps = ComponentProps<"span"> & {
+  class?: string;
+  children?: JSX.Element;
+};
+
 export const SwitchThumb = (props: SwitchThumbProps) => {
-  const [local, others] = splitProps(props, ["class"]);
-  return (
-    <SwitchPrimitive.Thumb
-      class={cn(
-        "pointer-events-none block size-5 translate-x-0 rounded-full bg-background shadow-lg ring-0 transition-transform data-[checked]:translate-x-5 duration-300",
-        local.class,
-      )}
-      {...others}
-    />
-  );
-};
-
-type SwitchLabelProps = ParentProps<{ class?: string }>;
-/**
- * # Switch
- *
- * A toggle switch for boolean values.
- *
- * @example
- * ```
- * <div class="space-y-4">
- *   <Switch>
- *     <SwitchControl>
- *       <SwitchThumb />
- *     </SwitchControl>
- *     <SwitchLabel>Default switch</SwitchLabel>
- *   </Switch>
- *   <Switch defaultChecked>
- *     <SwitchControl>
- *       <SwitchThumb />
- *     </SwitchControl>
- *     <SwitchLabel>Checked by default</SwitchLabel>
- *   </Switch>
- *   <Switch disabled>
- *     <SwitchControl>
- *       <SwitchThumb />
- *     </SwitchControl>
- *     <SwitchLabel>Disabled</SwitchLabel>
- *   </Switch>
- * </div>
- * ```
- */
-export const SwitchLabel = (props: SwitchLabelProps) => {
+  const context = useSwitchContextValue();
   const [local, others] = splitProps(props, ["class", "children"]);
+
   return (
-    <SwitchPrimitive.Label
+    <span
+      data-checked={context?.checked() ? "" : undefined}
       class={cn(
-        "text-xs font-medium leading-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-70",
+        "pointer-events-none block size-5 translate-x-0 rounded-full bg-background shadow-sm ring-0 transition-transform data-[checked]:translate-x-5",
         local.class,
       )}
       {...others}
     >
       {local.children}
-    </SwitchPrimitive.Label>
+    </span>
   );
 };
 
-export const SwitchHiddenInput = SwitchPrimitive.Input;
+type SwitchLabelProps = ComponentProps<"span"> & {
+  class?: string;
+  children?: JSX.Element;
+};
 
-/** Preset switch with control and thumb included */
+export const SwitchLabel = (props: SwitchLabelProps) => {
+  const context = useSwitchContextValue();
+  const [local, others] = splitProps(props, ["class", "children"]);
+
+  return (
+    <span
+      data-disabled={context?.disabled() ? "" : undefined}
+      class={cn(
+        "inline-flex items-center text-sm font-medium leading-none data-[disabled]:cursor-not-allowed",
+        local.class,
+      )}
+      {...others}
+    >
+      {local.children}
+    </span>
+  );
+};
+
+export const SwitchHiddenInput = (props: ComponentProps<"input">) => (
+  <input type="checkbox" class="sr-only" {...props} />
+);
+
 type SwitchPresetProps = {
   class?: string;
   checked?: boolean;
@@ -128,7 +167,7 @@ export const SwitchPreset = (props: SwitchPresetProps) => {
   return (
     <Switch
       class={local.class}
-      onChange={(checked) => local.onChange?.(checked)}
+      onChange={(checked: boolean) => local.onChange?.(checked)}
       {...rest}
     >
       <SwitchControl>

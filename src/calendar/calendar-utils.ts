@@ -1,10 +1,4 @@
-import {
-  addDays,
-  addMinutes,
-  differenceInMinutes,
-  isSameDay,
-  startOfDay,
-} from "date-fns";
+import { addDays, addMinutes, differenceInMinutes, isSameDay, startOfDay } from "date-fns";
 import type { CalendarEvent, LayoutedEvent } from "./types";
 
 export function isAllDayEvent(event: {
@@ -16,9 +10,7 @@ export function isAllDayEvent(event: {
   if (!event.endDate) return false;
   const duration = differenceInMinutes(event.endDate, event.startDate);
   return (
-    duration >= 24 * 60 &&
-    event.startDate.getHours() === 0 &&
-    event.startDate.getMinutes() === 0
+    duration >= 24 * 60 && event.startDate.getHours() === 0 && event.startDate.getMinutes() === 0
   );
 }
 
@@ -38,12 +30,8 @@ export function layoutHeaderEvents(
   day: Date,
   allWeekEvents: CalendarEvent[],
 ): Array<LayoutedEvent & { absoluteTop: number }> {
-  const weekHeaderEvents = allWeekEvents.filter((event) =>
-    isHeaderEvent(event),
-  );
-  weekHeaderEvents.sort(
-    (a, b) => a.startDate.getTime() - b.startDate.getTime(),
-  );
+  const weekHeaderEvents = allWeekEvents.filter((event) => isHeaderEvent(event));
+  weekHeaderEvents.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
   const lanes: { endDate: Date; eventId: string }[] = [];
   const eventLanes = new Map<string, number>();
@@ -75,8 +63,7 @@ export function layoutHeaderEvents(
     const eventEnd = event.endDate || addMinutes(event.startDate, 24 * 60);
     const lane = eventLanes.get(event.id) || 0;
     const isFirstDay = isSameDay(event.startDate, day);
-    const isLastDay =
-      isSameDay(eventEnd, day) || eventEnd <= addDays(startOfDay(day), 1);
+    const isLastDay = isSameDay(eventEnd, day) || eventEnd <= addDays(startOfDay(day), 1);
     const laneHeight = 20;
     const laneSpacing = 4;
     const top = lane * (laneHeight + laneSpacing);
@@ -200,10 +187,6 @@ export function layoutEvents(
 ): Array<LayoutedEvent> {
   const headerEvents = layoutHeaderEvents(events, day, allWeekEvents);
   const singleDayEvents = events.filter((event) => !isHeaderEvent(event));
-  const singleDayLayout = layoutSingleDayEvents(
-    singleDayEvents,
-    day,
-    headerEvents.length,
-  );
+  const singleDayLayout = layoutSingleDayEvents(singleDayEvents, day, headerEvents.length);
   return [...headerEvents, ...singleDayLayout];
 }

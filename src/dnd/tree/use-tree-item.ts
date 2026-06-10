@@ -9,23 +9,10 @@ import {
   type Instruction,
   type ItemMode,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/tree-item";
-import {
-  type Accessor,
-  createEffect,
-  createMemo,
-  createSignal,
-  onCleanup,
-} from "solid-js";
-import {
-  draggingSourceClasses,
-  reorderTransitionClasses,
-} from "../animations/presets";
+import { type Accessor, createTrackedEffect, createMemo, createSignal } from "solid-js";
+import { draggingSourceClasses, reorderTransitionClasses } from "../animations/presets";
 import { useDndContext } from "../core/context";
-import {
-  type TreeItemData,
-  type TreeNodeCapabilities,
-  useTreeDndContext,
-} from "./tree-context";
+import { type TreeItemData, type TreeNodeCapabilities, useTreeDndContext } from "./tree-context";
 
 /**
  * State of a tree item
@@ -181,10 +168,7 @@ export function useTreeItem(options: TreeItemOptions): TreeItemResult {
   };
 
   // Helper to update state based on instruction
-  const updateStateFromInstruction = (
-    instruction: Instruction | null,
-    sourceId: string,
-  ) => {
+  const updateStateFromInstruction = (instruction: Instruction | null, sourceId: string) => {
     if (!instruction || sourceId === options.id) {
       setState((s) => ({
         ...s,
@@ -221,7 +205,7 @@ export function useTreeItem(options: TreeItemOptions): TreeItemResult {
   };
 
   // Set up draggable
-  createEffect(() => {
+  createTrackedEffect(() => {
     const el = elementRef;
     if (!el) return;
     // Check both local and context-level disabled
@@ -309,10 +293,7 @@ export function useTreeItem(options: TreeItemOptions): TreeItemResult {
           }
 
           // Adjust index if moving within same parent and from lower to higher position
-          if (
-            dragState.sourceParentId === newParentId &&
-            dragState.sourceIndex < newIndex
-          ) {
+          if (dragState.sourceParentId === newParentId && dragState.sourceIndex < newIndex) {
             newIndex = Math.max(0, newIndex - 1);
           }
 
@@ -343,11 +324,11 @@ export function useTreeItem(options: TreeItemOptions): TreeItemResult {
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   // Set up drop target
-  createEffect(() => {
+  createTrackedEffect(() => {
     const el = elementRef;
     if (!el) return;
 
@@ -435,7 +416,7 @@ export function useTreeItem(options: TreeItemOptions): TreeItemResult {
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   const treeItemClass = createMemo(() => {

@@ -1,11 +1,10 @@
+import type { JSX } from "@solidjs/web";
 import { monitorForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import {
   type Component,
   createContext,
-  createEffect,
+  createTrackedEffect,
   createSignal,
-  type JSX,
-  onCleanup,
   useContext,
 } from "solid-js";
 import type { DndConfig, DragData, Position } from "./types";
@@ -67,7 +66,7 @@ export const DndProvider: Component<DndProviderProps> = (props) => {
   };
 
   // Set up global monitor to track all drag operations
-  createEffect(() => {
+  createTrackedEffect(() => {
     const cleanup = monitorForElements({
       onDragStart: ({ source, location }) => {
         const item = source.data as DragData;
@@ -106,7 +105,7 @@ export const DndProvider: Component<DndProviderProps> = (props) => {
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   const contextValue: DndContextValue = {
@@ -117,11 +116,7 @@ export const DndProvider: Component<DndProviderProps> = (props) => {
     setOverTarget: (target) => setState((s) => ({ ...s, overTarget: target })),
   };
 
-  return (
-    <DndContext.Provider value={contextValue}>
-      {props.children}
-    </DndContext.Provider>
-  );
+  return <DndContext value={contextValue}>{props.children}</DndContext>;
 };
 
 /**

@@ -1,4 +1,6 @@
-import { For, type JSX, Show, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { For, Show } from "solid-js";
 import { cn } from "../cn";
 import { Button } from "../forms/button";
 
@@ -66,7 +68,7 @@ export function BreadcrumbNav(props: BreadcrumbNavProps): JSX.Element {
   return (
     <div
       class={cn(
-        "flex items-center gap-2 px-3 py-2 bg-muted/50 border-b",
+        "flex items-center gap-2 border-b border-border-subtle bg-surface-muted px-3 py-2",
         local.class,
       )}
       {...rest}
@@ -94,11 +96,7 @@ export function BreadcrumbNav(props: BreadcrumbNavProps): JSX.Element {
       <div class="flex items-center gap-1 text-xs flex-1 min-w-0 bg-background border rounded-md px-2 py-1 min-h-[28px]">
         <Show
           when={local.items.length > 0}
-          fallback={
-            <span class="text-muted-foreground">
-              {local.fallbackLabel ?? "Home"}
-            </span>
-          }
+          fallback={<span class="text-muted-foreground">{local.fallbackLabel ?? "Home"}</span>}
         >
           <For each={local.items}>
             {(item, index) => {
@@ -119,9 +117,7 @@ export function BreadcrumbNav(props: BreadcrumbNavProps): JSX.Element {
                     {item.name}
                   </button>
                   <Show when={!isLast()}>
-                    <span class="text-muted-foreground/50 shrink-0">
-                      {local.separatorIcon}
-                    </span>
+                    <span class="text-muted-foreground/50 shrink-0">{local.separatorIcon}</span>
                   </Show>
                 </>
               );

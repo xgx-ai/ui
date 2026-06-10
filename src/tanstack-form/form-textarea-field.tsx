@@ -1,4 +1,5 @@
-import { cn, TextField, TextFieldTextArea } from "@xgx/ui";
+import { cn } from "../cn";
+import { TextField, TextFieldTextArea } from "../forms/text-field";
 import { Show } from "solid-js";
 import { FieldError } from "./field-error";
 import { FieldLabel } from "./field-label";
@@ -56,9 +57,7 @@ export function FormTextareaField(props: FormTextareaFieldProps) {
                   <FieldLabel required={isRequired()}>{props.label}</FieldLabel>
                 </Show>
                 <Show when={props.description}>
-                  <p class="text-xs text-muted-foreground">
-                    {props.description}
-                  </p>
+                  <p class="text-xs text-muted-foreground">{props.description}</p>
                 </Show>
               </div>
             </Show>

@@ -1,10 +1,5 @@
-import {
-  type Accessor,
-  createContext,
-  createSignal,
-  type JSX,
-  useContext,
-} from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { type Accessor, createContext, createSignal, useContext } from "solid-js";
 import type { DragData } from "../core/types";
 
 /**
@@ -154,11 +149,7 @@ export function KanbanProvider(props: KanbanProviderProps): JSX.Element {
     allowColumnReorder: props.allowColumnReorder ?? false,
   };
 
-  return (
-    <KanbanContext.Provider value={contextValue}>
-      {props.children}
-    </KanbanContext.Provider>
-  );
+  return <KanbanContext value={contextValue}>{props.children}</KanbanContext>;
 }
 
 /**

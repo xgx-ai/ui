@@ -1,11 +1,10 @@
 import { format } from "date-fns";
-import { ArrowLeft, ArrowRight } from "lucide-solid";
+import { ArrowLeft, ArrowRight } from "../icons.index";
 import { Button } from "../forms/button";
 import { useCalendarContext } from "./calendar-context";
 
 export function CalendarHeaderNav() {
-  const { viewMode, currentDate, startDate, endDate, goToPrev, goToNext } =
-    useCalendarContext();
+  const { viewMode, currentDate, startDate, endDate, goToPrev, goToNext } = useCalendarContext();
 
   const displayText = () => {
     const mode = viewMode();
@@ -20,25 +19,15 @@ export function CalendarHeaderNav() {
 
   return (
     <div class="flex items-center gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        class="h-7 w-7 p-0"
-        onClick={goToPrev}
-      >
+      <Button variant="outline" size="sm" class="h-7 w-7 p-0" onClick={goToPrev}>
         <ArrowLeft size={14} />
       </Button>
 
-      <span class="min-w-[180px] text-center font-medium text-sm text-gray-700">
+      <span class="min-w-[180px] text-center font-medium text-sm text-foreground">
         {displayText()}
       </span>
 
-      <Button
-        variant="outline"
-        size="sm"
-        class="h-7 w-7 p-0"
-        onClick={goToNext}
-      >
+      <Button variant="outline" size="sm" class="h-7 w-7 p-0" onClick={goToNext}>
         <ArrowRight size={14} />
       </Button>
     </div>

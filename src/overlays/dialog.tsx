@@ -1,196 +1,316 @@
-import * as DialogPrimitive from "@kobalte/core/dialog";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import type { Component, ComponentProps, JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-import { cn } from "../cn";
+import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
+import { Dynamic } from "@solidjs/web";
+import {
+  createContext,
+  createUniqueId,
+  createSignal,
+  Show,
+  useContext,
+  type Component,
+} from "solid-js";
 
-const Dialog: Component<DialogPrimitive.DialogRootProps> = (props) => {
-  const [local, rest] = splitProps(props, ["modal"]);
-  return <DialogPrimitive.Root modal={local.modal ?? false} {...rest} />;
+import { cn } from "../cn";
+import { X } from "../icons.index";
+import { splitProps } from "../utils/split-props";
+import { assignRef } from "./floating";
+import { createModalBehavior } from "./modal-behavior";
+import { PortalMount } from "./portal";
+
+type DialogContextValue = {
+  close: () => void;
+  descriptionId: string;
+  modal: () => boolean;
+  open: () => boolean;
+  preventScroll: () => boolean;
+  setOpen: (open: boolean) => void;
+  titleId: string;
 };
-const DialogTrigger = DialogPrimitive.Trigger;
+
+const DialogContext = createContext<DialogContextValue>();
+
+function useDialog() {
+  const context = useContext(DialogContext);
+  if (!context) {
+    throw new Error("Dialog parts must be used inside Dialog.");
+  }
+  return context;
+}
+
+type DialogProps = ComponentProps<"div"> & {
+  children?: JSX.Element;
+  open?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  modal?: boolean;
+  preventScroll?: boolean;
+};
+
+const Dialog: Component<DialogProps> = (props) => {
+  const [local, rest] = splitProps(props, [
+    "children",
+    "class",
+    "defaultOpen",
+    "modal",
+    "onOpenChange",
+    "open",
+    "preventScroll",
+  ]);
+  const [internalOpen, setInternalOpen] = createSignal(local.defaultOpen === true);
+  const open = () => local.open ?? internalOpen();
+  const modal = () => local.modal ?? true;
+  const preventScroll = () => local.preventScroll ?? modal();
+  const titleId = createUniqueId();
+  const descriptionId = createUniqueId();
+  const setOpen = (next: boolean) => {
+    setInternalOpen(next);
+    local.onOpenChange?.(next);
+  };
+
+  return (
+    <DialogContext
+      value={{
+        close: () => setOpen(false),
+        descriptionId,
+        modal,
+        open,
+        preventScroll,
+        setOpen,
+        titleId,
+      }}
+    >
+      <div data-open={open() ? "" : undefined} class={local.class} {...rest}>
+        {local.children}
+      </div>
+    </DialogContext>
+  );
+};
+
+type DialogTriggerProps<T extends ValidComponent = "button"> = ComponentProps<"button"> & {
+  as?: T;
+  class?: string;
+  children?: JSX.Element;
+};
+
+const DialogTrigger = <T extends ValidComponent = "button">(props: DialogTriggerProps<T>) => {
+  const dialog = useDialog();
+  const [local, rest] = splitProps(props, ["as", "children", "class", "onClick"]);
+
+  return (
+    <Dynamic
+      component={local.as ?? "button"}
+      type={local.as ? undefined : "button"}
+      class={local.class}
+      onClick={(event: MouseEvent & { currentTarget: HTMLElement }) => {
+        callEventHandler(local.onClick, event);
+        dialog.setOpen(true);
+      }}
+      {...rest}
+    >
+      {local.children}
+    </Dynamic>
+  );
+};
 
 const DialogPortal: Component<{
   children: JSX.Element;
-  mount?: Node;
+  mount?: Element;
   zIndex?: string;
 }> = (props) => {
-  const [, rest] = splitProps(props, ["children", "zIndex"]);
   return (
-    <DialogPrimitive.Portal {...rest}>
+    <PortalMount mount={props.mount}>
       <div
         class={cn(
-          "pointer-events-none fixed inset-0 flex items-start justify-center sm:!items-center p-6 print:hidden",
+          "pointer-events-none fixed inset-0 flex items-start justify-center p-6 print:hidden sm:!items-center",
           props.zIndex || "z-50",
         )}
       >
         {props.children}
       </div>
-    </DialogPrimitive.Portal>
+    </PortalMount>
   );
 };
 
-type DialogOverlayProps<_T extends ValidComponent = "div"> =
-  DialogPrimitive.DialogOverlayProps & {
-    class?: string | undefined;
-    zIndex?: string;
-  };
+type DialogOverlayProps<T extends ValidComponent = "div"> = ComponentProps<"div"> & {
+  as?: T;
+  class?: string | undefined;
+  zIndex?: string;
+};
 
-const DialogOverlay = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, DialogOverlayProps<T>>,
-) => {
-  const [, rest] = splitProps(props as DialogOverlayProps, ["class", "zIndex"]);
+const DialogOverlay = <T extends ValidComponent = "div">(props: DialogOverlayProps<T>) => {
+  const [local, rest] = splitProps(props, ["as", "class", "zIndex", "onClick"]);
+
   return (
-    <DialogPrimitive.Overlay
+    <Dynamic
+      component={local.as ?? "div"}
       class={cn(
-        "pointer-events-auto fixed inset-0 bg-black/30 data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0 p-6",
-        props.zIndex || "z-50",
-        props.class,
+        "pointer-events-auto fixed inset-0 bg-foreground/30 p-6",
+        local.zIndex || "z-50",
+        local.class,
       )}
+      onClick={(event: MouseEvent & { currentTarget: HTMLElement }) => {
+        callEventHandler(local.onClick, event);
+      }}
       {...rest}
     />
   );
 };
 
-type DialogContentProps<_T extends ValidComponent = "div"> =
-  DialogPrimitive.DialogContentProps & {
-    class?: string | undefined;
-    children?: JSX.Element;
-    mount?: HTMLDivElement;
-    hideCloseButton?: boolean;
-    zIndex?: string;
-  };
+export type DialogContentProps<T extends ValidComponent = "div"> = ComponentProps<"div"> & {
+  as?: T;
+  class?: string | undefined;
+  children?: JSX.Element;
+  mount?: HTMLDivElement;
+  hideCloseButton?: boolean;
+  zIndex?: string;
+  onInteractOutside?: (event: { preventDefault: () => void }) => void;
+};
 
-const DialogContent = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, DialogContentProps<T>>,
-) => {
-  const [local, rest] = splitProps(props as DialogContentProps, [
+const DialogContent = <T extends ValidComponent = "div">(props: DialogContentProps<T>) => {
+  const dialog = useDialog();
+  const [local, rest] = splitProps(props, [
+    "as",
     "class",
     "children",
     "mount",
     "hideCloseButton",
     "zIndex",
+    "onInteractOutside",
+    "aria-labelledby",
+    "aria-describedby",
+    "ref",
   ]);
+  const [contentRef, setContentRef] = createSignal<HTMLElement>();
+  createModalBehavior({
+    content: contentRef,
+    modal: dialog.modal,
+    onClose: dialog.close,
+    open: dialog.open,
+    preventScroll: dialog.preventScroll,
+  });
+  const canCloseFromOutside = () => {
+    let prevented = false;
+    local.onInteractOutside?.({
+      preventDefault: () => {
+        prevented = true;
+      },
+    });
+    return !prevented;
+  };
+
   return (
-    <DialogPortal mount={local.mount} zIndex={local.zIndex}>
-      <DialogOverlay zIndex={local.zIndex} />
-      <DialogPrimitive.Content
-        class={cn(
-          "pointer-events-auto relative flex flex-col max-h-full max-w-full overflow-hidden gap-4 bg-background p-6 shadow-lg duration-200 ease-in-out data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95 sm:!rounded-lg",
-          local.zIndex || "z-50",
-          local.class,
-        )}
-        {...rest}
-      >
-        {local.children}
-        {!local.hideCloseButton && (
-          <DialogPrimitive.CloseButton class="cursor-pointer absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[expanded]:bg-accent data-[expanded]:text-muted-foreground">
-            <svg
-              aria-hidden="true"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="size-4"
+    <Show when={dialog.open()}>
+      <DialogPortal mount={local.mount} zIndex={local.zIndex}>
+        <DialogOverlay
+          zIndex={local.zIndex}
+          onClick={() => {
+            if (canCloseFromOutside()) dialog.close();
+          }}
+        />
+        <Dynamic
+          component={local.as ?? "div"}
+          role="dialog"
+          aria-modal={dialog.modal() ? "true" : undefined}
+          aria-labelledby={local["aria-labelledby"] ?? dialog.titleId}
+          aria-describedby={local["aria-describedby"] ?? dialog.descriptionId}
+          tabIndex={-1}
+          ref={(element: HTMLElement) => {
+            setContentRef(element);
+            assignRef(local.ref, element);
+          }}
+          class={cn(
+            "pointer-events-auto relative flex max-h-full max-w-full flex-col gap-4 overflow-hidden border border-border-subtle bg-surface-raised p-6 text-surface-raised-foreground shadow-elevation-high sm:!rounded-lg",
+            local.zIndex || "z-50",
+            local.class,
+          )}
+          {...rest}
+        >
+          {local.children}
+          {!local.hideCloseButton && (
+            <button
+              type="button"
+              class="absolute right-4 top-4 cursor-pointer rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+              onClick={dialog.close}
             >
-              <path d="M18 6l-12 12" />
-              <path d="M6 6l12 12" />
-            </svg>
-            <span class="sr-only">Close</span>
-          </DialogPrimitive.CloseButton>
-        )}
-      </DialogPrimitive.Content>
-    </DialogPortal>
+              <X aria-hidden="true" class="size-4" />
+              <span class="sr-only">Close</span>
+            </button>
+          )}
+        </Dynamic>
+      </DialogPortal>
+    </Show>
   );
 };
 
 const DialogHeader: Component<ComponentProps<"div">> = (props) => {
-  const [, rest] = splitProps(props, ["class"]);
-  return (
-    <div
-      class={cn("flex flex-col gap-4 text-center sm:!text-left", props.class)}
-      {...rest}
-    />
-  );
+  const [local, rest] = splitProps(props, ["class"]);
+  return <div class={cn("flex flex-col gap-4 text-center sm:!text-left", local.class)} {...rest} />;
 };
 
 const DialogFooter: Component<ComponentProps<"div">> = (props) => {
-  const [, rest] = splitProps(props, ["class"]);
+  const [local, rest] = splitProps(props, ["class"]);
   return (
     <div
-      class={cn(
-        "flex flex-col-reverse sm:!flex-row sm:!justify-end sm:!space-x-2",
-        props.class,
-      )}
+      class={cn("flex flex-col-reverse sm:!flex-row sm:!justify-end sm:!space-x-2", local.class)}
       {...rest}
     />
   );
 };
 
-type DialogTitleProps<_T extends ValidComponent = "h2"> =
-  DialogPrimitive.DialogTitleProps & {
-    class?: string | undefined;
-  };
+type DialogTitleProps<T extends ValidComponent = "h2"> = ComponentProps<"h2"> & {
+  as?: T;
+  class?: string | undefined;
+  children?: JSX.Element;
+};
 
-const DialogTitle = <T extends ValidComponent = "h2">(
-  props: PolymorphicProps<T, DialogTitleProps<T>>,
-) => {
-  const [, rest] = splitProps(props as DialogTitleProps, ["class"]);
+const DialogTitle = <T extends ValidComponent = "h2">(props: DialogTitleProps<T>) => {
+  const dialog = useDialog();
+  const [local, rest] = splitProps(props, ["as", "class", "children", "id"]);
   return (
-    <DialogPrimitive.Title
-      class={cn(
-        " font-semibold leading-none tracking-tight -mb-3",
-        props.class,
-      )}
+    <Dynamic
+      component={local.as ?? "h2"}
+      id={local.id ?? dialog.titleId}
+      class={cn("font-semibold leading-none tracking-tight -mb-3", local.class)}
       {...rest}
-    />
+    >
+      {local.children}
+    </Dynamic>
   );
 };
 
-type DialogDescriptionProps<_T extends ValidComponent = "p"> =
-  DialogPrimitive.DialogDescriptionProps & {
-    class?: string | undefined;
-  };
+type DialogDescriptionProps<T extends ValidComponent = "p"> = ComponentProps<"p"> & {
+  as?: T;
+  class?: string | undefined;
+  children?: JSX.Element;
+};
 
-const DialogDescription = <T extends ValidComponent = "p">(
-  props: PolymorphicProps<T, DialogDescriptionProps<T>>,
-) => {
-  const [, rest] = splitProps(props as DialogDescriptionProps, ["class"]);
+const DialogDescription = <T extends ValidComponent = "p">(props: DialogDescriptionProps<T>) => {
+  const dialog = useDialog();
+  const [local, rest] = splitProps(props, ["as", "class", "children", "id"]);
   return (
-    <DialogPrimitive.Description
-      class={cn("text-xs text-muted-foreground pt-2", props.class)}
+    <Dynamic
+      component={local.as ?? "p"}
+      id={local.id ?? dialog.descriptionId}
+      class={cn("pt-2 text-xs text-muted-foreground", local.class)}
       {...rest}
-    />
+    >
+      {local.children}
+    </Dynamic>
   );
 };
 
-/**
- * # Dialog
- *
- * Modal dialog for focused interactions.
- *
- * @example
- * ```
- * <Dialog>
- *   <DialogTrigger class="px-4 py-2 border rounded">Open Dialog</DialogTrigger>
- *   <DialogContent class="sm:max-w-[425px]">
- *     <DialogHeader>
- *       <DialogTitle>Edit Profile</DialogTitle>
- *       <DialogDescription>Make changes to your profile here.</DialogDescription>
- *     </DialogHeader>
- *     <div class="py-4">
- *       <p class="text-sm text-muted-foreground">Dialog content goes here.</p>
- *     </div>
- *     <DialogFooter>
- *       <button type="button" class="px-4 py-2 bg-primary text-primary-foreground rounded">Save changes</button>
- *     </DialogFooter>
- *   </DialogContent>
- * </Dialog>
- * ```
- */
+function callEventHandler<TElement, TEvent>(
+  handler: unknown,
+  event: TEvent & { currentTarget: TElement },
+) {
+  if (typeof handler === "function") {
+    handler(event);
+    return;
+  }
+  if (Array.isArray(handler) && typeof handler[0] === "function") {
+    handler[0](handler[1], event);
+  }
+}
+
 export {
   Dialog,
   DialogContent,

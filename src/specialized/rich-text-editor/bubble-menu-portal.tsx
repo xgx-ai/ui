@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/core";
-import { createEffect, createSignal, onCleanup, Show } from "solid-js";
+import { createSignal, Show } from "solid-js";
+import { createMountEffect } from "../../utils/lifecycle";
 import { FloatingToolbar } from "./floating-toolbar";
 import type { ToolbarConfig } from "./types";
 
@@ -15,7 +16,7 @@ export function BubbleMenuPortal(props: BubbleMenuPortalProps) {
   const [hasSelection, setHasSelection] = createSignal(false);
   const [isDismissed, setIsDismissed] = createSignal(false);
 
-  createEffect(() => {
+  createMountEffect(() => {
     const editor = props.editor;
     if (!editor || editor.isDestroyed) return;
 
@@ -59,18 +60,18 @@ export function BubbleMenuPortal(props: BubbleMenuPortalProps) {
     editor.on("selectionUpdate", updateSelection);
     editor.on("transaction", updateSelection);
 
-    onCleanup(() => {
+    return () => {
       try {
         editor.off("selectionUpdate", updateSelection);
         editor.off("transaction", updateSelection);
       } catch {
         // Ignore cleanup errors
       }
-    });
+    };
   });
 
   // Dismiss the menu when focus leaves the editor and menu
-  createEffect(() => {
+  createMountEffect(() => {
     const editor = props.editor;
     if (!editor || editor.isDestroyed) return;
 
@@ -88,11 +89,7 @@ export function BubbleMenuPortal(props: BubbleMenuPortalProps) {
     const handleBlur = () => {
       setTimeout(() => {
         const active = document.activeElement;
-        if (
-          active &&
-          !editor.view.dom.contains(active) &&
-          !menuRef?.contains(active)
-        ) {
+        if (active && !editor.view.dom.contains(active) && !menuRef?.contains(active)) {
           setIsDismissed(true);
         }
       }, 0);
@@ -102,7 +99,7 @@ export function BubbleMenuPortal(props: BubbleMenuPortalProps) {
     editor.on("focus", handleFocus);
     editor.on("blur", handleBlur);
 
-    onCleanup(() => {
+    return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
       try {
         editor.off("focus", handleFocus);
@@ -110,18 +107,11 @@ export function BubbleMenuPortal(props: BubbleMenuPortalProps) {
       } catch {
         // Ignore cleanup errors
       }
-    });
+    };
   });
 
   return (
-    <Show
-      when={
-        hasSelection() &&
-        !isDismissed() &&
-        props.editor &&
-        !props.editor.isDestroyed
-      }
-    >
+    <Show when={hasSelection() && !isDismissed() && props.editor && !props.editor.isDestroyed}>
       <div
         ref={menuRef}
         class="absolute z-50 transition-opacity duration-150 opacity-100"

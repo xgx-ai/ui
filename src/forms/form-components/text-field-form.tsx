@@ -1,11 +1,7 @@
 import { createUniqueId, Show } from "solid-js";
 import { cn } from "../../cn.ts";
 import { Skeleton } from "../../feedback/skeleton.tsx";
-import {
-  TextField,
-  TextFieldInput,
-  type TextFieldInputProps,
-} from "../text-field.tsx";
+import { TextField, TextFieldInput, type TextFieldInputProps } from "../text-field.tsx";
 import { FieldLabel } from "./field-label.tsx";
 
 export type TextFieldFormProps = {
@@ -33,15 +29,7 @@ export type TextFieldFormProps = {
   max?: string | number;
   step?: string | number;
   requiredAttribute?: boolean;
-  inputMode?:
-    | "none"
-    | "text"
-    | "decimal"
-    | "numeric"
-    | "tel"
-    | "search"
-    | "email"
-    | "url";
+  inputMode?: "none" | "text" | "decimal" | "numeric" | "tel" | "search" | "email" | "url";
   description?: string;
 };
 
@@ -102,7 +90,7 @@ export function TextFieldForm(props: TextFieldFormProps) {
             min={props.min}
             max={props.max}
             step={props.step}
-            inputMode={props.inputMode}
+            inputmode={props.inputMode}
             readOnly={props.readOnly}
             onBlur={(e: FocusEvent & { currentTarget: HTMLInputElement }) =>
               props.onBlur?.(e.currentTarget.value)
@@ -118,7 +106,7 @@ export function TextFieldForm(props: TextFieldFormProps) {
 
       <div
         class={cn(
-          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-destructive",
+          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-error",
           props.error && "opacity-100 h-4 ",
         )}
       >

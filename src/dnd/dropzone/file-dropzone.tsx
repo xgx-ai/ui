@@ -1,19 +1,16 @@
+import type { ComponentProps } from "@solidjs/web";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../../utils/split-props";
 import { dropTargetForExternal } from "@atlaskit/pragmatic-drag-and-drop/external/adapter";
-import {
-  containsFiles,
-  getFiles,
-} from "@atlaskit/pragmatic-drag-and-drop/external/file";
+import { containsFiles, getFiles } from "@atlaskit/pragmatic-drag-and-drop/external/file";
+import { CloudUpload } from "../../icons.index";
 import {
   type Accessor,
   type Component,
-  type ComponentProps,
-  createEffect,
+  createTrackedEffect,
   createMemo,
   createSignal,
-  type JSX,
-  onCleanup,
   Show,
-  splitProps,
 } from "solid-js";
 import { dropzoneActiveClasses, dropzoneClasses } from "../animations/presets";
 
@@ -37,8 +34,7 @@ export interface FileDropzoneRenderProps {
 /**
  * Props for FileDropzone
  */
-export interface FileDropzoneProps
-  extends Omit<ComponentProps<"div">, "children" | "onDrop"> {
+export interface FileDropzoneProps extends Omit<ComponentProps<"div">, "children" | "onDrop"> {
   /** Called when files are dropped */
   onFileDrop: (files: File[]) => void;
   /** Called when files enter the dropzone */
@@ -95,7 +91,7 @@ function matchesAccept(file: File, accept: string[]): boolean {
  *   {({ state }) => (
  *     <div class={cn(
  *       "p-8 text-center border-2 border-dashed rounded-lg",
- *       state().isOver && "border-primary bg-primary/5"
+ *       state().isOver && "border-control bg-control-muted"
  *     )}>
  *       Drop files here
  *     </div>
@@ -150,7 +146,7 @@ export const FileDropzone: Component<FileDropzoneProps> = (props) => {
     return filtered;
   };
 
-  createEffect(() => {
+  createTrackedEffect(() => {
     const el = elementRef;
     if (!el) return;
     if (local.disabled) return;
@@ -192,7 +188,7 @@ export const FileDropzone: Component<FileDropzoneProps> = (props) => {
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   const dropzoneClass = createMemo(() => {
@@ -240,37 +236,20 @@ export interface DropTargetIndicatorProps {
 /**
  * An overlay indicator shown when files are dragged over a dropzone
  */
-export const DropTargetIndicator: Component<DropTargetIndicatorProps> = (
-  props,
-) => {
+export const DropTargetIndicator: Component<DropTargetIndicatorProps> = (props) => {
   return (
     <Show when={props.visible}>
       <div
         class={`
 					absolute inset-0 flex items-center justify-center
-					bg-primary/10 border-2 border-primary border-dashed rounded-lg
+					bg-control-muted border-2 border-control border-dashed rounded-lg
 					pointer-events-none z-10 backdrop-blur-sm
 					${props.class ?? ""}
 				`}
       >
-        <div class="flex flex-col items-center gap-2 text-primary">
-          <svg
-            class="w-8 h-8"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-            />
-          </svg>
-          <span class="text-sm font-medium">
-            {props.text ?? "Drop files here"}
-          </span>
+        <div class="flex flex-col items-center gap-2 text-control-muted-foreground">
+          <CloudUpload aria-hidden="true" class="h-8 w-8" />
+          <span class="text-sm font-medium">{props.text ?? "Drop files here"}</span>
         </div>
       </div>
     </Show>

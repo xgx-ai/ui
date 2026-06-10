@@ -7,23 +7,10 @@ import {
   attachClosestEdge,
   extractClosestEdge,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge";
-import {
-  type Accessor,
-  createEffect,
-  createMemo,
-  createSignal,
-  onCleanup,
-} from "solid-js";
-import {
-  draggingSourceClasses,
-  reorderTransitionClasses,
-} from "../animations/presets";
+import { type Accessor, createTrackedEffect, createMemo, createSignal } from "solid-js";
+import { draggingSourceClasses, reorderTransitionClasses } from "../animations/presets";
 import type { Edge } from "../core/types";
-import {
-  arrayMove,
-  type SortableData,
-  useSortableContext,
-} from "./sortable-context";
+import { arrayMove, type SortableData, useSortableContext } from "./sortable-context";
 
 /**
  * State returned by the sortable hook
@@ -119,7 +106,7 @@ export function createSortable(options: SortableOptions): SortableResult {
   });
 
   // Set up draggable
-  createEffect(() => {
+  createTrackedEffect(() => {
     const el = elementRef;
     if (!el) return;
     if (options.disabled?.()) return;
@@ -149,11 +136,7 @@ export function createSortable(options: SortableOptions): SortableResult {
           dragState.activeIndex !== dragState.overIndex
         ) {
           const items = context.items();
-          const newItems = arrayMove(
-            items,
-            dragState.activeIndex,
-            dragState.overIndex,
-          );
+          const newItems = arrayMove(items, dragState.activeIndex, dragState.overIndex);
 
           context.onReorder?.({
             item: items[dragState.activeIndex],
@@ -174,11 +157,11 @@ export function createSortable(options: SortableOptions): SortableResult {
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   // Set up drop target
-  createEffect(() => {
+  createTrackedEffect(() => {
     const el = elementRef;
     if (!el) return;
 
@@ -190,9 +173,7 @@ export function createSortable(options: SortableOptions): SortableResult {
           input,
           element,
           allowedEdges:
-            context.orientation() === "vertical"
-              ? ["top", "bottom"]
-              : ["left", "right"],
+            context.orientation() === "vertical" ? ["top", "bottom"] : ["left", "right"],
         });
       },
       canDrop: ({ source }) => {
@@ -213,10 +194,7 @@ export function createSortable(options: SortableOptions): SortableResult {
 
         // Adjust if dragging from before to after
         if (sourceData.index < options.index) {
-          targetIndex =
-            edge === "top" || edge === "left"
-              ? options.index - 1
-              : options.index;
+          targetIndex = edge === "top" || edge === "left" ? options.index - 1 : options.index;
         }
 
         const isVertical = context.orientation() === "vertical";
@@ -248,10 +226,7 @@ export function createSortable(options: SortableOptions): SortableResult {
           }
 
           if (sourceData.index < options.index) {
-            targetIndex =
-              edge === "top" || edge === "left"
-                ? options.index - 1
-                : options.index;
+            targetIndex = edge === "top" || edge === "left" ? options.index - 1 : options.index;
           }
 
           const isVertical = context.orientation() === "vertical";
@@ -291,7 +266,7 @@ export function createSortable(options: SortableOptions): SortableResult {
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   // Computed classes for the sortable element

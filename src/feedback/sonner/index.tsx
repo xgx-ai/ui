@@ -1,3 +1,4 @@
+import { createMountEffect } from "../../utils/lifecycle";
 /*!
  * Original code by Emil Kowalski
  * MIT Licensed, Copyright 2023 Emil Kowalski, see https://github.com/emilkowalski/sonner/blob/main/LICENSE.md for details
@@ -5,18 +6,10 @@
  * Credits:
  * https://github.com/emilkowalski/sonner/blob/main/src/index.tsx
  */
+import { X } from "../../icons.index";
 import type { Component } from "solid-js";
-import {
-  createEffect,
-  createSignal,
-  For,
-  mergeProps,
-  on,
-  onCleanup,
-  onMount,
-  Show,
-} from "solid-js";
-import { createStore, produce, reconcile } from "solid-js/store";
+import { createRenderEffect, createSignal, For, merge as mergeProps, Show } from "solid-js";
+import { createStore } from "solid-js";
 import { getAsset, Loader } from "./assets";
 import { useIsDocumentHidden } from "./primitives";
 import { ToastState, toast } from "./state";
@@ -77,8 +70,7 @@ const Toast: Component<ToastProps> = (props) => {
   // Height index is used to calculate the offset as it gets updated before the toast array, which means we can calculate the new layout faster.
   const heightIndex = () =>
     props.heights.findIndex((height) => height.toastId === props.toast.id) || 0;
-  const duration = () =>
-    props.toast.duration || props.duration || TOAST_LIFETIME;
+  const duration = () => props.toast.duration || props.duration || TOAST_LIFETIME;
   let closeTimerStartTimeRef = 0;
   let lastCloseTimerStartTimeRef = 0;
   const [pointerStartRef, setPointerStartRef] = createSignal<{
@@ -98,8 +90,7 @@ const Toast: Component<ToastProps> = (props) => {
   const invert = () => props.toast.invert || props.invert;
   const disabled = () => toastType() === "loading";
 
-  const offset = () =>
-    heightIndex() * propsWithDefaults.gap + toastsHeightBefore();
+  const offset = () => heightIndex() * propsWithDefaults.gap + toastsHeightBefore();
 
   function getLoadingIcon() {
     if (props.icons?.loading) {
@@ -113,11 +104,11 @@ const Toast: Component<ToastProps> = (props) => {
     return <Loader visible={toastType() === "loading"} />;
   }
 
-  onMount(() => {
+  createMountEffect(() => {
     setMounted(true);
   });
 
-  onMount(() => {
+  createMountEffect(() => {
     const toastNode = toastRef;
     const originalHeight = toastNode.style.height;
     toastNode.style.height = "auto";
@@ -126,27 +117,21 @@ const Toast: Component<ToastProps> = (props) => {
 
     setInitialHeight(newHeight);
 
-    createEffect(() => {
-      props.setHeights((heights) => {
-        const alreadyExists = heights.find(
-          (height) => height.toastId === props.toast.id,
+    props.setHeights((heights) => {
+      const alreadyExists = heights.find((height) => height.toastId === props.toast.id);
+      if (!alreadyExists)
+        return [
+          {
+            toastId: props.toast.id,
+            height: newHeight,
+            position: props.toast.position,
+          },
+          ...heights,
+        ];
+      else
+        return heights.map((height) =>
+          height.toastId === props.toast.id ? { ...height, height: newHeight } : height,
         );
-        if (!alreadyExists)
-          return [
-            {
-              toastId: props.toast.id,
-              height: newHeight,
-              position: props.toast.position,
-            },
-            ...heights,
-          ];
-        else
-          return heights.map((height) =>
-            height.toastId === props.toast.id
-              ? { ...height, height: newHeight }
-              : height,
-          );
-      });
     });
   });
 
@@ -154,9 +139,7 @@ const Toast: Component<ToastProps> = (props) => {
     // Save the offset for the exit swipe animation
     setRemoved(true);
     setOffsetBeforeRemove(offset());
-    props.setHeights((h) =>
-      h.filter((height) => height.toastId !== props.toast.id),
-    );
+    props.setHeights((h) => h.filter((height) => height.toastId !== props.toast.id));
 
     setTimeout(() => {
       props.removeToast(props.toast);
@@ -166,110 +149,87 @@ const Toast: Component<ToastProps> = (props) => {
   // eslint-disable-next-line solid/reactivity
   let remainingTime = duration();
 
-  createEffect(
-    on(
-      () =>
-        [
-          props.expanded,
-          props.interacting,
-          props.toast,
-          duration(),
-          props.toast.promise,
-          toastType(),
-          props.pauseWhenPageIsHidden,
-          isDocumentHidden(),
-        ] as const,
-      ([
-        expanded,
-        interacting,
-        toast,
-        duration,
-        promise,
-        toastType,
-        pauseWhenPageIsHidden,
-        isDocumentHidden,
-      ]) => {
-        if (
-          (promise && toastType === "loading") ||
-          duration === Number.POSITIVE_INFINITY
-        )
-          return;
-        let timeoutId: ReturnType<typeof setTimeout>;
+  createRenderEffect(
+    () =>
+      [
+        props.expanded,
+        props.interacting,
+        props.toast,
+        duration(),
+        props.toast.promise,
+        toastType(),
+        props.pauseWhenPageIsHidden,
+        isDocumentHidden(),
+      ] as const,
+    ([
+      expanded,
+      interacting,
+      toast,
+      duration,
+      promise,
+      toastType,
+      pauseWhenPageIsHidden,
+      isDocumentHidden,
+    ]) => {
+      if ((promise && toastType === "loading") || duration === Number.POSITIVE_INFINITY) return;
+      let timeoutId: ReturnType<typeof setTimeout>;
 
-        // Pause the timer on each hover
-        const pauseTimer = () => {
-          if (lastCloseTimerStartTimeRef < closeTimerStartTimeRef) {
-            // Get the elapsed time since the timer started
-            const elapsedTime = Date.now() - closeTimerStartTimeRef;
+      // Pause the timer on each hover
+      const pauseTimer = () => {
+        if (lastCloseTimerStartTimeRef < closeTimerStartTimeRef) {
+          // Get the elapsed time since the timer started
+          const elapsedTime = Date.now() - closeTimerStartTimeRef;
 
-            remainingTime = remainingTime - elapsedTime;
-          }
-
-          lastCloseTimerStartTimeRef = Date.now();
-        };
-
-        const startTimer = () => {
-          closeTimerStartTimeRef = Date.now();
-
-          // Let the toast know it has started
-          timeoutId = setTimeout(() => {
-            toast.onAutoClose?.(toast);
-            deleteToast();
-          }, remainingTime);
-        };
-
-        if (
-          expanded ||
-          interacting ||
-          (pauseWhenPageIsHidden && isDocumentHidden)
-        )
-          pauseTimer();
-        else startTimer();
-
-        onCleanup(() => {
-          clearTimeout(timeoutId);
-        });
-      },
-    ),
-  );
-
-  createEffect(
-    on(
-      () => props.toast.id,
-      (toastId) => {
-        const toastNode = toastRef;
-
-        if (toastNode) {
-          const height = toastNode.getBoundingClientRect().height;
-
-          // Add toast height tot heights array after the toast is mounted
-          setInitialHeight(height);
-          props.setHeights((h) => [
-            { toastId, height, position: props.toast.position },
-            ...h,
-          ]);
-
-          onCleanup(() => {
-            props.setHeights((h) =>
-              h.filter((height) => height.toastId !== toastId),
-            );
-          });
+          remainingTime = remainingTime - elapsedTime;
         }
-      },
-    ),
+
+        lastCloseTimerStartTimeRef = Date.now();
+      };
+
+      const startTimer = () => {
+        closeTimerStartTimeRef = Date.now();
+
+        // Let the toast know it has started
+        timeoutId = setTimeout(() => {
+          toast.onAutoClose?.(toast);
+          deleteToast();
+        }, remainingTime);
+      };
+
+      if (expanded || interacting || (pauseWhenPageIsHidden && isDocumentHidden)) pauseTimer();
+      else startTimer();
+
+      return () => clearTimeout(timeoutId);
+    },
   );
 
-  createEffect(
-    on(
-      () => props.toast.delete,
-      (d) => {
-        if (d) deleteToast();
-      },
-    ),
+  createRenderEffect(
+    () => props.toast.id,
+    (toastId) => {
+      const toastNode = toastRef;
+
+      if (toastNode) {
+        const height = toastNode.getBoundingClientRect().height;
+
+        // Add toast height tot heights array after the toast is mounted
+        setInitialHeight(height);
+        props.setHeights((h) => [{ toastId, height, position: props.toast.position }, ...h]);
+
+        return () => {
+          props.setHeights((h) => h.filter((height) => height.toastId !== toastId));
+        };
+      }
+    },
+  );
+
+  createRenderEffect(
+    () => props.toast.delete,
+    (d) => {
+      if (d) deleteToast();
+    },
   );
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: Toast notifications use role="status" for screen reader announcements
     <li
       aria-live={props.toast.important ? "assertive" : "polite"}
       aria-atomic="true"
@@ -298,17 +258,13 @@ const Toast: Component<ToastProps> = (props) => {
       data-type={toastType()}
       data-invert={invert()}
       data-swipe-out={swipeOut()}
-      data-expanded={Boolean(
-        props.expanded || (props.expandByDefault && mounted()),
-      )}
+      data-expanded={Boolean(props.expanded || (props.expandByDefault && mounted()))}
       style={{
         "--index": props.index,
         "--toasts-before": props.index,
         "--z-index": props.toasts.length - props.index,
         "--offset": `${removed() ? offsetBeforeRemove() : offset()}px`,
-        "--initial-height": props.expandByDefault
-          ? "auto"
-          : `${initialHeight()}px`,
+        "--initial-height": props.expandByDefault ? "auto" : `${initialHeight()}px`,
         ...props.style,
         ...props.toast.style,
       }}
@@ -326,9 +282,7 @@ const Toast: Component<ToastProps> = (props) => {
 
         setPointerStartRef(null);
         const swipeAmount = Number(
-          toastRef?.style
-            .getPropertyValue("--swipe-amount")
-            .replace("px", "") || 0,
+          toastRef?.style.getPropertyValue("--swipe-amount").replace("px", "") || 0,
         );
 
         // Remove only if treshold is met
@@ -378,26 +332,9 @@ const Toast: Component<ToastProps> = (props) => {
                   props.toast.onDismiss?.(props.toast);
                 }
           }
-          class={_cn(
-            props.classes?.closeButton,
-            props.toast?.classes?.closeButton,
-          )}
+          class={_cn(props.classes?.closeButton, props.toast?.classes?.closeButton)}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          <X aria-hidden="true" class="size-3" />
         </button>
       </Show>
       <Show
@@ -406,25 +343,19 @@ const Toast: Component<ToastProps> = (props) => {
           <>
             <Show when={toastType() || props.toast.icon || props.toast.promise}>
               <div data-icon="">
-                {props.toast.promise ||
-                (props.toast.type === "loading" && !props.toast.icon)
+                {props.toast.promise || (props.toast.type === "loading" && !props.toast.icon)
                   ? props.toast.icon || getLoadingIcon()
                   : null}
                 {props.toast.type !== "loading"
                   ? props.toast.icon ||
-                    props.icons?.[
-                      toastType() as unknown as keyof typeof props.icons
-                    ] ||
+                    props.icons?.[toastType() as unknown as keyof typeof props.icons] ||
                     getAsset(toastType()!)?.()
                   : null}
               </div>
             </Show>
 
             <div data-content="">
-              <div
-                data-title=""
-                class={_cn(props.classes?.title, props.toast?.classes?.title)}
-              >
+              <div data-title="" class={_cn(props.classes?.title, props.toast?.classes?.title)}>
                 {props.toast.title}
               </div>
               <Show when={props.toast.description}>
@@ -451,10 +382,7 @@ const Toast: Component<ToastProps> = (props) => {
                   deleteToast();
                   if (props.toast.cancel?.onClick) props.toast.cancel.onClick();
                 }}
-                class={_cn(
-                  props.classes?.cancelButton,
-                  props.toast?.classes?.cancelButton,
-                )}
+                class={_cn(props.classes?.cancelButton, props.toast?.classes?.cancelButton)}
               >
                 {props.toast.cancel?.label}
               </button>
@@ -469,10 +397,7 @@ const Toast: Component<ToastProps> = (props) => {
                   if (event.defaultPrevented) return;
                   deleteToast();
                 }}
-                class={_cn(
-                  props.classes?.actionButton,
-                  props.toast?.classes?.actionButton,
-                )}
+                class={_cn(props.classes?.actionButton, props.toast?.classes?.actionButton)}
               >
                 {props.toast.action?.label}
               </button>
@@ -493,8 +418,7 @@ function getDocumentDirection(): ToasterProps["dir"] {
   const dirAttribute = document.documentElement.getAttribute("dir");
 
   if (dirAttribute === "auto" || !dirAttribute)
-    return window.getComputedStyle(document.documentElement)
-      .direction as ToasterProps["dir"];
+    return window.getComputedStyle(document.documentElement).direction as ToasterProps["dir"];
 
   return dirAttribute as ToasterProps["dir"];
 }
@@ -540,12 +464,8 @@ const Toaster: Component<ToasterProps> = (props) => {
   const [interacting, setInteracting] = createSignal(false);
   let listRef!: HTMLOListElement;
   const hotkeyLabel = () =>
-    propsWithDefaults.hotkey
-      .join("+")
-      .replace(/Key/g, "")
-      .replace(/Digit/g, "");
-  const [lastFocusedElementRef, setLastFocusedElementRef] =
-    createSignal<HTMLElement | null>(null);
+    propsWithDefaults.hotkey.join("+").replace(/Key/g, "").replace(/Digit/g, "");
+  const [lastFocusedElementRef, setLastFocusedElementRef] = createSignal<HTMLElement | null>(null);
   const [isFocusedWithinRef, setIsFocusedWithinRef] = createSignal(false);
   const [actualTheme, setActualTheme] = createSignal(
     propsWithDefaults.theme !== "system"
@@ -557,74 +477,71 @@ const Toaster: Component<ToasterProps> = (props) => {
         : "light",
   );
   const removeToast = (toast: ToastT) =>
-    setToastsStore("toasts", (toasts) =>
-      toasts.filter(({ id }) => id !== toast.id),
-    );
+    setToastsStore((state) => {
+      state.toasts = state.toasts.filter(({ id }) => id !== toast.id);
+    });
 
-  onMount(() => {
+  createMountEffect(() => {
     const unsub = ToastState.subscribe((toast) => {
       if ((toast as ToastToDismiss).dismiss) {
-        setToastsStore(
-          "toasts",
-          produce((_toasts) => {
-            _toasts.forEach((t) => {
-              if (t.id === toast.id) t.delete = true;
-            });
-          }),
-        );
+        setToastsStore((state) => {
+          state.toasts.forEach((t) => {
+            if (t.id === toast.id) t.delete = true;
+          });
+        });
         return;
       }
 
       // Update (Fine-grained)
-      const changedIndex = toastsStore.toasts.findIndex(
-        (t) => t.id === toast.id,
-      );
+      const changedIndex = toastsStore.toasts.findIndex((t) => t.id === toast.id);
       if (changedIndex !== -1) {
-        setToastsStore("toasts", [changedIndex], reconcile(toast));
+        setToastsStore((state) => {
+          state.toasts[changedIndex] = toast;
+        });
         return;
       }
 
       // Insert (Fine-grained)
-      setToastsStore(
-        "toasts",
-        produce((_toasts) => {
-          _toasts.unshift(toast);
-        }),
-      );
+      setToastsStore((state) => {
+        state.toasts.unshift(toast);
+      });
     });
 
-    onCleanup(() => {
+    return () => {
       unsub();
-    });
+    };
   });
 
-  createEffect(
-    on(
-      () => propsWithDefaults.theme,
-      (theme) => {
-        if (theme !== "system") {
-          setActualTheme(theme);
-          return;
-        }
+  createRenderEffect(
+    () => propsWithDefaults.theme,
+    (theme) => {
+      if (theme !== "system") {
+        setActualTheme(theme);
+        return;
+      }
 
-        if (typeof window === "undefined") return;
+      if (typeof window === "undefined") return;
 
-        window
-          .matchMedia("(prefers-color-scheme: dark)")
-          .addEventListener("change", ({ matches }) => {
-            if (matches) setActualTheme("dark");
-            else setActualTheme("light");
-          });
-      },
-    ),
+      const media = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleThemeChange = ({ matches }: MediaQueryListEvent) => {
+        if (matches) setActualTheme("dark");
+        else setActualTheme("light");
+      };
+
+      media.addEventListener("change", handleThemeChange);
+      return () => media.removeEventListener("change", handleThemeChange);
+    },
   );
 
-  createEffect(() => {
-    // Ensure expanded is always false when no toasts are present / only one left
-    if (toastsStore.toasts.length <= 1) setExpanded(false);
-  });
+  createRenderEffect(
+    () => toastsStore.toasts.length,
+    (toastCount) => {
+      // Ensure expanded is always false when no toasts are present / only one left
+      if (toastCount <= 1) setExpanded(false);
+    },
+  );
 
-  onMount(() => {
+  createMountEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const isHotkeyPressed = propsWithDefaults.hotkey.every(
         (key) => (event as any)[key] || event.code === key,
@@ -637,53 +554,48 @@ const Toaster: Component<ToasterProps> = (props) => {
 
       if (
         event.code === "Escape" &&
-        (document.activeElement === listRef ||
-          listRef?.contains(document.activeElement))
+        (document.activeElement === listRef || listRef?.contains(document.activeElement))
       )
         setExpanded(false);
     };
 
     document.addEventListener("keydown", handleKeyDown);
 
-    onCleanup(() => {
+    return () => {
       document.removeEventListener("keydown", handleKeyDown);
-    });
+    };
   });
 
-  createEffect(
-    on(
-      () => listRef,
-      (ref) => {
-        if (ref) {
-          onCleanup(() => {
-            if (lastFocusedElementRef()) {
-              lastFocusedElementRef()?.focus({
-                preventScroll: true,
-              });
-              setLastFocusedElementRef(null);
-              setIsFocusedWithinRef(false);
-            }
+  createRenderEffect(
+    () => listRef,
+    (ref) => {
+      if (!ref) return;
+
+      return () => {
+        if (lastFocusedElementRef()) {
+          lastFocusedElementRef()?.focus({
+            preventScroll: true,
           });
+          setLastFocusedElementRef(null);
+          setIsFocusedWithinRef(false);
         }
-      },
-    ),
+      };
+    },
   );
 
   return (
     <Show when={toastsStore.toasts.length > 0}>
       {/* Remove item from normal navigation flow, only available via hotkey */}
-      <section aria-label={`Notifications ${hotkeyLabel()}`} tabIndex={-1}>
+      <section aria-label={`Notifications ${hotkeyLabel()}`} tabindex={-1}>
         <For each={possiblePositions()}>
           {(position, index) => {
             const [y, x] = position.split("-");
             return (
               <ol
-                tabIndex={-1}
+                tabindex={-1}
                 ref={listRef!}
                 dir={
-                  propsWithDefaults.dir === "auto"
-                    ? getDocumentDirection()
-                    : propsWithDefaults.dir
+                  propsWithDefaults.dir === "auto" ? getDocumentDirection() : propsWithDefaults.dir
                 }
                 class={propsWithDefaults.class}
                 data-sonner-toaster
@@ -704,9 +616,7 @@ const Toaster: Component<ToasterProps> = (props) => {
                 onBlur={(event) => {
                   if (
                     isFocusedWithinRef() &&
-                    !event.currentTarget.contains(
-                      event.relatedTarget as HTMLElement,
-                    )
+                    !event.currentTarget.contains(event.relatedTarget as HTMLElement)
                   ) {
                     setIsFocusedWithinRef(false);
                     if (lastFocusedElementRef()) {
@@ -720,9 +630,7 @@ const Toaster: Component<ToasterProps> = (props) => {
                 onFocus={(event) => {
                   if (!isFocusedWithinRef()) {
                     setIsFocusedWithinRef(true);
-                    setLastFocusedElementRef(
-                      event.relatedTarget as HTMLElement,
-                    );
+                    setLastFocusedElementRef(event.relatedTarget as HTMLElement);
                   }
                 }}
                 onMouseEnter={() => setExpanded(true)}
@@ -738,9 +646,7 @@ const Toaster: Component<ToasterProps> = (props) => {
               >
                 <For
                   each={toastsStore.toasts.filter(
-                    (toast) =>
-                      (!toast.position && index() === 0) ||
-                      toast.position === position,
+                    (toast) => (!toast.position && index() === 0) || toast.position === position,
                   )}
                 >
                   {(toast, index) => (
@@ -748,21 +654,12 @@ const Toaster: Component<ToasterProps> = (props) => {
                       index={index()}
                       icons={propsWithDefaults.icons}
                       toast={toast}
-                      duration={
-                        propsWithDefaults.toastOptions?.duration ??
-                        props.duration
-                      }
+                      duration={propsWithDefaults.toastOptions?.duration ?? props.duration}
                       class={propsWithDefaults.toastOptions?.class}
                       classes={propsWithDefaults.toastOptions?.classes}
-                      cancelButtonStyle={
-                        propsWithDefaults.toastOptions?.cancelButtonStyle
-                      }
-                      actionButtonStyle={
-                        propsWithDefaults.toastOptions?.actionButtonStyle
-                      }
-                      descriptionClass={
-                        propsWithDefaults.toastOptions?.descriptionClass
-                      }
+                      cancelButtonStyle={propsWithDefaults.toastOptions?.cancelButtonStyle}
+                      actionButtonStyle={propsWithDefaults.toastOptions?.actionButtonStyle}
+                      descriptionClass={propsWithDefaults.toastOptions?.descriptionClass}
                       invert={Boolean(propsWithDefaults.invert)}
                       visibleToasts={propsWithDefaults.visibleToasts}
                       closeButton={Boolean(propsWithDefaults.closeButton)}
@@ -777,9 +674,7 @@ const Toaster: Component<ToasterProps> = (props) => {
                       expandByDefault={Boolean(propsWithDefaults.expand)}
                       gap={propsWithDefaults.gap}
                       expanded={expanded()}
-                      pauseWhenPageIsHidden={
-                        propsWithDefaults.pauseWhenPageIsHidden
-                      }
+                      pauseWhenPageIsHidden={propsWithDefaults.pauseWhenPageIsHidden}
                     />
                   )}
                 </For>

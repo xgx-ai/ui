@@ -1,4 +1,6 @@
-import { type JSX, type ParentProps, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface ContentAreaProps extends ParentProps {
@@ -33,11 +35,7 @@ export function ContentArea(props: ContentAreaProps): JSX.Element {
 
   return (
     <div
-      class={cn(
-        "flex-1 overflow-auto",
-        paddingMap[local.padding ?? "md"],
-        local.class,
-      )}
+      class={cn("flex-1 overflow-auto", paddingMap[local.padding ?? "md"], local.class)}
       {...rest}
     >
       {local.children}

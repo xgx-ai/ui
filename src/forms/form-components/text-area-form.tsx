@@ -56,7 +56,7 @@ export function TextAreaForm(props: TextAreaFormProps) {
           <FieldLabel required={props.required}>{props.label}</FieldLabel>
         </Show>
         <Show when={props.description}>
-          <p class="text-3xs text-gray-500">{props.description}</p>
+          <p class="text-3xs text-muted-foreground">{props.description}</p>
         </Show>
       </div>
       <Show
@@ -81,7 +81,7 @@ export function TextAreaForm(props: TextAreaFormProps) {
 
       <div
         class={cn(
-          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-destructive",
+          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-error",
           props.error && "opacity-100 h-4 ",
         )}
       >

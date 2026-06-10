@@ -1,4 +1,4 @@
-import { Button } from "@xgx/ui";
+import { Button } from "../../forms/button";
 import { For } from "solid-js";
 import type { UseTableFiltersReturn } from "../use-table-filters";
 
@@ -14,9 +14,7 @@ export const defaultDatePresets: DatePresetOption[] = [
   { value: "month", label: "Created This Month" },
 ];
 
-export interface FilterDatePresetProps<
-  TFilters extends Record<string, unknown>,
-> {
+export interface FilterDatePresetProps<TFilters extends Record<string, unknown>> {
   /**
    * The key in the filters object for this date preset
    */
@@ -46,15 +44,12 @@ export function FilterDatePreset<TFilters extends Record<string, unknown>>(
   props: FilterDatePresetProps<TFilters>,
 ) {
   const presets = () => props.presets ?? defaultDatePresets;
-  const value = () =>
-    (props.filterHook.filters()[props.filterKey] as string) ?? "all";
+  const value = () => (props.filterHook.filters()[props.filterKey] as string) ?? "all";
 
   const handleClick = (presetValue: string) => {
     props.filterHook.setFilter(
       props.filterKey,
-      (presetValue === "all"
-        ? undefined
-        : presetValue) as TFilters[typeof props.filterKey],
+      (presetValue === "all" ? undefined : presetValue) as TFilters[typeof props.filterKey],
     );
   };
 
@@ -64,8 +59,7 @@ export function FilterDatePreset<TFilters extends Record<string, unknown>>(
         {(preset) => (
           <Button
             variant={
-              value() === preset.value ||
-              (value() === undefined && preset.value === "all")
+              value() === preset.value || (value() === undefined && preset.value === "all")
                 ? "default"
                 : "outline"
             }

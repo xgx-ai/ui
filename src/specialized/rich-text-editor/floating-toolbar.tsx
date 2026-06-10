@@ -13,38 +13,12 @@ import {
   Quote,
   Strikethrough,
   Underline,
-} from "lucide-solid";
+} from "../../icons.index";
 import { createSignal, For, Show } from "solid-js";
 import { cn } from "../../cn.ts";
 import { Button } from "../../forms/button.tsx";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "../../overlays/popover.tsx";
+import { Popover, PopoverContent, PopoverTrigger } from "../../overlays/popover.tsx";
 import type { FloatingToolbarProps, ToolbarConfig } from "./types";
-
-const PRESET_COLORS = [
-  "#000000",
-  "#374151",
-  "#6B7280",
-  "#9CA3AF",
-  "#EF4444",
-  "#F97316",
-  "#EAB308",
-  "#22C55E",
-  "#3B82F6",
-  "#8B5CF6",
-  "#EC4899",
-];
-
-const HIGHLIGHT_COLORS = [
-  { color: "#fef08a", name: "Yellow", class: "text-yellow-500" },
-  { color: "#fed7aa", name: "Orange", class: "text-orange-500" },
-  { color: "#bbf7d0", name: "Green", class: "text-green-500" },
-  { color: "#bfdbfe", name: "Blue", class: "text-blue-500" },
-  { color: "#fecaca", name: "Red", class: "text-red-500" },
-];
 
 interface ToolbarButtonProps {
   isActive: boolean;
@@ -58,8 +32,8 @@ function ToolbarButton(props: ToolbarButtonProps) {
     <button
       type="button"
       class={cn(
-        "p-1.5 rounded hover:bg-muted transition-colors",
-        props.isActive && "bg-muted text-primary",
+        "rounded p-1.5 text-muted-foreground transition-colors hover:bg-hover hover:text-hover-foreground",
+        props.isActive && "bg-selected text-selected-foreground",
       )}
       onClick={props.onClick}
       title={props.title}
@@ -74,9 +48,11 @@ export function FloatingToolbar(props: FloatingToolbarProps) {
   const [highlightPickerOpen, setHighlightPickerOpen] = createSignal(false);
 
   const config = (): ToolbarConfig => props.config ?? {};
+  const textColors = () => config().textColors ?? [];
+  const highlightColors = () => config().highlightColors ?? [];
 
   return (
-    <div class="flex items-center gap-0.5 p-1 bg-background border rounded-lg shadow-lg">
+    <div class="flex items-center gap-0.5 rounded-lg border border-border-subtle bg-surface-raised p-1 text-surface-raised-foreground shadow-elevation-medium">
       {/* Formatting buttons */}
       <Show when={config().formatting !== false}>
         <ToolbarButton
@@ -104,15 +80,12 @@ export function FloatingToolbar(props: FloatingToolbarProps) {
           title="Strikethrough"
         />
         {/* Highlight picker */}
-        <Popover
-          isOpen={highlightPickerOpen()}
-          onOpenChange={setHighlightPickerOpen}
-        >
+        <Popover isOpen={highlightPickerOpen()} onOpenChange={setHighlightPickerOpen}>
           <PopoverTrigger
             type="button"
             class={cn(
-              "p-1.5 rounded hover:bg-muted transition-colors",
-              props.editor.isActive("highlight") && "bg-muted text-primary",
+              "rounded p-1.5 text-muted-foreground transition-colors hover:bg-hover hover:text-hover-foreground",
+              props.editor.isActive("highlight") && "bg-selected text-selected-foreground",
             )}
             onMouseDown={(e) => e.preventDefault()}
             title="Highlight"
@@ -121,16 +94,17 @@ export function FloatingToolbar(props: FloatingToolbarProps) {
           </PopoverTrigger>
           <PopoverContent class="w-auto p-2" portalled={false}>
             <div class="flex gap-1">
-              <For each={HIGHLIGHT_COLORS}>
+              <For each={highlightColors()}>
                 {(highlight) => (
                   <button
                     type="button"
                     class={cn(
-                      "p-1.5 rounded hover:bg-muted transition-colors",
+                      "rounded p-1.5 transition-colors hover:bg-hover",
                       props.editor.isActive("highlight", {
                         color: highlight.color,
-                      }) && "bg-muted",
+                      }) && "bg-selected",
                     )}
+                    style={{ color: highlight.color }}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                       props.editor
@@ -144,7 +118,7 @@ export function FloatingToolbar(props: FloatingToolbarProps) {
                     }}
                     title={`Highlight ${highlight.name}`}
                   >
-                    <Highlighter class={cn("size-4", highlight.class)} />
+                    <Highlighter class="size-4" />
                   </button>
                 )}
               </For>
@@ -176,25 +150,19 @@ export function FloatingToolbar(props: FloatingToolbarProps) {
       <Show when={config().headings}>
         <ToolbarButton
           isActive={props.editor.isActive("heading", { level: 1 })}
-          onClick={() =>
-            props.editor.chain().focus().toggleHeading({ level: 1 }).run()
-          }
+          onClick={() => props.editor.chain().focus().toggleHeading({ level: 1 }).run()}
           icon={Heading1}
           title="Heading 1"
         />
         <ToolbarButton
           isActive={props.editor.isActive("heading", { level: 2 })}
-          onClick={() =>
-            props.editor.chain().focus().toggleHeading({ level: 2 }).run()
-          }
+          onClick={() => props.editor.chain().focus().toggleHeading({ level: 2 }).run()}
           icon={Heading2}
           title="Heading 2"
         />
         <ToolbarButton
           isActive={props.editor.isActive("heading", { level: 3 })}
-          onClick={() =>
-            props.editor.chain().focus().toggleHeading({ level: 3 }).run()
-          }
+          onClick={() => props.editor.chain().focus().toggleHeading({ level: 3 }).run()}
           icon={Heading3}
           title="Heading 3"
         />
@@ -241,21 +209,11 @@ export function FloatingToolbar(props: FloatingToolbarProps) {
             }
 
             if (url === "") {
-              props.editor
-                .chain()
-                .focus()
-                .extendMarkRange("link")
-                .unsetLink()
-                .run();
+              props.editor.chain().focus().extendMarkRange("link").unsetLink().run();
               return;
             }
 
-            props.editor
-              .chain()
-              .focus()
-              .extendMarkRange("link")
-              .setLink({ href: url })
-              .run();
+            props.editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
           }}
           icon={Link}
           title="Add Link"
@@ -268,8 +226,8 @@ export function FloatingToolbar(props: FloatingToolbarProps) {
           <PopoverTrigger
             type="button"
             class={cn(
-              "p-1.5 rounded hover:bg-muted transition-colors",
-              props.editor.isActive("textStyle") && "bg-muted",
+              "rounded p-1.5 text-muted-foreground transition-colors hover:bg-hover hover:text-hover-foreground",
+              props.editor.isActive("textStyle") && "bg-selected text-selected-foreground",
             )}
             onMouseDown={(e) => e.preventDefault()}
             title="Text Color"
@@ -278,7 +236,7 @@ export function FloatingToolbar(props: FloatingToolbarProps) {
           </PopoverTrigger>
           <PopoverContent class="w-auto p-2" portalled={false}>
             <div class="grid grid-cols-6 gap-1">
-              <For each={PRESET_COLORS}>
+              <For each={textColors()}>
                 {(color) => (
                   <button
                     type="button"

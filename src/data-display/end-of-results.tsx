@@ -1,4 +1,6 @@
-import { type JSX, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+
 import { cn } from "../cn";
 
 export interface EndOfResultsProps {
@@ -21,10 +23,7 @@ export function EndOfResults(props: EndOfResultsProps): JSX.Element {
   const [local, rest] = splitProps(props, ["class", "message"]);
 
   return (
-    <div
-      class={cn("text-center py-2 text-xs text-muted-foreground", local.class)}
-      {...rest}
-    >
+    <div class={cn("text-center py-2 text-xs text-muted-foreground", local.class)} {...rest}>
       {local.message ?? "End of results"}
     </div>
   );

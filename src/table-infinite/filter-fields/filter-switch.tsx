@@ -1,4 +1,5 @@
-import { Checkbox, Label } from "@xgx/ui";
+import { Checkbox } from "../../forms/checkbox";
+import { Label } from "../../forms/label";
 import type { UseTableFiltersReturn } from "../use-table-filters";
 
 export interface FilterSwitchProps<TFilters extends Record<string, unknown>> {
@@ -31,8 +32,7 @@ export interface FilterSwitchProps<TFilters extends Record<string, unknown>> {
 export function FilterSwitch<TFilters extends Record<string, unknown>>(
   props: FilterSwitchProps<TFilters>,
 ) {
-  const checked = () =>
-    (props.filterHook.filters()[props.filterKey] as boolean) ?? false;
+  const checked = () => (props.filterHook.filters()[props.filterKey] as boolean) ?? false;
 
   const handleChange = (isChecked: boolean) => {
     // Set to undefined when false to keep URL clean
@@ -44,7 +44,7 @@ export function FilterSwitch<TFilters extends Record<string, unknown>>(
 
   return (
     <div class="flex items-center justify-between py-1">
-      <Label class="text-xs text-gray-600">{props.label}</Label>
+      <Label class="text-xs text-muted-foreground">{props.label}</Label>
       <Checkbox checked={checked()} onChange={handleChange} size="sm" />
     </div>
   );

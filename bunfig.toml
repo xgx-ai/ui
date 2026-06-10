@@ -1,0 +1,3 @@
+[serve.static]
+plugins = ["bun-plugin-tailwind", "./src/bun-plugins/solid.ts"]
+

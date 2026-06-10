@@ -1,52 +1,41 @@
-import type { Component, ComponentProps, JSX } from "solid-js";
-import { Show, splitProps } from "solid-js";
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import type { Component } from "solid-js";
+import { Show } from "solid-js";
 import { cn } from "../cn";
 
 type SidebarSectionProps = ComponentProps<"div"> & {
-	title: string;
-	action?: JSX.Element;
+  title: string;
+  action?: JSX.Element;
 };
 
 const SidebarSection: Component<SidebarSectionProps> = (props) => {
-	const [local, others] = splitProps(props, [
-		"title",
-		"action",
-		"children",
-		"class",
-	]);
-	return (
-		<div class={cn("pt-4 pb-3 px-3", local.class)} {...others}>
-			<div class="flex items-center justify-between mb-1.5">
-				<div class="text-[9px] font-medium text-black/30 uppercase tracking-widest">
-					{local.title}
-				</div>
-				<Show when={local.action}>{local.action}</Show>
-			</div>
-			{local.children}
-		</div>
-	);
+  const [local, others] = splitProps(props, ["title", "action", "children", "class"]);
+  return (
+    <div class={cn("px-4 py-3", local.class)} {...others}>
+      <div class="flex items-center justify-between mb-1.5">
+        <div class="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+          {local.title}
+        </div>
+        <Show when={local.action}>{local.action}</Show>
+      </div>
+      {local.children}
+    </div>
+  );
 };
 
 type SidebarRowProps = ComponentProps<"div"> & {
-	label: string;
+  label: string;
 };
 
 const SidebarRow: Component<SidebarRowProps> = (props) => {
-	const [local, others] = splitProps(props, ["label", "children", "class"]);
-	return (
-		<div
-			class={cn(
-				"flex items-center justify-between py-1 text-[11px]",
-				local.class,
-			)}
-			{...others}
-		>
-			<span class="text-black/35 shrink-0">{local.label}</span>
-			<span class="text-black/70 text-right truncate ml-3">
-				{local.children}
-			</span>
-		</div>
-	);
+  const [local, others] = splitProps(props, ["label", "children", "class"]);
+  return (
+    <div class={cn("flex items-center justify-between py-1 text-xs", local.class)} {...others}>
+      <span class="text-muted-foreground shrink-0">{local.label}</span>
+      <span class="text-foreground text-right truncate ml-3">{local.children}</span>
+    </div>
+  );
 };
 
 /**

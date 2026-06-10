@@ -1,17 +1,18 @@
-import { createSignal, onCleanup, onMount } from "solid-js";
+import { createMountEffect } from "../../utils/lifecycle";
+import { createSignal } from "solid-js";
 
 export function useIsDocumentHidden() {
   const [isDocumentHidden, setIsDocumentHidden] = createSignal(false);
 
-  onMount(() => {
+  createMountEffect(() => {
     const callback = () => {
       setIsDocumentHidden(document.hidden);
     };
     document.addEventListener("visibilitychange", callback);
 
-    onCleanup(() => {
-      window.removeEventListener("visibilitychange", callback);
-    });
+    return () => {
+      document.removeEventListener("visibilitychange", callback);
+    };
   });
 
   return isDocumentHidden;

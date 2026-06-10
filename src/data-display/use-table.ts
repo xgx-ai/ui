@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/solid-query";
+import { useInfiniteQuery } from "../query";
 import { type Accessor, createMemo, createSignal } from "solid-js";
 
 /**
@@ -9,10 +9,7 @@ export interface TableRowData {
   id: string;
 }
 
-export interface UseTableParams<
-  TData extends TableRowData,
-  TParams = Record<string, unknown>,
-> {
+export interface UseTableParams<TData extends TableRowData, TParams = Record<string, unknown>> {
   /** Query key for TanStack Query cache */
   queryKey: unknown[];
   /** Function to fetch paginated data */
@@ -56,6 +53,12 @@ export interface UseTableReturn<TData> {
   singleSelect: boolean;
 }
 
+type TablePage<TData> = {
+  data: TData[];
+  count: number;
+  totalCount?: number;
+};
+
 /**
  * Hook for table data with infinite scroll and built-in selection support.
  * Wraps TanStack Query's useInfiniteQuery with table-specific utilities.
@@ -72,14 +75,18 @@ export function useTable<
 
   const query = useInfiniteQuery(() => ({
     queryKey: [...params.queryKey],
-    queryFn: ({ pageParam }) =>
+    queryFn: ({ pageParam }: { pageParam: number }) =>
       params.queryFn({
         ...initialParams,
         limit,
         page: pageParam,
       } as TParams & { limit: number; page: number }),
     initialPageParam: 0,
-    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+    getNextPageParam: (
+      lastPage: TablePage<TData>,
+      _allPages: TablePage<TData>[],
+      lastPageParam: number,
+    ) => {
       // If the last page returned fewer items than the limit, there's no more data
       if (!lastPage || !lastPage.data || lastPage.data.length < limit) {
         return undefined;
@@ -88,11 +95,9 @@ export function useTable<
       return lastPageParam + 1;
     },
     get enabled() {
-      return typeof params.enabled === "function"
-        ? params.enabled()
-        : (params.enabled ?? true);
+      return typeof params.enabled === "function" ? params.enabled() : (params.enabled ?? true);
     },
-  }));
+  })) as UseTableReturn<TData>["query"];
 
   // Flatten all pages into a single array
   const data = createMemo(() => {
@@ -153,9 +158,7 @@ export function useTable<
 
     if (allSelected()) {
       if (!checked) {
-        setExcludedIds((prev) =>
-          prev.includes(rowId) ? prev : [...prev, rowId],
-        );
+        setExcludedIds((prev) => (prev.includes(rowId) ? prev : [...prev, rowId]));
       } else {
         setExcludedIds((prev) => prev.filter((id) => id !== rowId));
       }

@@ -12,8 +12,7 @@ export const draggingSourceClasses = "opacity-40";
 export const dropTargetClasses = "ring-2 ring-primary ring-offset-2";
 
 /** Classes for the drop indicator line */
-export const dropIndicatorClasses =
-  "bg-primary rounded-full transition-all duration-150";
+export const dropIndicatorClasses = "bg-primary rounded-full transition-all duration-150";
 
 /** Classes for the drop indicator when horizontal (between items in a row) */
 export const dropIndicatorHorizontalClasses = "w-0.5 h-full";
@@ -22,12 +21,10 @@ export const dropIndicatorHorizontalClasses = "w-0.5 h-full";
 export const dropIndicatorVerticalClasses = "h-0.5 w-full";
 
 /** Classes for the drag preview overlay */
-export const dragPreviewClasses =
-  "fixed pointer-events-none z-[9999] shadow-2xl rounded-lg";
+export const dragPreviewClasses = "fixed pointer-events-none z-[9999] shadow-2xl rounded-lg";
 
 /** Transition classes for smooth reordering animations */
-export const reorderTransitionClasses =
-  "transition-transform duration-200 ease-out";
+export const reorderTransitionClasses = "transition-transform duration-200 ease-out";
 
 /** Classes for the file dropzone in normal state */
 export const dropzoneClasses =

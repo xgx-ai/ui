@@ -1,24 +1,7 @@
-import type {
-  AnyFieldApi as CoreAnyFieldApi,
-  SolidFormExtendedApi,
-} from "@tanstack/solid-form";
+import type { AnyFieldApi as CoreAnyFieldApi } from "./adapter";
 
 export type AnyFieldApi = CoreAnyFieldApi;
-export type AnyFormApi = SolidFormExtendedApi<
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any
-> &
-  Record<string, any>;
+export type AnyFormApi = Record<string, any>;
 
 /**
  * Base props for all form field components

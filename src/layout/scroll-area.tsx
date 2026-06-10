@@ -1,4 +1,6 @@
-import { type JSX, type ParentProps, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface ScrollAreaProps extends ParentProps {
@@ -31,11 +33,7 @@ export function ScrollArea(props: ScrollAreaProps): JSX.Element {
 
   return (
     <div
-      class={cn(
-        "overflow-y-auto",
-        local.maxHeight && maxHeightMap[local.maxHeight],
-        local.class,
-      )}
+      class={cn("overflow-y-auto", local.maxHeight && maxHeightMap[local.maxHeight], local.class)}
       {...rest}
     >
       {local.children}

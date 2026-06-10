@@ -1,49 +1,42 @@
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import * as SkeletonPrimitive from "@kobalte/core/skeleton";
-import type { ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-
+import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../cn";
+import { splitProps } from "../utils/split-props";
 
-type SkeletonRootProps<T extends ValidComponent = "div"> =
-  SkeletonPrimitive.SkeletonRootProps<T> & { class?: string | undefined };
+type SkeletonProps = ComponentProps<"div"> & {
+  animate?: boolean;
+  height?: number | string;
+  radius?: number | string;
+  width?: number | string;
+};
 
-const Skeleton = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, SkeletonRootProps<T>>,
-) => {
-  const [local, others] = splitProps(props as SkeletonRootProps, ["class"]);
+const toCssSize = (value: number | string | undefined) =>
+  typeof value === "number" ? `${value}px` : value;
+
+const Skeleton = (props: SkeletonProps) => {
+  const [local, others] = splitProps(props, [
+    "class",
+    "animate",
+    "height",
+    "radius",
+    "style",
+    "width",
+  ]);
+
   return (
-    <SkeletonPrimitive.Root
-      class={cn(
-        "bg-primary/10 data-[animate='true']:animate-pulse",
-        local.class,
-      )}
+    <div
+      aria-hidden="true"
+      data-animate={local.animate ? "true" : undefined}
+      class={cn("bg-surface-muted data-[animate='true']:animate-pulse", local.class)}
+      style={{
+        height: toCssSize(local.height),
+        "border-radius": toCssSize(local.radius),
+        width: toCssSize(local.width),
+        ...(typeof local.style === "object" ? local.style : undefined),
+      }}
       {...others}
     />
   );
 };
 
-/**
- * # Skeleton
- *
- * Loading placeholder with animation.
- *
- * @example
- * ```
- * <div class="space-y-4 max-w-sm">
- *   <div class="flex items-center space-x-4">
- *     <Skeleton class="h-12 w-12 rounded-full" />
- *     <div class="space-y-2">
- *       <Skeleton class="h-4 w-[200px]" />
- *       <Skeleton class="h-4 w-[150px]" />
- *     </div>
- *   </div>
- *   <Skeleton class="h-[125px] w-full rounded-xl" />
- *   <div class="space-y-2">
- *     <Skeleton class="h-4 w-full" />
- *     <Skeleton class="h-4 w-4/5" />
- *   </div>
- * </div>
- * ```
- */
 export { Skeleton };
+export type { SkeletonProps };

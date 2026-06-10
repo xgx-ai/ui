@@ -1,5 +1,7 @@
-import type { Component, ComponentProps } from "solid-js";
-import { mergeProps, splitProps } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import type { Component } from "solid-js";
+import { merge as mergeProps } from "solid-js";
 
 import { cn } from "../cn";
 
@@ -39,10 +41,7 @@ type ProgressCircleProps = ComponentProps<"div"> & {
 };
 
 const ProgressCircle: Component<ProgressCircleProps> = (rawProps) => {
-  const props = mergeProps(
-    { size: "md" as Size, showAnimation: true },
-    rawProps,
-  );
+  const props = mergeProps({ size: "md" as Size, showAnimation: true }, rawProps);
   const [local, others] = splitProps(props, [
     "class",
     "children",
@@ -62,10 +61,7 @@ const ProgressCircle: Component<ProgressCircleProps> = (rawProps) => {
   const offset = () => circumference() - strokeDashoffset();
 
   return (
-    <div
-      class={cn("flex flex-col items-center justify-center", local.class)}
-      {...others}
-    >
+    <div class={cn("flex flex-col items-center justify-center", local.class)} {...others}>
       <svg
         width={radius() * 2}
         height={radius() * 2}
@@ -96,9 +92,7 @@ const ProgressCircle: Component<ProgressCircleProps> = (rawProps) => {
             stroke-linecap="round"
             class={cn(
               "stroke-primary transition-colors ease-linear",
-              local.showAnimation
-                ? "transition-all duration-300 ease-in-out"
-                : "",
+              local.showAnimation ? "transition-all duration-300 ease-in-out" : "",
             )}
           />
         ) : null}

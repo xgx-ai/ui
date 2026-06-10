@@ -1,40 +1,29 @@
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-  cn,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@xgx/ui";
-import { AlertCircle, CheckCircle2, CircleDashed } from "lucide-solid";
+import { createMountEffect } from "../utils/lifecycle";
+import { cn } from "../cn";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../layout/accordion";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../feedback/tooltip";
+import { AlertCircle, CheckCircle2, CircleDashed } from "../icons.index";
 import {
   createContext,
-  createEffect,
   createMemo,
+  createRenderEffect,
   createSignal,
   Match,
-  on,
   onCleanup,
-  onMount,
   type ParentProps,
   Show,
   Switch,
   useContext,
 } from "solid-js";
-import { createStore, produce } from "solid-js/store";
+import { createStore } from "solid-js";
 import type { AnyFormApi, ValidationState } from "./types";
 
 /**
  * Generic schema type that has a shape property with fields that can be parsed.
- * Compatible with Zod v4 object schemas.
+ * Works with Zod v4 object schemas.
  */
 interface SchemaWithShape {
-  shape: Record<
-    string,
-    { safeParse: (value: unknown) => { success: boolean } }
-  >;
+  shape: Record<string, { safeParse: (value: unknown) => { success: boolean } }>;
 }
 
 /**
@@ -63,18 +52,12 @@ const FormGroupContext = createContext<FormGroupContextType | undefined>();
 /**
  * Checks if a field is optional in the schema by testing if it accepts undefined
  */
-function isFieldOptional(
-  schema: SchemaWithShape | undefined,
-  fieldName: string,
-): boolean {
+function isFieldOptional(schema: SchemaWithShape | undefined, fieldName: string): boolean {
   if (!schema) return true; // If no schema, assume optional
   const fieldSchema = schema.shape[fieldName];
   if (!fieldSchema) return true; // If field not in schema, assume optional
   // A field is optional if it accepts undefined or empty string as a valid value
-  return (
-    fieldSchema.safeParse(undefined).success ||
-    fieldSchema.safeParse("").success
-  );
+  return fieldSchema.safeParse(undefined).success || fieldSchema.safeParse("").success;
 }
 
 /**
@@ -119,9 +102,7 @@ function computeValidationState(
   // This is useful in edit mode where fields have existing values
   if (ignoreTouchState) {
     // Check if any field has errors
-    const hasErrors = fieldMetas.some(
-      (meta) => meta?.errors && meta.errors.length > 0,
-    );
+    const hasErrors = fieldMetas.some((meta) => meta?.errors && meta.errors.length > 0);
     if (hasErrors) return "invalid";
 
     // All fields are valid
@@ -144,9 +125,7 @@ function computeValidationState(
 
   // At this point: at least one field touched, no touched fields have errors
   // Check if all fields are valid (including untouched optional fields with no errors)
-  const allValid = fieldMetas.every(
-    (meta) => !meta?.errors || meta.errors.length === 0,
-  );
+  const allValid = fieldMetas.every((meta) => !meta?.errors || meta.errors.length === 0);
 
   if (allValid) return "valid";
 
@@ -173,8 +152,7 @@ function extractErrors(
     const shouldInclude = ignoreTouchState || meta?.isTouched;
     if (shouldInclude && meta?.errors) {
       for (const error of meta.errors) {
-        const message =
-          typeof error === "string" ? error : (error as any)?.message;
+        const message = typeof error === "string" ? error : (error as any)?.message;
         if (message) errors.push(message);
       }
     }
@@ -214,7 +192,7 @@ export function FormGroup(props: FormGroupProps) {
   const ignoreTouchState = () => context?.ignoreTouchState;
 
   // Register this group with the container for error expansion
-  onMount(() => {
+  createMountEffect(() => {
     context?.registerGroup({
       value: props.value,
       fields: props.fields ?? [],
@@ -230,9 +208,7 @@ export function FormGroup(props: FormGroupProps) {
 
   const currentForm = form();
   if (!currentForm) {
-    console.warn(
-      "FormGroup: No form provided via props or FormGroupContainer context",
-    );
+    console.warn("FormGroup: No form provided via props or FormGroupContainer context");
     return null;
   }
 
@@ -244,9 +220,7 @@ export function FormGroup(props: FormGroupProps) {
     >
       {(
         subscription: () => {
-          fieldMetas: Array<
-            { errors?: unknown[]; isTouched?: boolean } | undefined
-          >;
+          fieldMetas: Array<{ errors?: unknown[]; isTouched?: boolean } | undefined>;
         },
       ) => {
         const validationState = () =>
@@ -255,28 +229,19 @@ export function FormGroup(props: FormGroupProps) {
             props.showWarningWhenEmpty,
             ignoreTouchState(),
           );
-        const errorMessages = () =>
-          extractErrors(subscription().fieldMetas, ignoreTouchState());
+        const errorMessages = () => extractErrors(subscription().fieldMetas, ignoreTouchState());
 
         return (
-          <AccordionItem
-            value={props.value}
-            class={cn("border-b", props.class)}
-          >
+          <AccordionItem value={props.value} class={cn("border-b", props.class)}>
             <AccordionTrigger class="hover:no-underline">
               <div class="flex items-center justify-between text-sm gap-2 w-full pr-2">
                 <span class="font-medium">
                   {props.title}
                   <Show when={isAllOptional()}>
-                    <span class="text-muted-foreground font-normal ml-1">
-                      (optional)
-                    </span>
+                    <span class="text-muted-foreground font-normal ml-1">(optional)</span>
                   </Show>
                 </span>
-                <ValidationIcon
-                  state={validationState()}
-                  errors={errorMessages()}
-                />
+                <ValidationIcon state={validationState()} errors={errorMessages()} />
               </div>
             </AccordionTrigger>
             <AccordionContent>
@@ -298,15 +263,12 @@ function ValidationIcon(props: ValidationIconProps) {
   return (
     <Switch fallback={<CircleDashed class="size-4 text-muted-foreground" />}>
       <Match when={props.state === "valid"}>
-        <CheckCircle2 class="size-4 text-green-500" />
+        <CheckCircle2 class="size-4 text-success-foreground" />
       </Match>
       <Match when={props.state === "invalid"}>
         <Tooltip>
-          <TooltipTrigger
-            as="span"
-            onClick={(e: MouseEvent) => e.preventDefault()}
-          >
-            <AlertCircle class="size-4 text-destructive" />
+          <TooltipTrigger as="span" onClick={(e: MouseEvent) => e.preventDefault()}>
+            <AlertCircle class="size-4 text-error" />
           </TooltipTrigger>
           <TooltipContent>
             <Show
@@ -320,11 +282,8 @@ function ValidationIcon(props: ValidationIconProps) {
       </Match>
       <Match when={props.state === "warning"}>
         <Tooltip>
-          <TooltipTrigger
-            as="span"
-            onClick={(e: MouseEvent) => e.preventDefault()}
-          >
-            <AlertCircle class="size-4 text-amber-500" />
+          <TooltipTrigger as="span" onClick={(e: MouseEvent) => e.preventDefault()}>
+            <AlertCircle class="size-4 text-warning-foreground" />
           </TooltipTrigger>
           <TooltipContent>Please fill in the required fields</TooltipContent>
         </Tooltip>
@@ -399,9 +358,7 @@ export function FormGroupContainer(props: FormGroupContainerProps) {
   const [groups, setGroups] = createStore<Record<string, string[]>>({});
 
   // Internal accordion value state for uncontrolled mode with error expansion
-  const [internalValue, setInternalValue] = createSignal<string[]>(
-    props.defaultValue ?? [],
-  );
+  const [internalValue, setInternalValue] = createSignal<string[]>(props.defaultValue ?? []);
 
   // Use controlled value if provided, otherwise use internal state
   const accordionValue = createMemo(() => props.value ?? internalValue());
@@ -412,15 +369,15 @@ export function FormGroupContainer(props: FormGroupContainerProps) {
   };
 
   const registerGroup = (registration: FormGroupRegistration) => {
-    setGroups(registration.value, registration.fields);
+    setGroups((state) => {
+      state[registration.value] = registration.fields;
+    });
   };
 
   const unregisterGroup = (value: string) => {
-    setGroups(
-      produce((state) => {
-        delete state[value];
-      }),
-    );
+    setGroups((state) => {
+      delete state[value];
+    });
   };
 
   const expandGroups = (values: string[]) => {
@@ -432,9 +389,7 @@ export function FormGroupContainer(props: FormGroupContainerProps) {
 
   // Watch for field errors and auto-expand groups that have errors
   const fieldMeta = props.form.useStore(
-    (state: {
-      fieldMeta: Record<string, { errors?: unknown[] } | undefined>;
-    }) => state.fieldMeta,
+    (state: { fieldMeta: Record<string, { errors?: unknown[] } | undefined> }) => state.fieldMeta,
   );
 
   // Compute which groups currently have errors
@@ -453,18 +408,16 @@ export function FormGroupContainer(props: FormGroupContainerProps) {
   });
 
   // When groups newly get errors, expand them
-  createEffect(
-    on(
-      groupsWithErrors,
-      (current, prev) => {
-        if (!prev) return;
-        const newErrors = current.filter((g) => !prev.includes(g));
-        if (newErrors.length > 0) {
-          expandGroups(newErrors);
-        }
-      },
-      { defer: true },
-    ),
+  createRenderEffect(
+    groupsWithErrors,
+    (current, prev) => {
+      if (!prev) return;
+      const newErrors = current.filter((g) => !prev.includes(g));
+      if (newErrors.length > 0) {
+        expandGroups(newErrors);
+      }
+    },
+    { defer: true },
   );
 
   const contextValue: FormGroupContextType = {
@@ -477,12 +430,10 @@ export function FormGroupContainer(props: FormGroupContainerProps) {
   };
 
   return (
-    <FormGroupContext.Provider value={contextValue}>
+    <FormGroupContext value={contextValue}>
       <Accordion
         multiple={props.type !== "single"}
-        defaultValue={
-          props.value === undefined ? props.defaultValue : undefined
-        }
+        defaultValue={props.value === undefined ? props.defaultValue : undefined}
         value={accordionValue()}
         onChange={handleValueChange}
         collapsible={props.collapsible ?? true}
@@ -490,6 +441,6 @@ export function FormGroupContainer(props: FormGroupContainerProps) {
       >
         {props.children}
       </Accordion>
-    </FormGroupContext.Provider>
+    </FormGroupContext>
   );
 }

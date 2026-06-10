@@ -1,7 +1,9 @@
+import type { ComponentProps } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import type { Component, ComponentProps } from "solid-js";
-import { splitProps } from "solid-js";
+import type { Component } from "solid-js";
+
 import { cn } from "../cn";
 
 const calloutVariants = cva("rounded-md p-2 pl-4 text-sm", {
@@ -18,17 +20,11 @@ const calloutVariants = cva("rounded-md p-2 pl-4 text-sm", {
   },
 });
 
-type CalloutProps = ComponentProps<"div"> &
-  VariantProps<typeof calloutVariants>;
+type CalloutProps = ComponentProps<"div"> & VariantProps<typeof calloutVariants>;
 
 const Callout: Component<CalloutProps> = (props) => {
   const [local, others] = splitProps(props, ["class", "variant"]);
-  return (
-    <div
-      class={cn(calloutVariants({ variant: local.variant }), local.class)}
-      {...others}
-    />
-  );
+  return <div class={cn(calloutVariants({ variant: local.variant }), local.class)} {...others} />;
 };
 
 const CalloutTitle: Component<ComponentProps<"h3">> = (props) => {

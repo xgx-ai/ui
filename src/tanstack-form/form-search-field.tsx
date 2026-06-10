@@ -1,5 +1,6 @@
+import { cn } from "../cn";
+import { Skeleton } from "../feedback/skeleton";
 import {
-  cn,
   Search,
   SearchContent,
   SearchControl,
@@ -8,9 +9,8 @@ import {
   SearchItemLabel,
   SearchListbox,
   SearchNoResult,
-  Skeleton,
-} from "@xgx/ui";
-import { createMemo, createSignal, Show, Suspense } from "solid-js";
+} from "../forms/search";
+import { createMemo, createSignal, Show, Loading as Suspense } from "solid-js";
 import { FieldLabel } from "./field-label";
 import { useFieldRequired } from "./form-group";
 import type { AnyFieldApi, AnyFormApi, BaseFieldProps } from "./types";
@@ -42,7 +42,7 @@ export interface FormSearchFieldProps<T = SearchOption> extends BaseFieldProps {
   filterFn?: (option: T, query: string) => boolean;
   /** Optional class for the inner search control element */
   controlClass?: string;
-  /** Open dropdown on focus (defaults to true for backward compatibility) */
+  /** Open dropdown on focus (defaults to true for existing behaviour) */
   openOnFocus?: boolean;
 }
 
@@ -84,9 +84,7 @@ function FormSearchFieldInner<T>(props: {
 
   // Find selected option from full options list (not filtered)
   const selectedValue = createMemo(() =>
-    props.options.find(
-      (opt) => String(opt[props.optionValue]) === props.field.state.value,
-    ),
+    props.options.find((opt) => String(opt[props.optionValue]) === props.field.state.value),
   );
 
   return (
@@ -118,17 +116,15 @@ function FormSearchFieldInner<T>(props: {
       disabled={props.disabled}
       triggerMode={props.openOnFocus === false ? "input" : "focus"}
       disallowEmptySelection={false}
-      itemComponent={(itemProps) => (
+      itemComponent={(itemProps: any) => (
         <SearchItem item={itemProps.item}>
-          <SearchItemLabel>
-            {String(itemProps.item.rawValue[props.optionLabel])}
-          </SearchItemLabel>
+          <SearchItemLabel>{String(itemProps.item.rawValue[props.optionLabel])}</SearchItemLabel>
         </SearchItem>
       )}
     >
       <SearchControl
         class={cn(
-          props.hasError && "border-destructive",
+          props.hasError && "border-error",
           props.disabled && "bg-muted",
           props.controlClass,
         )}
@@ -137,9 +133,7 @@ function FormSearchFieldInner<T>(props: {
       </SearchControl>
       <SearchContent>
         <SearchListbox />
-        <SearchNoResult>
-          {props.noResultText ?? "No results found"}
-        </SearchNoResult>
+        <SearchNoResult>{props.noResultText ?? "No results found"}</SearchNoResult>
       </SearchContent>
     </Search>
   );
@@ -175,9 +169,7 @@ function FormSearchFieldInner<T>(props: {
  * />
  * ```
  */
-export function FormSearchField<T = SearchOption>(
-  props: FormSearchFieldProps<T>,
-) {
+export function FormSearchField<T = SearchOption>(props: FormSearchFieldProps<T>) {
   const isRequired = useFieldRequired(
     () => props.name,
     () => props.required,
@@ -203,16 +195,12 @@ export function FormSearchField<T = SearchOption>(
                   <FieldLabel required={isRequired()}>{props.label}</FieldLabel>
                 </Show>
                 <Show when={props.description}>
-                  <p class="text-3xs text-gray-500">{props.description}</p>
+                  <p class="text-3xs text-muted-foreground">{props.description}</p>
                 </Show>
               </div>
             </Show>
 
-            <Suspense
-              fallback={
-                <Skeleton height={36} class="w-full" radius={4} animate />
-              }
-            >
+            <Suspense fallback={<Skeleton height={36} class="w-full" radius={4} animate />}>
               <FormSearchFieldInner<T>
                 options={props.options}
                 optionValue={optionValue()}
@@ -231,7 +219,7 @@ export function FormSearchField<T = SearchOption>(
 
             <div
               class={cn(
-                "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-destructive",
+                "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-error",
                 hasError() && "opacity-100 h-4",
               )}
             >

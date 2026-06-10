@@ -6,7 +6,7 @@
     "allowImportingTsExtensions": true,
     "strict": true,
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "@solidjs/web",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true

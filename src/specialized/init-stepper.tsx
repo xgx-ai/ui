@@ -1,5 +1,6 @@
-import { Check } from "lucide-solid";
-import { type Component, For, splitProps } from "solid-js";
+import { splitProps } from "../utils/split-props";
+import { Check } from "../icons.index";
+import { type Component, For } from "solid-js";
 import { cn } from "../cn";
 
 /**
@@ -71,8 +72,7 @@ export const InitStepper: Component<InitStepperProps> = (props) => {
                   class={cn(
                     "mt-2 text-xs font-medium max-w-[100px] text-center",
                     step.status === "completed" && "text-foreground",
-                    step.status === "current" &&
-                      "text-foreground font-semibold",
+                    step.status === "current" && "text-foreground font-semibold",
                     step.status === "pending" && "text-muted-foreground",
                   )}
                 >
@@ -85,9 +85,7 @@ export const InitStepper: Component<InitStepperProps> = (props) => {
                 <div
                   class={cn(
                     "h-0.5 w-16 mx-1 mt-[-20px] transition-colors",
-                    step.status === "completed"
-                      ? "bg-secondary"
-                      : "bg-foreground/20",
+                    step.status === "completed" ? "bg-secondary" : "bg-border-subtle",
                   )}
                 />
               )}

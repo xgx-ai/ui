@@ -1,4 +1,4 @@
-import { cn } from "@xgx/ui";
+import { cn } from "../cn";
 import type { ParentProps } from "solid-js";
 
 export interface FieldLabelProps extends ParentProps {
@@ -20,7 +20,7 @@ export function FieldLabel(props: FieldLabelProps) {
       )}
     >
       {props.children}
-      {props.required && <span class="text-destructive ml-0.5">*</span>}
+      {props.required && <span class="text-error ml-0.5">*</span>}
     </div>
   );
 }

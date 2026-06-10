@@ -1,9 +1,5 @@
 import { cn } from "../cn";
-import {
-  TextField,
-  type TextFieldInputProps,
-  TextFieldTextArea,
-} from "./text-field";
+import { TextField, type TextFieldInputProps, TextFieldTextArea } from "./text-field";
 import { createUniqueId, Show } from "solid-js";
 import { Label } from "./label";
 
@@ -63,7 +59,7 @@ export default function TextFieldArea(props: TextFieldAreaProps) {
 
       <div
         class={cn(
-          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-destructive",
+          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-error",
           props.error && "opacity-100 h-4",
         )}
       >

@@ -1,9 +1,5 @@
-import {
-  cn,
-  TextField,
-  TextFieldInput,
-  type TextFieldInputProps,
-} from "@xgx/ui";
+import { cn } from "../cn";
+import { TextField, TextFieldInput, type TextFieldInputProps } from "../forms/text-field";
 import { Show } from "solid-js";
 import { FieldError } from "./field-error";
 import { FieldLabel } from "./field-label";
@@ -24,15 +20,7 @@ export interface FormTextFieldProps extends BaseFieldProps {
   /** Autocomplete attribute */
   autocomplete?: string;
   /** Input mode for mobile keyboards */
-  inputMode?:
-    | "none"
-    | "text"
-    | "decimal"
-    | "numeric"
-    | "tel"
-    | "search"
-    | "email"
-    | "url";
+  inputMode?: "none" | "text" | "decimal" | "numeric" | "tel" | "search" | "email" | "url";
   /** Min value for number/date inputs */
   min?: string | number;
   /** Max value for number/date inputs */
@@ -83,9 +71,7 @@ export function FormTextField(props: FormTextFieldProps) {
                   <FieldLabel required={isRequired()}>{props.label}</FieldLabel>
                 </Show>
                 <Show when={props.description}>
-                  <p class="text-xs text-muted-foreground">
-                    {props.description}
-                  </p>
+                  <p class="text-xs text-muted-foreground">{props.description}</p>
                 </Show>
               </div>
             </Show>
@@ -100,7 +86,7 @@ export function FormTextField(props: FormTextFieldProps) {
                 type={props.type ?? "text"}
                 placeholder={props.placeholder ?? props.label}
                 autocomplete={props.autocomplete}
-                inputMode={props.inputMode}
+                inputmode={props.inputMode}
                 min={props.min}
                 max={props.max}
                 step={props.step}

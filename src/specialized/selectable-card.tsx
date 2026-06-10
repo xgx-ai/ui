@@ -1,7 +1,9 @@
+import type { ComponentProps } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
 import { cn } from "../cn";
-import { Check } from "lucide-solid";
-import type { ComponentProps } from "solid-js";
-import { Show, splitProps } from "solid-js";
+import { Check } from "../icons.index";
+
+import { Show } from "solid-js";
 
 interface SelectableCardProps extends Omit<ComponentProps<"div">, "onSelect"> {
   selected?: boolean;
@@ -21,17 +23,17 @@ export function SelectableCard(props: SelectableCardProps) {
   return (
     <div
       class={cn(
-        "relative cursor-pointer rounded-xl border bg-white p-4 shadow-sm transition-all",
+        "relative cursor-pointer rounded-lg border bg-card p-4 text-card-foreground shadow-elevation-low transition-all",
         local.selected
-          ? "border-primary ring-1 ring-primary/30"
-          : "border-gray-200 hover:border-gray-300",
+          ? "border-selected ring-1 ring-selected/30"
+          : "border-border-subtle hover:border-border-strong hover:bg-hover hover:text-hover-foreground",
         local.class,
       )}
       onClick={() => local.onSelect?.()}
       {...rest}
     >
       <Show when={local.showIndicator && local.selected}>
-        <div class="absolute right-3 top-3 flex size-5 items-center justify-center rounded-full bg-primary text-white">
+        <div class="absolute right-3 top-3 flex size-5 items-center justify-center rounded-full bg-selected text-selected-foreground">
           <Check class="size-3" />
         </div>
       </Show>

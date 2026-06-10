@@ -1,66 +1,69 @@
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import * as ProgressPrimitive from "@kobalte/core/progress";
-import type { Component, JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { createContext, useContext } from "solid-js";
 import { Label } from "../forms/label.tsx";
+import { splitProps } from "../utils/split-props";
 
-type ProgressRootProps<T extends ValidComponent = "div"> =
-  ProgressPrimitive.ProgressRootProps<T> & { children?: JSX.Element };
+type ProgressProps = ComponentProps<"div"> & {
+  children?: JSX.Element;
+  getValueLabel?: (value: number, max: number) => string;
+  max?: number;
+  min?: number;
+  value?: number;
+};
 
-const Progress = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, ProgressRootProps<T>>,
-) => {
-  const [local, others] = splitProps(props as ProgressRootProps, ["children"]);
+const ProgressContext = createContext<{
+  max: () => number;
+  min: () => number;
+  value: () => number;
+  valueLabel: () => string;
+}>({
+  max: () => 100,
+  min: () => 0,
+  value: () => 0,
+  valueLabel: () => "0%",
+});
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const Progress = (props: ProgressProps) => {
+  const [local, others] = splitProps(props, ["children", "getValueLabel", "max", "min", "value"]);
+  const min = () => local.min ?? 0;
+  const max = () => local.max ?? 100;
+  const value = () => clamp(local.value ?? 0, min(), max());
+  const percent = () => (max() === min() ? 0 : ((value() - min()) / (max() - min())) * 100);
+  const valueLabel = () => local.getValueLabel?.(value(), max()) ?? `${Math.round(percent())}%`;
+
   return (
-    <ProgressPrimitive.Root {...others}>
-      {local.children}
-      <ProgressPrimitive.Track class="relative h-1 w-full overflow-hidden rounded-full bg-muted">
-        <ProgressPrimitive.Fill class="h-full w-[var(--kb-progress-fill-width)] flex-1 bg-primary transition-all" />
-      </ProgressPrimitive.Track>
-    </ProgressPrimitive.Root>
+    <ProgressContext value={{ min, max, value, valueLabel }}>
+      <div
+        role="progressbar"
+        aria-valuemin={min()}
+        aria-valuemax={max()}
+        aria-valuenow={value()}
+        aria-valuetext={valueLabel()}
+        {...others}
+      >
+        {local.children}
+        <div class="relative h-1 w-full overflow-hidden rounded-full bg-muted">
+          <div class="h-full flex-1 bg-primary transition-all" style={{ width: `${percent()}%` }} />
+        </div>
+      </div>
+    </ProgressContext>
   );
 };
 
-const ProgressLabel: Component<ProgressPrimitive.ProgressLabelProps> = (
-  props,
-) => {
-  return <ProgressPrimitive.Label as={Label} {...props} />;
+type ProgressLabelProps = ComponentProps<"label">;
+
+const ProgressLabel = (props: ProgressLabelProps) => <Label {...props} />;
+
+type ProgressValueLabelProps = ComponentProps<"span">;
+
+const ProgressValueLabel = (props: ProgressValueLabelProps) => {
+  const context = useContext(ProgressContext);
+  const [local, others] = splitProps(props, ["children"]);
+
+  return <span {...others}>{local.children ?? context.valueLabel()}</span>;
 };
 
-const ProgressValueLabel: Component<
-  ProgressPrimitive.ProgressValueLabelProps
-> = (props) => {
-  return <ProgressPrimitive.ValueLabel as={Label} {...props} />;
-};
-
-/**
- * # Progress
- *
- * Progress bar with label and value display.
- *
- * @example
- * ```
- * <div class="space-y-6 max-w-sm">
- *   <Progress value={30}>
- *     <div class="flex justify-between mb-2">
- *       <ProgressLabel>Loading...</ProgressLabel>
- *       <ProgressValueLabel />
- *     </div>
- *   </Progress>
- *   <Progress value={60}>
- *     <div class="flex justify-between mb-2">
- *       <ProgressLabel>Uploading</ProgressLabel>
- *       <ProgressValueLabel />
- *     </div>
- *   </Progress>
- *   <Progress value={100}>
- *     <div class="flex justify-between mb-2">
- *       <ProgressLabel>Complete</ProgressLabel>
- *       <ProgressValueLabel />
- *     </div>
- *   </Progress>
- * </div>
- * ```
- */
 export { Progress, ProgressLabel, ProgressValueLabel };
+export type { ProgressLabelProps, ProgressProps, ProgressValueLabelProps };

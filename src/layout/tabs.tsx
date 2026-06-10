@@ -1,25 +1,58 @@
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import * as TabsPrimitive from "@kobalte/core/tabs";
-import type { ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { createContext, createSignal, createUniqueId, Show, useContext } from "solid-js";
 import { cn } from "../cn";
+import { splitProps } from "../utils/split-props";
 
-const Tabs = TabsPrimitive.Root;
+type TabsProps = Omit<ComponentProps<"div">, "onChange"> & {
+  value?: string;
+  defaultValue?: string;
+  onChange?: (value: string) => void;
+};
 
-type TabsListProps<T extends ValidComponent = "div"> =
-  TabsPrimitive.TabsListProps<T> & {
-    class?: string | undefined;
+const TabsContext = createContext<{
+  baseId: string;
+  value: () => string | undefined;
+  setValue: (value: string) => void;
+}>({
+  baseId: "tabs",
+  value: () => undefined,
+  setValue: () => {},
+});
+
+const Tabs = (props: TabsProps) => {
+  const [local, others] = splitProps(props, [
+    "class",
+    "children",
+    "value",
+    "defaultValue",
+    "onChange",
+  ]);
+  const [uncontrolledValue, setUncontrolledValue] = createSignal(local.defaultValue);
+  const baseId = createUniqueId();
+  const value = () => local.value ?? uncontrolledValue();
+  const setValue = (next: string) => {
+    if (local.value === undefined) setUncontrolledValue(next);
+    local.onChange?.(next);
   };
 
-const TabsList = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, TabsListProps<T>>,
-) => {
-  const [local, others] = splitProps(props as TabsListProps, ["class"]);
   return (
-    <TabsPrimitive.List
+    <TabsContext value={{ baseId, value, setValue }}>
+      <div class={local.class} {...others}>
+        {local.children}
+      </div>
+    </TabsContext>
+  );
+};
+
+type TabsListProps = ComponentProps<"div">;
+
+const TabsList = (props: TabsListProps) => {
+  const [local, others] = splitProps(props, ["class"]);
+  return (
+    <div
+      role="tablist"
       class={cn(
-        "inline-flex h-8 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+        "inline-flex min-h-9 items-center gap-5 border-b border-border-subtle text-muted-foreground",
         local.class,
       )}
       {...others}
@@ -27,89 +60,118 @@ const TabsList = <T extends ValidComponent = "div">(
   );
 };
 
-type TabsTriggerProps<T extends ValidComponent = "button"> =
-  TabsPrimitive.TabsTriggerProps<T> & {
-    class?: string | undefined;
+type TabsTriggerProps = Omit<ComponentProps<"button">, "value"> & {
+  value: string;
+};
+
+const TabsTrigger = (props: TabsTriggerProps) => {
+  const context = useContext(TabsContext);
+  const [local, others] = splitProps(props, [
+    "class",
+    "value",
+    "disabled",
+    "onClick",
+    "onKeyDown",
+    "type",
+  ]);
+  const selected = () => context.value() === local.value;
+  const safeValue = () => local.value.replace(/[^a-zA-Z0-9_-]/g, "-");
+  const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
+    const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented && !local.disabled) context.setValue(local.value);
+  };
+  const onKeyDown: JSX.EventHandler<HTMLButtonElement, KeyboardEvent> = (event) => {
+    const handler = local.onKeyDown as
+      | JSX.EventHandler<HTMLButtonElement, KeyboardEvent>
+      | undefined;
+    handler?.(event);
+    if (event.defaultPrevented) return;
+
+    const list = event.currentTarget.closest('[role="tablist"]');
+    const tabs = Array.from(
+      list?.querySelectorAll<HTMLButtonElement>('[role="tab"]:not([disabled])') ?? [],
+    );
+    const current = tabs.indexOf(event.currentTarget);
+    if (current < 0) return;
+
+    let next = current;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      next = (current + 1) % tabs.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      next = (current - 1 + tabs.length) % tabs.length;
+    } else if (event.key === "Home") {
+      next = 0;
+    } else if (event.key === "End") {
+      next = tabs.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    tabs[next].focus();
+    tabs[next].click();
   };
 
-const TabsTrigger = <T extends ValidComponent = "button">(
-  props: PolymorphicProps<T, TabsTriggerProps<T>>,
-) => {
-  const [local, others] = splitProps(props as TabsTriggerProps, ["class"]);
   return (
-    <TabsPrimitive.Trigger
+    <button
+      id={`${context.baseId}-trigger-${safeValue()}`}
+      type={local.type ?? "button"}
+      role="tab"
+      aria-controls={`${context.baseId}-panel-${safeValue()}`}
+      aria-selected={selected() ? "true" : "false"}
+      disabled={local.disabled}
+      tabindex={selected() ? 0 : -1}
+      data-selected={selected() ? "" : undefined}
       class={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1 text-xs font-medium ring-offset-background transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-selected:bg-background data-selected:text-foreground data-selected:shadow-sm",
+        "relative inline-flex h-9 items-center justify-center whitespace-nowrap px-0 text-sm font-medium transition-colors after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-transparent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[selected]:text-foreground data-[selected]:after:bg-selected",
         local.class,
       )}
+      onClick={onClick}
+      onKeyDown={onKeyDown}
       {...others}
     />
   );
 };
 
-type TabsContentProps<T extends ValidComponent = "div"> =
-  TabsPrimitive.TabsContentProps<T> & {
-    class?: string | undefined;
-  };
+type TabsContentProps = ComponentProps<"div"> & {
+  value: string;
+};
 
-const TabsContent = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, TabsContentProps<T>>,
-) => {
-  const [local, others] = splitProps(props as TabsContentProps, ["class"]);
+const TabsContent = (props: TabsContentProps) => {
+  const context = useContext(TabsContext);
+  const [local, others] = splitProps(props, ["class", "children", "value"]);
+  const safeValue = () => local.value.replace(/[^a-zA-Z0-9_-]/g, "-");
+
   return (
-    <TabsPrimitive.Content
-      class={cn(
-        "mt-2 ring-offset-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        local.class,
-      )}
+    <Show when={context.value() === local.value}>
+      <div
+        id={`${context.baseId}-panel-${safeValue()}`}
+        role="tabpanel"
+        aria-labelledby={`${context.baseId}-trigger-${safeValue()}`}
+        class={cn(
+          "mt-3 ring-offset-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          local.class,
+        )}
+        {...others}
+      >
+        {local.children}
+      </div>
+    </Show>
+  );
+};
+
+type TabsIndicatorProps = ComponentProps<"div">;
+
+const TabsIndicator = (props: TabsIndicatorProps) => {
+  const [local, others] = splitProps(props, ["class"]);
+  return (
+    <div
+      class={cn("absolute h-0.5 rounded-full bg-selected transition-all", local.class)}
       {...others}
     />
   );
 };
 
-type TabsIndicatorProps<T extends ValidComponent = "div"> =
-  TabsPrimitive.TabsIndicatorProps<T> & {
-    class?: string | undefined;
-  };
-
-const TabsIndicator = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, TabsIndicatorProps<T>>,
-) => {
-  const [local, others] = splitProps(props as TabsIndicatorProps, ["class"]);
-  return (
-    <TabsPrimitive.Indicator
-      class={cn(
-        " absolute transition-all data-[orientation=horizontal]:-bottom-px data-[orientation=vertical]:-right-px data-[orientation=horizontal]:h-[2px] data-[orientation=vertical]:w-[2px] duration-300",
-        local.class,
-      )}
-      {...others}
-    />
-  );
-};
-
-/**
- * # Tabs
- *
- * Tabbed content navigation for switching between views.
- *
- * @example
- * ```
- * <Tabs defaultValue="account" class="w-[400px]">
- *   <TabsList>
- *     <TabsTrigger value="account">Account</TabsTrigger>
- *     <TabsTrigger value="password">Password</TabsTrigger>
- *     <TabsTrigger value="settings">Settings</TabsTrigger>
- *   </TabsList>
- *   <TabsContent value="account">
- *     <p class="text-sm text-muted-foreground">Make changes to your account here.</p>
- *   </TabsContent>
- *   <TabsContent value="password">
- *     <p class="text-sm text-muted-foreground">Change your password here.</p>
- *   </TabsContent>
- *   <TabsContent value="settings">
- *     <p class="text-sm text-muted-foreground">Adjust your settings here.</p>
- *   </TabsContent>
- * </Tabs>
- * ```
- */
 export { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger };
+export type { TabsContentProps, TabsListProps, TabsProps, TabsTriggerProps };

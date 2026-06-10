@@ -16,7 +16,7 @@
   font-weight: 500;
   line-height: 1.4;
   white-space: nowrap;
-  color: #fff;
+  color: var(--color-primary-foreground);
   user-select: none;
   pointer-events: none;
   opacity: 1;

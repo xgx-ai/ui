@@ -32,8 +32,8 @@ function DefaultPendingComponent() {
     <div class="flex items-center justify-center h-full w-full min-h-[200px]">
       <div class="flex flex-col items-center gap-3">
         <div class="relative">
-          <div class="w-8 h-8 border-2 border-primary/20 rounded-full" />
-          <div class="absolute inset-0 w-8 h-8 border-2 border-transparent border-t-primary rounded-full animate-spin" />
+          <div class="h-8 w-8 rounded-full border-2 border-control-muted" />
+          <div class="absolute inset-0 h-8 w-8 animate-spin rounded-full border-2 border-transparent border-t-control" />
         </div>
         <span class="text-sm text-muted-foreground">Loading...</span>
       </div>

@@ -1,4 +1,6 @@
-import { For, type JSX, type ParentProps, Show, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { For, type ParentProps, Show } from "solid-js";
 import { cn } from "../cn";
 
 export interface DataGridColumn<T> {
@@ -81,21 +83,22 @@ export function DataGrid<T>(props: DataGridProps<T>): JSX.Element {
 
   return (
     <div
-      class={cn("flex flex-col min-h-0 overflow-hidden", local.class)}
+      class={cn(
+        "flex min-h-0 flex-col overflow-hidden rounded-md border border-border-subtle bg-card text-card-foreground",
+        local.class,
+      )}
       {...rest}
     >
       {/* Header */}
       <div
         class={cn(
-          "grid gap-3 px-4 py-2 border-b text-xs font-medium text-muted-foreground bg-background",
+          "xgx-text-caption grid gap-3 border-b border-border-subtle bg-surface-muted px-4 py-2.5 font-semibold uppercase text-surface-muted-foreground",
           gridColsClass(),
           local.stickyHeader && "sticky top-0 z-10",
         )}
       >
         <For each={local.columns}>
-          {(col) => (
-            <div class={cn(col.width, col.headerClass)}>{col.label}</div>
-          )}
+          {(col) => <div class={cn(col.width, col.headerClass)}>{col.label}</div>}
         </For>
       </div>
 
@@ -103,30 +106,23 @@ export function DataGrid<T>(props: DataGridProps<T>): JSX.Element {
       <div class="flex-1 overflow-y-auto">
         <Show when={local.isLoading}>{local.loadingContent}</Show>
 
-        <Show when={!local.isLoading && local.items.length === 0}>
-          {local.emptyContent}
-        </Show>
+        <Show when={!local.isLoading && local.items.length === 0}>{local.emptyContent}</Show>
 
         <Show when={!local.isLoading && local.items.length > 0}>
           <For each={local.items}>
             {(item, index) => {
-              const disabled = () =>
-                local.isRowDisabled?.(item, index()) ?? false;
+              const disabled = () => local.isRowDisabled?.(item, index()) ?? false;
               const customClass = () => local.rowClass?.(item, index()) ?? "";
 
               return (
                 <button
                   type="button"
-                  onClick={() =>
-                    !disabled() && local.onRowClick?.(item, index())
-                  }
-                  onDblClick={() =>
-                    !disabled() && local.onRowDoubleClick?.(item, index())
-                  }
+                  onClick={() => !disabled() && local.onRowClick?.(item, index())}
+                  onDblClick={() => !disabled() && local.onRowDoubleClick?.(item, index())}
                   disabled={disabled()}
                   class={cn(
-                    "w-full grid gap-3 items-center px-4 py-2 text-left transition-colors",
-                    "hover:bg-muted/60 border-b border-muted/30",
+                    "xgx-text-body grid min-h-12 w-full items-center gap-3 px-4 py-3 text-left transition-colors",
+                    "border-b border-border-subtle hover:bg-hover hover:text-hover-foreground",
                     gridColsClass(),
                     disabled() && "opacity-50 cursor-not-allowed",
                     customClass(),
@@ -137,9 +133,7 @@ export function DataGrid<T>(props: DataGridProps<T>): JSX.Element {
                       <div class={cn(col.width, "min-w-0")}>
                         {col.render
                           ? col.render(item, index())
-                          : ((item as Record<string, unknown>)[
-                              col.key
-                            ] as JSX.Element)}
+                          : ((item as Record<string, unknown>)[col.key] as JSX.Element)}
                       </div>
                     )}
                   </For>
@@ -179,16 +173,11 @@ export interface DataGridTextProps extends ParentProps {
  * Text styling for data grid cells.
  */
 export function DataGridText(props: DataGridTextProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "children",
-    "truncate",
-    "muted",
-  ]);
+  const [local, rest] = splitProps(props, ["class", "children", "truncate", "muted"]);
   return (
     <span
       class={cn(
-        "text-xs",
+        "block xgx-text-body-tight",
         local.truncate !== false && "truncate",
         local.muted && "text-muted-foreground",
         local.class,

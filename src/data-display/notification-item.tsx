@@ -1,4 +1,6 @@
-import { type JSX, type ParentProps, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface NotificationItemProps {
@@ -48,8 +50,8 @@ export function NotificationItem(props: NotificationItemProps): JSX.Element {
       type="button"
       onClick={local.onClick}
       class={cn(
-        "w-full text-left flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors",
-        local.unread && "bg-primary/5",
+        "w-full text-left flex items-start gap-3 p-2 rounded-lg hover:bg-hover hover:text-hover-foreground transition-colors",
+        local.unread && "bg-selected text-selected-foreground",
         local.class,
       )}
       {...rest}
@@ -58,26 +60,17 @@ export function NotificationItem(props: NotificationItemProps): JSX.Element {
       <div
         class={cn(
           "size-2 rounded-full mt-2 shrink-0",
-          local.unread ? "bg-primary" : "bg-transparent",
+          local.unread ? "bg-selected-foreground" : "bg-transparent",
         )}
       />
 
       {/* Content */}
       <div class="flex-1 min-w-0">
-        <p
-          class={cn(
-            "text-sm truncate",
-            local.unread ? "font-medium" : "text-muted-foreground",
-          )}
-        >
+        <p class={cn("text-sm truncate", local.unread ? "font-medium" : "text-muted-foreground")}>
           {local.title}
         </p>
-        {local.body && (
-          <p class="text-xs text-muted-foreground truncate">{local.body}</p>
-        )}
-        {local.time && (
-          <span class="text-[10px] text-muted-foreground/70">{local.time}</span>
-        )}
+        {local.body && <p class="text-xs text-muted-foreground truncate">{local.body}</p>}
+        {local.time && <span class="text-[10px] text-muted-foreground/70">{local.time}</span>}
       </div>
 
       {/* Action */}
@@ -95,15 +88,8 @@ export interface NotificationActionButtonProps extends ParentProps {
 /**
  * Small action button for notification items (e.g., mark as read).
  */
-export function NotificationActionButton(
-  props: NotificationActionButtonProps,
-): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "onClick",
-    "title",
-    "children",
-  ]);
+export function NotificationActionButton(props: NotificationActionButtonProps): JSX.Element {
+  const [local, rest] = splitProps(props, ["class", "onClick", "title", "children"]);
 
   return (
     <button
@@ -113,7 +99,7 @@ export function NotificationActionButton(
         local.onClick?.(e);
       }}
       class={cn(
-        "p-1 hover:bg-muted rounded transition-colors shrink-0 text-muted-foreground [&>svg]:size-3.5",
+        "shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-hover hover:text-hover-foreground [&>svg]:size-3.5",
         local.class,
       )}
       title={local.title}

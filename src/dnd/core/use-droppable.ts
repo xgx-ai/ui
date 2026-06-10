@@ -1,5 +1,5 @@
 import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import { type Accessor, createEffect, createSignal, onCleanup } from "solid-js";
+import { type Accessor, createTrackedEffect, createSignal } from "solid-js";
 import { useDndContext } from "./context";
 import type { DragData, DroppableOptions, DroppableState } from "./types";
 
@@ -61,7 +61,7 @@ export function createDroppable<T extends DragData = DragData>(
     elementRef = el;
   };
 
-  createEffect(() => {
+  createTrackedEffect(() => {
     const el = elementRef;
     if (!el) return;
 
@@ -112,7 +112,7 @@ export function createDroppable<T extends DragData = DragData>(
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   return {

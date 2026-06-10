@@ -1,4 +1,5 @@
-import { type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { Show } from "solid-js";
 import { Box, Flex, Stack, Text } from "./layout/stack.tsx";
 
 export interface DocumentPreviewShellProps {
@@ -13,7 +14,7 @@ export function DocumentPreviewShell(props: DocumentPreviewShellProps) {
         "min-height": "297mm",
         margin: "0 auto",
       }}
-      class="bg-white shadow-lg"
+      class="bg-surface text-surface-foreground shadow-elevation-high"
     >
       {props.children}
     </Box>
@@ -30,30 +31,25 @@ export interface DocumentPreviewHeaderProps {
 }
 
 export function DocumentPreviewHeader(props: DocumentPreviewHeaderProps) {
-  const companyDisplayName = () => props.companyName || "Company Name";
-  const documentNumber = () =>
-    props.documentNumber || props.documentNumberFallback || null;
+  const companyDisplayName = () => props.companyName || "Organisation";
+  const documentNumber = () => props.documentNumber || props.documentNumberFallback || null;
 
   return (
     <Flex
       justify="between"
       align="start"
-      class="bg-gray-900 text-white px-10 py-8"
+      class="bg-surface-raised text-surface-raised-foreground px-10 py-8"
     >
       <Stack gap="0">
         <Show when={props.logo}>
-          <img
-            src={props.logo!}
-            alt="Organisation logo"
-            class="h-10 object-contain mb-3"
-          />
+          <img src={props.logo!} alt="Organisation logo" class="h-10 object-contain mb-3" />
         </Show>
-        <Text as="div" class="text-xl font-semibold tracking-tight text-white">
+        <Text as="div" class="text-xl font-semibold tracking-tight">
           {companyDisplayName()}
         </Text>
         <Text
           as="div"
-          class="text-[11px] font-medium uppercase tracking-widest text-white/50 mt-1"
+          class="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mt-1"
         >
           {props.documentLabel}
         </Text>
@@ -62,11 +58,11 @@ export function DocumentPreviewHeader(props: DocumentPreviewHeaderProps) {
         <Stack gap="0" class="text-right">
           <Text
             as="div"
-            class="text-[11px] font-medium uppercase tracking-wider text-white/50"
+            class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
           >
             {props.documentNumberLabel}
           </Text>
-          <Text as="div" class="text-lg font-semibold text-white">
+          <Text as="div" class="text-lg font-semibold">
             {documentNumber()}
           </Text>
         </Stack>
@@ -85,14 +81,11 @@ export function DocumentPreviewStatusBar(props: DocumentPreviewStatusBarProps) {
     <Flex
       justify="between"
       align="center"
-      class="px-10 py-3 bg-blue-50 border-b border-gray-200"
+      class="px-10 py-3 bg-info text-info-foreground border-b border-border-subtle"
     >
       <Flex align="center" gap="2">
-        <Box class="w-2 h-2 rounded-full bg-blue-600" />
-        <Text
-          as="div"
-          class="text-[11px] font-semibold uppercase tracking-wider text-blue-700"
-        >
+        <Box class="w-2 h-2 rounded-full bg-info-foreground" />
+        <Text as="div" class="text-[11px] font-semibold uppercase tracking-wider">
           {props.statusLabel}
         </Text>
       </Flex>

@@ -1,11 +1,5 @@
-import {
-  cn,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@xgx/ui";
+import { cn } from "../cn";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../forms/select";
 import { Show } from "solid-js";
 import { FieldError } from "./field-error";
 import { FieldLabel } from "./field-label";
@@ -59,8 +53,7 @@ export function FormSelectField(props: FormSelectFieldProps) {
         const isTouched = () => field().state.meta.isTouched;
         const hasError = () => isTouched() && errors().length > 0;
 
-        const selectedOption = () =>
-          props.options.find((opt) => opt.value === field().state.value);
+        const selectedOption = () => props.options.find((opt) => opt.value === field().state.value);
 
         return (
           <div class={cn("grid w-full items-center gap-1.5", props.class)}>
@@ -70,16 +63,14 @@ export function FormSelectField(props: FormSelectFieldProps) {
                   <FieldLabel required={isRequired()}>{props.label}</FieldLabel>
                 </Show>
                 <Show when={props.description}>
-                  <p class="text-xs text-muted-foreground">
-                    {props.description}
-                  </p>
+                  <p class="text-xs text-muted-foreground">{props.description}</p>
                 </Show>
               </div>
             </Show>
 
             <Select<SelectOption>
               value={selectedOption()}
-              onChange={(option) => {
+              onChange={(option: any) => {
                 field().handleChange(option?.value);
                 field().handleBlur();
               }}
@@ -89,19 +80,15 @@ export function FormSelectField(props: FormSelectFieldProps) {
               optionDisabled="disabled"
               disabled={props.disabled}
               placeholder={props.placeholder ?? props.label ?? props.emptyText}
-              itemComponent={(itemProps) => (
-                <SelectItem item={itemProps.item}>
-                  {itemProps.item.rawValue.label}
-                </SelectItem>
+              itemComponent={(itemProps: any) => (
+                <SelectItem item={itemProps.item}>{itemProps.item.rawValue.label}</SelectItem>
               )}
             >
               <SelectTrigger
-                class={cn(hasError() && "border-destructive")}
+                class={cn(hasError() && "border-error")}
                 onBlur={() => field().handleBlur()}
               >
-                <SelectValue<SelectOption>>
-                  {(state) => state.selectedOption()?.label}
-                </SelectValue>
+                <SelectValue<SelectOption>>{(state) => state.selectedOption()?.label}</SelectValue>
               </SelectTrigger>
               <SelectContent />
             </Select>

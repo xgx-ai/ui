@@ -1,2 +1,25 @@
-/node_modules
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+demo/dist/
 /example/.build
+
+# Tool caches
+.cache/
+.turbo/
+.vite/
+coverage/
+playwright-report/
+test-results/
+blob-report/
+lighthouse-report/
+audit-artifacts/
+pa11y-report.json
+*.tsbuildinfo
+
+# Logs and local OS files
+*.log
+.DS_Store

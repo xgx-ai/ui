@@ -1,11 +1,5 @@
-import {
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@xgx/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../forms/select";
+import { Label } from "../../forms/label";
 import type { UseTableFiltersReturn } from "../use-table-filters";
 
 export interface FilterSelectOption {
@@ -57,8 +51,7 @@ export interface FilterSelectProps<TFilters extends Record<string, unknown>> {
 export function FilterSelect<TFilters extends Record<string, unknown>>(
   props: FilterSelectProps<TFilters>,
 ) {
-  const value = () =>
-    (props.filterHook.filters()[props.filterKey] as string) ?? null;
+  const value = () => (props.filterHook.filters()[props.filterKey] as string) ?? null;
 
   const handleChange = (selectedValue: string | null) => {
     props.filterHook.setFilter(
@@ -69,24 +62,24 @@ export function FilterSelect<TFilters extends Record<string, unknown>>(
 
   return (
     <div class="space-y-1.5 py-1">
-      <Label class="text-xs text-gray-600">{props.label}</Label>
+      <Label class="text-xs text-muted-foreground">{props.label}</Label>
       <Select
         value={value()}
         onChange={handleChange}
         options={props.options.map((opt) => opt.value)}
         placeholder={props.placeholder ?? "All"}
-        itemComponent={(itemProps) => (
+        itemComponent={(itemProps: any) => (
           <SelectItem item={itemProps.item}>
-            {props.options.find((opt) => opt.value === itemProps.item.rawValue)
-              ?.label ?? itemProps.item.rawValue}
+            {props.options.find((opt) => opt.value === itemProps.item.rawValue)?.label ??
+              itemProps.item.rawValue}
           </SelectItem>
         )}
       >
         <SelectTrigger class="h-8 text-xs">
           <SelectValue<string>>
             {(state) =>
-              props.options.find((opt) => opt.value === state.selectedOption())
-                ?.label ?? state.selectedOption()
+              props.options.find((opt) => opt.value === state.selectedOption())?.label ??
+              state.selectedOption()
             }
           </SelectValue>
         </SelectTrigger>

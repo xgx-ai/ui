@@ -1,4 +1,5 @@
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+
 import type {
   ExternalToast,
   FixMe,
@@ -50,9 +51,7 @@ class Observer {
   ) => {
     const { message, ...rest } = data;
     const id =
-      typeof data?.id === "number" || (data.id && data.id?.length > 0)
-        ? data.id
-        : toastsCounter++;
+      typeof data?.id === "number" || (data.id && data.id?.length > 0) ? data.id : toastsCounter++;
 
     const alreadyExists = this.toasts.find((toast) => {
       return toast.id === id;
@@ -109,10 +108,7 @@ class Observer {
     return this.create({ ...data, type: "warning", message });
   };
 
-  promise = <ToastData>(
-    promise: PromiseT<ToastData>,
-    data?: PromiseData<ToastData>,
-  ) => {
+  promise = <ToastData>(promise: PromiseT<ToastData>, data?: PromiseData<ToastData>) => {
     if (!data) {
       // Nothing to show
       return;
@@ -144,18 +140,14 @@ class Observer {
         this.create({ id, type: "error", message });
       } else if (data.success !== undefined) {
         shouldDismiss = false;
-        const message =
-          typeof data.success === "function"
-            ? data.success(response)
-            : data.success;
+        const message = typeof data.success === "function" ? data.success(response) : data.success;
         this.create({ id, type: "success", message });
       }
     })
       .catch((error) => {
         if (data.error !== undefined) {
           shouldDismiss = false;
-          const message =
-            typeof data.error === "function" ? data.error(error) : data.error;
+          const message = typeof data.error === "function" ? data.error(error) : data.error;
           this.create({ id, type: "error", message });
         }
       })
@@ -177,10 +169,7 @@ class Observer {
   };
 
   // We can't provide the toast we just created as a prop as we didn't create it yet, so we can create a default toast object, I just don't know how to use function in argument when calling()?
-  custom = (
-    jsx: (id: number | string) => JSX.Element,
-    data?: ExternalToast,
-  ) => {
+  custom = (jsx: (id: number | string) => JSX.Element, data?: ExternalToast) => {
     const id = data?.id || toastsCounter++;
     this.publish({ jsx: jsx(id), id, ...data });
     return id;

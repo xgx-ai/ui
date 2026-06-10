@@ -1,4 +1,5 @@
-import { keepPreviousData, useInfiniteQuery } from "@tanstack/solid-query";
+import type { JSX } from "@solidjs/web";
+import { keepPreviousData, useInfiniteQuery } from "../query";
 import { cn } from "../cn";
 import { ComboboxTrigger } from "./combobox";
 import {
@@ -14,17 +15,11 @@ import {
   SearchSection,
 } from "./search";
 import { Spinner } from "../feedback/spinner";
-import {
-  type Accessor,
-  createSignal,
-  createUniqueId,
-  type JSXElement,
-  onCleanup,
-  Show,
-} from "solid-js";
+import { type Accessor, createSignal, createUniqueId, onCleanup, Show } from "solid-js";
 
 import { onSignal } from "../utils/on-signal";
 import { Label } from "./label";
+import { Search as SearchIcon, X } from "../icons.index";
 
 export interface SearchInfiniteQueryConfig<T> {
   queryKey: unknown[];
@@ -36,6 +31,8 @@ export interface SearchInfiniteQueryConfig<T> {
   limit?: number;
   enabled?: Accessor<boolean> | boolean;
 }
+
+type SearchInfinitePage<T> = { data: T[]; count: number };
 
 type SearchInfiniteProps<T> = {
   queryConfig: SearchInfiniteQueryConfig<T>;
@@ -50,7 +47,7 @@ type SearchInfiniteProps<T> = {
   error?: string;
   class?: string;
   readOnly?: boolean;
-  extraButton?: (close?: () => void) => JSXElement;
+  extraButton?: (close?: () => void) => JSX.Element;
   debounceMs?: number;
   noResultText?: string;
   clearable?: boolean;
@@ -58,10 +55,7 @@ type SearchInfiniteProps<T> = {
   id?: string;
 };
 
-function getDisplayValue<T>(
-  item: T | undefined,
-  optionTextValue: keyof T,
-): string {
+function getDisplayValue<T>(item: T | undefined, optionTextValue: keyof T): string {
   if (optionTextValue && item) {
     return item[optionTextValue] as string;
   }
@@ -99,13 +93,9 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
 
   // Infinite query for data loading
   const infiniteQuery = useInfiniteQuery(() => ({
-    queryKey: [
-      ...props.queryConfig.queryKey,
-      "search-infinite",
-      debouncedSearchTerm(),
-    ],
+    queryKey: [...props.queryConfig.queryKey, "search-infinite", debouncedSearchTerm()],
 
-    queryFn: ({ pageParam }) =>
+    queryFn: ({ pageParam }: { pageParam: number }) =>
       props.queryConfig.queryFn({
         search: debouncedSearchTerm(),
         limit,
@@ -113,7 +103,11 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
       }),
     initialPageParam: 0,
     placeholderData: keepPreviousData,
-    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+    getNextPageParam: (
+      lastPage: SearchInfinitePage<T>,
+      _allPages: SearchInfinitePage<T>[],
+      lastPageParam: number,
+    ) => {
       if (!lastPage || !lastPage.data || lastPage.data.length < limit) {
         return undefined;
       }
@@ -126,14 +120,22 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
           : (props.queryConfig.enabled ?? true);
       return configEnabled && isOpen();
     },
-  }));
+  })) as unknown as {
+    isSuccess: boolean;
+    data?: { pages: SearchInfinitePage<T>[] };
+    isLoading: boolean;
+    isFetchingNextPage: boolean;
+    hasNextPage?: boolean;
+    isFetching: boolean;
+    fetchNextPage: () => void;
+  };
 
   const options = () => {
     if (!infiniteQuery.isSuccess) {
       return [];
     }
 
-    return infiniteQuery.data.pages.flatMap((page) => page.data);
+    return infiniteQuery.data?.pages.flatMap((page) => page.data) ?? [];
   };
 
   // Load more function
@@ -160,11 +162,7 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
 
     io = new IntersectionObserver(
       (entries) => {
-        if (
-          entries[0]?.isIntersecting &&
-          !infiniteQuery.isFetching &&
-          infiniteQuery.hasNextPage
-        ) {
+        if (entries[0]?.isIntersecting && !infiniteQuery.isFetching && infiniteQuery.hasNextPage) {
           loadMore();
         }
       },
@@ -254,7 +252,7 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
       {props.readOnly ? (
         <div
           class={cn(
-            "flex h-9 rounded-md border border-input text-gray-400 bg-gray-50 px-3 py-2 text-xs",
+            "flex h-9 rounded-md border border-input bg-muted px-3 py-2 text-xs text-muted-foreground",
             props.class,
           )}
         >
@@ -280,7 +278,7 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
           }}
           onInputChange={handleSearchChange}
           class="w-full"
-          itemComponent={(p) => {
+          itemComponent={(p: any) => {
             return (
               <SearchItem item={p.item}>
                 <SearchItemLabel>
@@ -289,10 +287,8 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
               </SearchItem>
             );
           }}
-          sectionComponent={(p) => (
-            <SearchSection>
-              {p.section.rawValue[props.optionTextValue]}
-            </SearchSection>
+          sectionComponent={(p: any) => (
+            <SearchSection>{p.section.rawValue[props.optionTextValue]}</SearchSection>
           )}
         >
           <SearchControl
@@ -302,25 +298,8 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
               props.readOnly && "opacity-50 pointer-events-none",
             )}
           >
-            <SearchIndicator
-              class="pl-2"
-              loadingComponent={<Spinner class="size-3.5" />}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="text-muted-foreground"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
+            <SearchIndicator class="pl-2" loadingComponent={<Spinner class="size-3.5" />}>
+              <SearchIcon class="size-3.5 text-muted-foreground" />
             </SearchIndicator>
             <div class={cn("flex flex-row items-center px-3 w-full")}>
               <Show
@@ -331,8 +310,7 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
                       class="flex-1 h-full outline-none bg-transparent py-2 text-xs px-0"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
-                          const inputValue = (e.target as HTMLInputElement)
-                            .value;
+                          const inputValue = (e.target as HTMLInputElement).value;
                           handleInputCommit(inputValue);
                         }
                       }}
@@ -350,8 +328,7 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
                       class="flex-1 h-full outline-none bg-transparent py-2 text-xs px-0"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
-                          const inputValue = (e.target as HTMLInputElement)
-                            .value;
+                          const inputValue = (e.target as HTMLInputElement).value;
                           handleInputCommit(inputValue);
                         }
                       }}
@@ -359,10 +336,7 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
                     />
                   }
                 >
-                  <span
-                    class="flex-1 text-xs cursor-pointer py-2"
-                    onClick={() => setIsOpen(true)}
-                  >
+                  <span class="flex-1 text-xs cursor-pointer py-2" onClick={() => setIsOpen(true)}>
                     {getDisplayValue(props.value, props.optionTextValue)}
                   </span>
                 </Show>
@@ -371,21 +345,13 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
                 type="text"
                 name="searchValue"
                 required={props.required}
-                value={
-                  props.value
-                    ? getDisplayValue(props.value, props.optionTextValue)
-                    : ""
-                }
+                value={props.value ? getDisplayValue(props.value, props.optionTextValue) : ""}
                 class="sr-only"
               />
-              <Show
-                when={
-                  props.value && !props.readOnly && props.clearable !== false
-                }
-              >
+              <Show when={props.value && !props.readOnly && props.clearable !== false}>
                 <button
                   type="button"
-                  class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-sm"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-muted-foreground hover:bg-hover hover:text-hover-foreground"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -395,21 +361,7 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
                     }
                   }}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="text-gray-500"
-                  >
-                    <path d="M18 6 6 18" />
-                    <path d="m6 6 12 12" />
-                  </svg>
+                  <X class="size-3.5" />
                 </button>
               </Show>
             </div>
@@ -422,7 +374,7 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
           >
             <Show when={infiniteQuery.isLoading}>
               <div class="flex justify-center items-center p-4">
-                <div class="animate-spin h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full" />
+                <div class="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-foreground" />
               </div>
             </Show>
             <Show when={!infiniteQuery.isLoading}>
@@ -430,16 +382,12 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
               <SearchNoResult>
                 <p class="text-xs pb-2">
                   {props.noResultText ||
-                    (searchTerm()
-                      ? `No results found for "${searchTerm()}"`
-                      : "No results found")}
+                    (searchTerm() ? `No results found for "${searchTerm()}"` : "No results found")}
                 </p>
               </SearchNoResult>
             </Show>
             <Show when={props.extraButton}>
-              <div class="p-2 border-t mt-1">
-                {props.extraButton!(() => setIsOpen(false))}
-              </div>
+              <div class="p-2 border-t mt-1">{props.extraButton!(() => setIsOpen(false))}</div>
             </Show>
 
             {/* Infinite scroll sentinel and loading indicator */}
@@ -449,27 +397,20 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
               }}
               class="w-full opacity-0"
             />
-            <Show
-              when={
-                Boolean(infiniteQuery.hasNextPage) ||
-                infiniteQuery.isFetchingNextPage
-              }
-            >
-              <div class="flex justify-center items-center p-2 text-xs text-muted-foreground border-t bg-gray-50">
+            <Show when={Boolean(infiniteQuery.hasNextPage) || infiniteQuery.isFetchingNextPage}>
+              <div class="flex items-center justify-center border-t border-border-subtle bg-surface-muted p-2 text-xs text-surface-muted-foreground">
                 <Show
                   when={infiniteQuery.isFetchingNextPage}
                   fallback={
                     <div class="w-full text-center py-2">
                       Scroll for more results
-                      <div class="text-xs opacity-50 mt-1">
-                        ({options().length} loaded)
-                      </div>
+                      <div class="text-xs opacity-50 mt-1">({options().length} loaded)</div>
                     </div>
                   }
                 >
                   <div class="w-full text-center py-2">
                     Loading more...
-                    <div class="animate-spin h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full mx-auto mt-1" />
+                    <div class="mx-auto mt-1 h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-foreground" />
                   </div>
                 </Show>
               </div>
@@ -479,7 +420,7 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
       )}
       <div
         class={cn(
-          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-destructive",
+          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-error",
           props.error && "opacity-100 h-4 ",
         )}
       >

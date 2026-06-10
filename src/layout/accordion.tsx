@@ -1,113 +1,150 @@
-import * as AccordionPrimitive from "@kobalte/core/accordion";
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import type { JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { createContext, createSignal, Show, useContext } from "solid-js";
+import { ChevronDown } from "../icons.index";
 import { cn } from "../cn";
+import { splitProps } from "../utils/split-props";
 
-const Accordion = AccordionPrimitive.Root;
+type AccordionValue = string | string[] | undefined;
 
-type AccordionItemProps<T extends ValidComponent = "div"> =
-  AccordionPrimitive.AccordionItemProps<T> & {
-    class?: string | undefined;
+type AccordionProps = Omit<ComponentProps<"div">, "onChange"> & {
+  value?: AccordionValue;
+  defaultValue?: AccordionValue;
+  multiple?: boolean;
+  collapsible?: boolean;
+  onChange?: (value: any) => void;
+};
+
+const AccordionContext = createContext<{
+  isExpanded: (value: string) => boolean;
+  toggle: (value: string) => void;
+}>({
+  isExpanded: () => false,
+  toggle: () => {},
+});
+
+const AccordionItemContext = createContext<{ value: string }>({ value: "" });
+
+const Accordion = (props: AccordionProps) => {
+  const [local, others] = splitProps(props, [
+    "class",
+    "children",
+    "value",
+    "defaultValue",
+    "multiple",
+    "collapsible",
+    "onChange",
+  ]);
+  const [uncontrolledValue, setUncontrolledValue] = createSignal<AccordionValue>(
+    local.defaultValue,
+  );
+  const selected = () => local.value ?? uncontrolledValue();
+  const isExpanded = (value: string) => {
+    const current = selected();
+    return Array.isArray(current) ? current.includes(value) : current === value;
+  };
+  const setSelected = (next: AccordionValue) => {
+    if (local.value === undefined) setUncontrolledValue(next);
+    local.onChange?.(next);
+  };
+  const toggle = (value: string) => {
+    if (local.multiple) {
+      const current = selected();
+      const next = new Set(Array.isArray(current) ? current : []);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      setSelected([...next]);
+      return;
+    }
+    setSelected(isExpanded(value) && local.collapsible ? undefined : value);
   };
 
-const AccordionItem = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, AccordionItemProps<T>>,
-) => {
-  const [local, others] = splitProps(props as AccordionItemProps, ["class"]);
   return (
-    <AccordionPrimitive.Item class={cn("border-b", local.class)} {...others} />
+    <AccordionContext value={{ isExpanded, toggle }}>
+      <div class={local.class} {...others}>
+        {local.children}
+      </div>
+    </AccordionContext>
   );
 };
 
-type AccordionTriggerProps<T extends ValidComponent = "button"> =
-  AccordionPrimitive.AccordionTriggerProps<T> & {
-    class?: string | undefined;
-    children?: JSX.Element;
+type AccordionItemProps = ComponentProps<"div"> & {
+  value: string;
+};
+
+const AccordionItem = (props: AccordionItemProps) => {
+  const [local, others] = splitProps(props, ["class", "children", "value"]);
+  return (
+    <AccordionItemContext
+      value={{
+        get value() {
+          return local.value;
+        },
+      }}
+    >
+      <div class={cn("border-b", local.class)} {...others}>
+        {local.children}
+      </div>
+    </AccordionItemContext>
+  );
+};
+
+type AccordionTriggerProps = ComponentProps<"button"> & {
+  children?: JSX.Element;
+};
+
+const AccordionTrigger = (props: AccordionTriggerProps) => {
+  const accordion = useContext(AccordionContext);
+  const item = useContext(AccordionItemContext);
+  const [local, others] = splitProps(props, ["class", "children", "disabled", "onClick", "type"]);
+  const expanded = () => accordion.isExpanded(item.value);
+  const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
+    const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
+    handler?.(event);
+    if (!event.defaultPrevented && !local.disabled) accordion.toggle(item.value);
   };
 
-const AccordionTrigger = <T extends ValidComponent = "button">(
-  props: PolymorphicProps<T, AccordionTriggerProps<T>>,
-) => {
-  const [local, others] = splitProps(props as AccordionTriggerProps, [
-    "class",
-    "children",
-  ]);
   return (
-    <AccordionPrimitive.Header class="flex">
-      <AccordionPrimitive.Trigger
+    <div class="flex">
+      <button
+        type={local.type ?? "button"}
+        aria-expanded={expanded() ? "true" : "false"}
+        data-expanded={expanded() ? "" : undefined}
+        disabled={local.disabled}
         class={cn(
-          "cursor-pointer flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-expanded]>svg]:rotate-180",
+          "flex flex-1 cursor-pointer items-center justify-between py-4 font-medium transition-all hover:underline [&[data-expanded]>svg]:rotate-180",
           local.class,
         )}
+        onClick={onClick}
         {...others}
       >
         {local.children}
-        <svg
-          aria-hidden="true"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="size-4 shrink-0 transition-transform duration-200"
-        >
-          <path d="M6 9l6 6l6 -6" />
-        </svg>
-      </AccordionPrimitive.Trigger>
-    </AccordionPrimitive.Header>
+        <ChevronDown aria-hidden="true" class="size-4 shrink-0 transition-transform duration-200" />
+      </button>
+    </div>
   );
 };
 
-type AccordionContentProps<T extends ValidComponent = "div"> =
-  AccordionPrimitive.AccordionContentProps<T> & {
-    class?: string | undefined;
-    children?: JSX.Element;
-  };
+type AccordionContentProps = ComponentProps<"div"> & {
+  children?: JSX.Element;
+};
 
-const AccordionContent = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, AccordionContentProps<T>>,
-) => {
-  const [local, others] = splitProps(props as AccordionContentProps, [
-    "class",
-    "children",
-  ]);
+const AccordionContent = (props: AccordionContentProps) => {
+  const accordion = useContext(AccordionContext);
+  const item = useContext(AccordionItemContext);
+  const [local, others] = splitProps(props, ["class", "children"]);
+
   return (
-    <AccordionPrimitive.Content
-      class={cn(
-        "animate-accordion-up overflow-hidden text-sm transition-all data-expanded:animate-accordion-down",
-        local.class,
-      )}
-      {...others}
-    >
-      <div class="pb-4 pt-0">{local.children}</div>
-    </AccordionPrimitive.Content>
+    <Show when={accordion.isExpanded(item.value)}>
+      <div
+        data-expanded=""
+        class={cn("overflow-hidden text-sm transition-all", local.class)}
+        {...others}
+      >
+        <div class="pb-4 pt-0">{local.children}</div>
+      </div>
+    </Show>
   );
 };
 
-/**
- * # Accordion
- *
- * Collapsible content sections for organizing information.
- *
- * @example
- * ```
- * <Accordion multiple={false} collapsible class="w-full max-w-md">
- *   <AccordionItem value="item-1">
- *     <AccordionTrigger>Is it accessible?</AccordionTrigger>
- *     <AccordionContent>Yes. It adheres to the WAI-ARIA design pattern.</AccordionContent>
- *   </AccordionItem>
- *   <AccordionItem value="item-2">
- *     <AccordionTrigger>Is it styled?</AccordionTrigger>
- *     <AccordionContent>Yes. It comes with default styles.</AccordionContent>
- *   </AccordionItem>
- *   <AccordionItem value="item-3">
- *     <AccordionTrigger>Is it animated?</AccordionTrigger>
- *     <AccordionContent>Yes. Smooth transitions by default.</AccordionContent>
- *   </AccordionItem>
- * </Accordion>
- * ```
- */
 export { Accordion, AccordionContent, AccordionItem, AccordionTrigger };
+export type { AccordionContentProps, AccordionItemProps, AccordionProps, AccordionTriggerProps };

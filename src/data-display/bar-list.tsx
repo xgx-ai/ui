@@ -1,6 +1,8 @@
-import type { ComponentProps, JSX } from "solid-js";
-import { For, mergeProps, Show, splitProps } from "solid-js";
-import { Dynamic } from "solid-js/web";
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+
+import { For, merge as mergeProps, Show } from "solid-js";
+import { Dynamic } from "@solidjs/web";
 
 import { cn } from "../cn";
 
@@ -34,8 +36,7 @@ type SortOrder = "ascending" | "descending" | "none";
 
 type ValueFormatter = (value: number) => string;
 
-const defaultValueFormatter: ValueFormatter = (value: number) =>
-  value.toString();
+const defaultValueFormatter: ValueFormatter = (value: number) => value.toString();
 
 type BarListProps<T> = ComponentProps<"div"> & {
   data: Bar<T>[];
@@ -51,12 +52,7 @@ const BarList = <T,>(rawProps: BarListProps<T>) => {
     },
     rawProps,
   );
-  const [local, others] = splitProps(props, [
-    "class",
-    "data",
-    "valueFormatter",
-    "sortOrder",
-  ]);
+  const [local, others] = splitProps(props, ["class", "data", "valueFormatter", "sortOrder"]);
 
   const sortedData = () => {
     if (local.sortOrder === "none") {
@@ -86,20 +82,13 @@ const BarList = <T,>(rawProps: BarListProps<T>) => {
             <div class="row flex w-full justify-between space-x-6">
               <div class="grow">
                 <div
-                  class={cn(
-                    "flex h-8 items-center rounded-md bg-secondary px-2",
-                  )}
+                  class={cn("flex h-8 items-center rounded-md bg-secondary px-2")}
                   style={{
                     width: `${widths()[idx()]}%`,
                   }}
                 >
                   <Show when={bar.icon}>
-                    {(icon) => (
-                      <Dynamic
-                        component={icon()}
-                        class="mr-2 size-5 flex-none"
-                      />
-                    )}
+                    {(icon) => <Dynamic component={icon()} class="mr-2 size-5 flex-none" />}
                   </Show>
                   <Show when={bar.href} fallback={<p>{bar.name}</p>}>
                     {(href) => (
@@ -115,9 +104,7 @@ const BarList = <T,>(rawProps: BarListProps<T>) => {
                   </Show>
                 </div>
               </div>
-              <div class="flex items-center">
-                {local.valueFormatter(bar.value)}
-              </div>
+              <div class="flex items-center">{local.valueFormatter(bar.value)}</div>
             </div>
           );
         }}

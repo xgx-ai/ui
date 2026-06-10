@@ -1,45 +1,21 @@
-import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import * as SeparatorPrimitive from "@kobalte/core/separator";
-import type { ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-
+import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../cn";
+import { splitProps } from "../utils/split-props";
 
-type SeparatorRootProps<T extends ValidComponent = "hr"> =
-  SeparatorPrimitive.SeparatorRootProps<T> & { class?: string | undefined };
+type SeparatorProps = ComponentProps<"hr"> & {
+  orientation?: "horizontal" | "vertical";
+};
 
-/**
- * # Separator
- *
- * Visual divider between content sections.
- *
- * @example
- * ```
- * <div class="space-y-4">
- *   <p>Content above</p>
- *   <Separator />
- *   <p>Content below</p>
- *   <div class="flex h-8 items-center gap-4">
- *     <span>Left</span>
- *     <Separator orientation="vertical" />
- *     <span>Right</span>
- *   </div>
- * </div>
- * ```
- */
-const Separator = <T extends ValidComponent = "hr">(
-  props: PolymorphicProps<T, SeparatorRootProps<T>>,
-) => {
-  const [local, others] = splitProps(props as SeparatorRootProps, [
-    "class",
-    "orientation",
-  ]);
+const Separator = (props: SeparatorProps) => {
+  const [local, others] = splitProps(props, ["class", "orientation"]);
+  const orientation = () => local.orientation ?? "horizontal";
+
   return (
-    <SeparatorPrimitive.Root
-      orientation={local.orientation ?? "horizontal"}
+    <hr
+      aria-orientation={orientation()}
       class={cn(
-        "shrink-0 bg-border",
-        local.orientation === "vertical" ? "h-full w-px" : "h-px w-full",
+        "shrink-0 border-0 bg-border",
+        orientation() === "vertical" ? "h-full w-px" : "h-px w-full",
         local.class,
       )}
       {...others}
@@ -48,3 +24,4 @@ const Separator = <T extends ValidComponent = "hr">(
 };
 
 export { Separator };
+export type { SeparatorProps };

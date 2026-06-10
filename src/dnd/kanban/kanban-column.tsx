@@ -1,3 +1,4 @@
+import type { JSX } from "@solidjs/web";
 import {
   draggable,
   dropTargetForElements,
@@ -6,22 +7,13 @@ import { disableNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/elem
 import {
   type Accessor,
   type Component,
-  createEffect,
+  createTrackedEffect,
   createMemo,
   createSignal,
-  type JSX,
-  onCleanup,
   Show,
 } from "solid-js";
-import {
-  draggingSourceClasses,
-  reorderTransitionClasses,
-} from "../animations/presets";
-import {
-  type KanbanColumnData,
-  type KanbanItemData,
-  useKanbanContext,
-} from "./kanban-context";
+import { draggingSourceClasses, reorderTransitionClasses } from "../animations/presets";
+import { type KanbanColumnData, type KanbanItemData, useKanbanContext } from "./kanban-context";
 
 /**
  * State of a kanban column
@@ -67,7 +59,7 @@ export interface KanbanColumnProps {
  * ```tsx
  * <KanbanColumn id={column.id} index={index()}>
  *   {({ state, setHeaderRef }) => (
- *     <div class={cn("min-h-[200px]", state().isOver && "bg-primary/5")}>
+ *     <div class={cn("min-h-[200px]", state().isOver && "bg-hover")}>
  *       <div ref={setHeaderRef} class="font-bold p-2">
  *         {column.title}
  *       </div>
@@ -111,7 +103,7 @@ export const KanbanColumn: Component<KanbanColumnProps> = (props) => {
   });
 
   // Track if this is the source column
-  createEffect(() => {
+  createTrackedEffect(() => {
     const dragState = context.dragState();
     setState((s) => ({
       ...s,
@@ -120,7 +112,7 @@ export const KanbanColumn: Component<KanbanColumnProps> = (props) => {
   });
 
   // Set up column as draggable (if allowed)
-  createEffect(() => {
+  createTrackedEffect(() => {
     if (!context.allowColumnReorder) return;
     const el = headerRef ?? elementRef;
     if (!el) return;
@@ -160,11 +152,11 @@ export const KanbanColumn: Component<KanbanColumnProps> = (props) => {
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   // Set up as drop target for items
-  createEffect(() => {
+  createTrackedEffect(() => {
     const el = elementRef;
     if (!el) return;
 
@@ -214,7 +206,7 @@ export const KanbanColumn: Component<KanbanColumnProps> = (props) => {
       },
     });
 
-    onCleanup(cleanup);
+    return cleanup;
   });
 
   const columnClass = createMemo(() => {
@@ -228,11 +220,7 @@ export const KanbanColumn: Component<KanbanColumnProps> = (props) => {
   const isRenderFunction = () => typeof props.children === "function";
 
   return (
-    <div
-      ref={setRef}
-      class={`${columnClass()} ${props.class ?? ""}`}
-      data-kanbanColumn={props.id}
-    >
+    <div ref={setRef} class={`${columnClass()} ${props.class ?? ""}`} data-kanbanColumn={props.id}>
       <Show when={isRenderFunction()} fallback={props.children as JSX.Element}>
         {(props.children as (props: KanbanColumnRenderProps) => JSX.Element)({
           state,

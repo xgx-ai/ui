@@ -1,15 +1,12 @@
-import type { PolymorphicProps } from "@kobalte/core";
-import * as TextFieldPrimitive from "@kobalte/core/text-field";
+import type { ComponentProps, JSX } from "@solidjs/web";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import { Search } from "lucide-solid";
-import type { JSX, ValidComponent } from "solid-js";
-import { splitProps } from "solid-js";
-
+import { Search } from "../icons.index";
 import { cn } from "../cn.ts";
+import { splitProps } from "../utils/split-props";
 
 const searchBarVariants = cva(
-  "flex items-center rounded-full border border-black/10 bg-slate-50/50 text-xs ring-offset-background focus-within:ring-1 focus-within:ring-ring/30 focus-within:ring-offset-1",
+  "xgx-control-text-md flex items-center rounded-full border border-border-subtle bg-surface-muted ring-offset-background focus-within:ring-1 focus-within:ring-ring/30 focus-within:ring-offset-1",
   {
     variants: {
       size: {
@@ -24,54 +21,51 @@ const searchBarVariants = cva(
   },
 );
 
-type SearchBarProps<T extends ValidComponent = "div"> =
-  TextFieldPrimitive.TextFieldRootProps<T> &
-    VariantProps<typeof searchBarVariants> & {
-      class?: string;
-      inputClass?: string;
-      placeholder?: string;
-      value?: string;
-      onInput?: JSX.EventHandler<HTMLInputElement, InputEvent>;
-      onChange?: (value: string) => void;
-      icon?: JSX.Element;
-    };
+type SearchBarProps = Omit<ComponentProps<"div">, "onChange"> &
+  VariantProps<typeof searchBarVariants> & {
+    icon?: JSX.Element;
+    inputClass?: string;
+    onChange?: (value: string) => void;
+    onInput?: JSX.EventHandler<HTMLInputElement, InputEvent>;
+    placeholder?: string;
+    value?: string;
+  };
 
-const SearchBar = <T extends ValidComponent = "div">(
-  props: PolymorphicProps<T, SearchBarProps<T>>,
-) => {
-  const [local, others] = splitProps(props as SearchBarProps, [
+const SearchBar = (props: SearchBarProps) => {
+  const [local, others] = splitProps(props, [
     "class",
-    "inputClass",
-    "size",
-    "placeholder",
-    "value",
-    "onInput",
-    "onChange",
     "icon",
+    "inputClass",
+    "onChange",
+    "onInput",
+    "placeholder",
+    "size",
+    "value",
   ]);
+  const onInput: JSX.EventHandler<HTMLInputElement, InputEvent> = (event) => {
+    local.onChange?.(event.currentTarget.value);
+    const handler = local.onInput as JSX.EventHandler<HTMLInputElement, InputEvent> | undefined;
+    handler?.(event);
+  };
 
   return (
-    <TextFieldPrimitive.Root
-      class={cn("flex flex-col", local.class)}
-      value={local.value}
-      onChange={local.onChange}
-      {...others}
-    >
+    <div class={cn("flex flex-col", local.class)} {...others}>
       <div class={cn(searchBarVariants({ size: local.size }))}>
         <span class="flex items-center justify-center pl-3 text-muted-foreground">
           {local.icon ?? <Search class="size-4" />}
         </span>
-        <TextFieldPrimitive.Input
+        <input
           type="search"
+          value={local.value}
           placeholder={local.placeholder ?? "Search..."}
           class={cn(
             "w-full bg-transparent px-2 py-2 outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
             local.inputClass,
           )}
-          onInput={local.onInput}
+          onInput={onInput}
         />
       </div>
-    </TextFieldPrimitive.Root>
+    </div>
   );
 };
 

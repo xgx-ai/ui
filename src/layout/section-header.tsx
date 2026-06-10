@@ -1,4 +1,6 @@
-import { type JSX, type ParentProps, Show, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { type ParentProps, Show } from "solid-js";
 import { cn } from "../cn";
 
 export interface SectionHeaderProps extends ParentProps {

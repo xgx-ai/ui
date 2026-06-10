@@ -1,13 +1,7 @@
 import { cn } from "../cn";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 import { Skeleton } from "../feedback/skeleton";
-import { createMemo, Show, Suspense } from "solid-js";
+import { createMemo, Show, Loading as Suspense } from "solid-js";
 import { Label } from "./label";
 
 type Option = {
@@ -68,14 +62,10 @@ export function SelectDropdown(props: DropdownProps) {
         .filter((opt): opt is SelectOption => opt !== undefined);
     }
 
-    return selectOptions().find(
-      (opt) => opt.value === (props.value as Option).value,
-    );
+    return selectOptions().find((opt) => opt.value === (props.value as Option).value);
   });
 
-  const handleChange = (
-    selectedValue: SelectOption | SelectOption[] | null,
-  ) => {
+  const handleChange = (selectedValue: SelectOption | SelectOption[] | null) => {
     if (!selectedValue) {
       props.onChange?.(null);
       return;
@@ -103,9 +93,7 @@ export function SelectDropdown(props: DropdownProps) {
         disabled={props.disabled}
         multiple
         onChange={handleChange}
-        itemComponent={(p) => (
-          <SelectItem item={p.item}>{p.item.rawValue.label}</SelectItem>
-        )}
+        itemComponent={(p: any) => <SelectItem item={p.item}>{p.item.rawValue.label}</SelectItem>}
       >
         <SelectTrigger class="w-full">
           <SelectValue<SelectOption>>
@@ -114,9 +102,9 @@ export function SelectDropdown(props: DropdownProps) {
               return (
                 <div class="flex w-full items-center justify-between gap-2 overflow-hidden h-full relative">
                   <div class="flex flex-wrap gap-1 overflow-y-auto overflow-x-hidden pr-1">
-                    {items.map((option) => (
+                    {items.map((option: SelectOption) => (
                       <span
-                        class="bg-gray-100 rounded px-2 py-0.5 text-xs flex items-center gap-1 shrink-0"
+                        class="flex shrink-0 items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                         onPointerDown={(e) => e.stopPropagation()}
                       >
                         {option?.label}
@@ -162,14 +150,10 @@ export function SelectDropdown(props: DropdownProps) {
         disabled={props.disabled}
         multiple={false}
         onChange={handleChange}
-        itemComponent={(p) => (
-          <SelectItem item={p.item}>{p.item.rawValue.label}</SelectItem>
-        )}
+        itemComponent={(p: any) => <SelectItem item={p.item}>{p.item.rawValue.label}</SelectItem>}
       >
         <SelectTrigger class="w-full">
-          <SelectValue<SelectOption>>
-            {(state) => state.selectedOption()?.label}
-          </SelectValue>
+          <SelectValue<SelectOption>>{(state) => state.selectedOption()?.label}</SelectValue>
         </SelectTrigger>
         <SelectContent />
       </Select>
@@ -183,7 +167,7 @@ export function SelectDropdown(props: DropdownProps) {
         {props.readOnly ? (
           <div
             class={cn(
-              "flex h-9 rounded-md border border-input bg-gray-50 px-3 py-2 text-xs",
+              "flex h-9 rounded-md border border-input bg-muted px-3 py-2 text-xs text-muted-foreground",
             )}
           >
             {displaySelectedValues()}
@@ -196,7 +180,7 @@ export function SelectDropdown(props: DropdownProps) {
       </Suspense>
       <div
         class={cn(
-          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-destructive",
+          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-error",
           props.error && "opacity-100 h-4 ",
         )}
       >

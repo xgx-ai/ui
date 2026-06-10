@@ -1,6 +1,7 @@
+import type { JSX } from "@solidjs/web";
 import { Button } from "./button";
-import { CirclePlus } from "lucide-solid";
-import { createMemo, type JSX, Show } from "solid-js";
+import { CirclePlus } from "../icons.index";
+import { createMemo, Show } from "solid-js";
 
 type OptionalObjectFieldApi = {
   state: {
@@ -65,7 +66,7 @@ export default function OptionalObjectField<T extends Record<string, any>>(
         <div class="flex flex-col gap-1">
           <div class="text-sm font-semibold">{props.label}</div>
           {props.description && (
-            <div class="text-xs text-gray-500">{props.description}</div>
+            <div class="text-xs text-muted-foreground">{props.description}</div>
           )}
         </div>
         <Show when={!hasValue()}>
@@ -89,7 +90,7 @@ export default function OptionalObjectField<T extends Record<string, any>>(
           variant="outline"
           size="sm"
           onClick={handleRemove}
-          class="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+          class="flex items-center gap-1 text-danger hover:bg-danger hover:text-danger-foreground"
         >
           Remove {props.label}
         </Button>

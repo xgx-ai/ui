@@ -1,34 +1,32 @@
+import type { ComponentProps } from "@solidjs/web";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import type { Component, ComponentProps } from "solid-js";
-import { Show, splitProps } from "solid-js";
+import type { Component } from "solid-js";
+import { Show } from "solid-js";
 
 import { cn } from "../cn";
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded border font-medium transition-colors focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center gap-1.5 whitespace-nowrap rounded border font-medium transition-colors focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
         default:
-          "bg-muted hover:bg-muted/80 border-border text-muted-foreground",
+          "bg-surface-muted hover:bg-hover border-border-subtle text-surface-muted-foreground hover:text-hover-foreground",
         outline:
-          "bg-transparent hover:bg-muted/50 border-border text-muted-foreground",
-        primary:
-          "bg-primary/12 hover:bg-primary/20 border-primary/30 text-primary",
-        secondary:
-          "bg-secondary/12 hover:bg-secondary/20 border-secondary/30 text-secondary",
+          "bg-transparent hover:bg-hover border-border-subtle text-muted-foreground hover:text-hover-foreground",
+        primary: "bg-primary hover:bg-primary/90 border-primary text-primary-foreground",
+        secondary: "bg-secondary hover:bg-secondary/90 border-secondary text-secondary-foreground",
         success:
           "bg-success hover:bg-success/80 border-success-foreground/30 text-success-foreground",
         warning:
           "bg-warning hover:bg-warning/80 border-warning-foreground/30 text-warning-foreground",
-        error:
-          "bg-error hover:bg-error/80 border-error-foreground/30 text-error-foreground",
-        danger:
-          "bg-error hover:bg-error/80 border-error-foreground/30 text-error-foreground",
+        error: "bg-error hover:bg-error/80 border-error-foreground/30 text-error-foreground",
+        danger: "bg-danger hover:bg-danger/80 border-danger text-danger-foreground",
         info: "bg-info hover:bg-info/80 border-info-foreground/30 text-info-foreground",
-        destructive:
-          "bg-destructive/12 hover:bg-destructive/20 border-destructive/30 text-destructive",
+        destructive: "bg-danger hover:bg-danger/80 border-danger text-danger-foreground",
       },
       size: {
         default: "px-2 py-0.5 text-xs",
@@ -42,26 +40,49 @@ const badgeVariants = cva(
   },
 );
 
+const colorBorderVariants = new Set([
+  "primary",
+  "secondary",
+  "success",
+  "warning",
+  "error",
+  "danger",
+  "info",
+  "destructive",
+]);
+
 type BadgeProps = ComponentProps<"div"> &
   VariantProps<typeof badgeVariants> & {
     round?: boolean;
   };
 
 const Badge: Component<BadgeProps> = (props) => {
-  const [local, others] = splitProps(props, [
-    "class",
-    "variant",
-    "size",
-    "round",
-  ]);
+  const [local, others] = splitProps(props, ["class", "variant", "size", "round", "style"]);
+  const borderStyle = "color-mix(in oklch, currentColor 30%, transparent)";
+  const style = () => {
+    if (!colorBorderVariants.has(local.variant ?? "default")) {
+      return local.style;
+    }
+
+    if (typeof local.style === "string") {
+      return `${local.style}; border-color: ${borderStyle}`;
+    }
+
+    return {
+      ...(local.style as JSX.CSSProperties | undefined),
+      "border-color": borderStyle,
+    };
+  };
+
   return (
     <div
+      {...others}
       class={cn(
         badgeVariants({ variant: local.variant, size: local.size }),
         local.round && "rounded-full",
         local.class,
       )}
-      {...others}
+      style={style()}
     />
   );
 };
@@ -75,7 +96,7 @@ const statusDotColors = {
   info: "bg-info-foreground",
   primary: "bg-primary",
   secondary: "bg-secondary",
-  destructive: "bg-destructive",
+  destructive: "bg-danger",
 } as const;
 
 type StatusBadgeProps = BadgeProps & {
@@ -85,21 +106,20 @@ type StatusBadgeProps = BadgeProps & {
 };
 
 const StatusBadge: Component<StatusBadgeProps> = (props) => {
-  const [local, others] = splitProps(props, [
-    "dot",
-    "pulse",
-    "dotColor",
-    "children",
-  ]);
+  const [local, others] = splitProps(props, ["dot", "pulse", "dotColor", "class", "children"]);
   const dotColorClass = () =>
     statusDotColors[local.dotColor || "default"] || statusDotColors.default;
 
   return (
-    <Badge {...others}>
+    <Badge
+      round
+      class={cn("h-5 shrink-0 px-2 text-[11px] font-semibold leading-none", local.class)}
+      {...others}
+    >
       <Show when={local.dot !== false}>
         <div
           class={cn(
-            "w-1.5 h-1.5 rounded-full",
+            "h-1.5 w-1.5 shrink-0 rounded-full",
             dotColorClass(),
             local.pulse && "animate-pulse",
           )}

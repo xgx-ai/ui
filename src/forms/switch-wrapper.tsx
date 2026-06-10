@@ -1,9 +1,4 @@
-import {
-  Switch,
-  SwitchControl,
-  SwitchHiddenInput,
-  SwitchThumb,
-} from "./switch";
+import { Switch, SwitchControl, SwitchHiddenInput, SwitchThumb } from "./switch";
 import { Show } from "solid-js";
 import { Label } from "./label";
 
@@ -20,9 +15,7 @@ interface SwitchWrapperProps {
 export default function SwitchWrapper(props: SwitchWrapperProps) {
   const layout = () => props.layout ?? "inline";
   const flexClass = () =>
-    layout() === "stacked"
-      ? "flex flex-col-reverse items-start gap-2 "
-      : "flex items-center gap-2";
+    layout() === "stacked" ? "flex flex-col-reverse items-start gap-2 " : "flex items-center gap-2";
 
   return (
     <Switch
@@ -41,7 +34,7 @@ export default function SwitchWrapper(props: SwitchWrapperProps) {
         <div class="flex flex-col gap-1">
           <Label required={props.required}>{props.label}</Label>
           <Show when={props.description}>
-            <p class="text-[10px] text-gray-500">{props.description}</p>
+            <p class="text-[10px] text-muted-foreground">{props.description}</p>
           </Show>
         </div>
       </Show>

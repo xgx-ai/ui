@@ -1,12 +1,8 @@
-import { ChevronDown, Pen, Plus, Trash2, Type, Upload } from "lucide-solid";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import { ChevronDown, Pen, Plus, Trash2, Type, Upload } from "../icons.index";
+import { createTrackedEffect, createSignal, For, Show } from "solid-js";
 import { cn } from "../cn.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../layout/tabs.tsx";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "../overlays/popover.tsx";
+import { Popover, PopoverContent, PopoverTrigger } from "../overlays/popover.tsx";
 import { Button } from "./button.tsx";
 import { TextField, TextFieldInput } from "./text-field.tsx";
 
@@ -37,6 +33,8 @@ interface SignatureFieldProps {
   required?: boolean;
   disabled?: boolean;
   error?: string;
+  inkColor?: string;
+  backgroundColor?: string;
 }
 
 const GOOGLE_FONTS = [
@@ -67,12 +65,24 @@ async function getIpAddress() {
   }
 }
 
+function resolveCanvasColor(value: string | undefined, fallback: string) {
+  if (!value) return fallback;
+  if (!value.startsWith("var(")) return value;
+
+  const property = value.match(/var\((--[^,\s)]+)/)?.[1];
+  if (!property || typeof document === "undefined") return fallback;
+
+  return getComputedStyle(document.documentElement).getPropertyValue(property).trim() || fallback;
+}
+
 function generateTextSignature(
   text: string,
   fontFamily: string,
   fontSize: number,
   width: number,
   height: number,
+  inkColor: string,
+  backgroundColor: string,
 ): string {
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -80,12 +90,10 @@ function generateTextSignature(
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not get canvas context");
 
-  // Fill white background
-  ctx.fillStyle = "white";
+  ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, width, height);
 
-  // Draw text
-  ctx.fillStyle = "black";
+  ctx.fillStyle = inkColor;
   ctx.font = `${fontSize}px "${fontFamily}"`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -97,6 +105,8 @@ function generateTextSignature(
 async function processSignatureImage(
   file: File,
   cropData?: ImageCropData,
+  inkColor = "CanvasText",
+  backgroundColor = "Canvas",
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -123,8 +133,7 @@ async function processSignatureImage(
         canvas.width = targetWidth;
         canvas.height = targetHeight;
 
-        // Fill white background
-        ctx.fillStyle = "white";
+        ctx.fillStyle = backgroundColor;
         ctx.fillRect(0, 0, targetWidth, targetHeight);
 
         // Calculate aspect ratio preserving dimensions
@@ -137,17 +146,23 @@ async function processSignatureImage(
         // Draw the image
         ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
 
-        // Convert to grayscale/B&W
         const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
         const data = imageData.data;
         for (let i = 0; i < data.length; i += 4) {
           const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-          const bw = avg > 128 ? 255 : 0;
-          data[i] = bw;
-          data[i + 1] = bw;
-          data[i + 2] = bw;
+          data[i] = 0;
+          data[i + 1] = 0;
+          data[i + 2] = 0;
+          data[i + 3] = 255 - avg;
         }
         ctx.putImageData(imageData, 0, 0);
+        ctx.globalCompositeOperation = "source-in";
+        ctx.fillStyle = inkColor;
+        ctx.fillRect(0, 0, targetWidth, targetHeight);
+        ctx.globalCompositeOperation = "destination-over";
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, targetWidth, targetHeight);
+        ctx.globalCompositeOperation = "source-over";
 
         resolve(canvas.toDataURL("image/png"));
       };
@@ -163,9 +178,7 @@ async function processSignatureImage(
 
 export function SignaturePad(props: SignatureFieldProps) {
   const [isOpen, setIsOpen] = createSignal(false);
-  const [activeTab, setActiveTab] = createSignal<"text" | "draw" | "upload">(
-    "text",
-  );
+  const [activeTab, setActiveTab] = createSignal<"text" | "draw" | "upload">("text");
   const [textInput, setTextInput] = createSignal("");
   const [selectedFont, setSelectedFont] = createSignal("Dancing Script");
   const [fontsLoaded, setFontsLoaded] = createSignal(false);
@@ -175,15 +188,17 @@ export function SignaturePad(props: SignatureFieldProps) {
 
   let canvasRef: HTMLCanvasElement | undefined;
   let fileInputRef: HTMLInputElement | undefined;
+  const signatureInkColor = () =>
+    resolveCanvasColor(props.inkColor ?? "var(--signature-ink)", "CanvasText");
+  const signatureBackgroundColor = () =>
+    resolveCanvasColor(props.backgroundColor ?? "var(--signature-background)", "Canvas");
 
   // Load Google Fonts when popover opens
   const loadGoogleFonts = () => {
     if (fontsLoaded()) return;
 
     // Create Google Fonts link with all our signature fonts
-    const fontFamilies = GOOGLE_FONTS.map((font) =>
-      font.value.replace(/ /g, "+"),
-    ).join("&family=");
+    const fontFamilies = GOOGLE_FONTS.map((font) => font.value.replace(/ /g, "+")).join("&family=");
 
     const link = document.createElement("link");
     link.href = `https://fonts.googleapis.com/css2?family=${fontFamilies}&display=swap`;
@@ -199,7 +214,7 @@ export function SignaturePad(props: SignatureFieldProps) {
   };
 
   // Load fonts when popover opens
-  createEffect(() => {
+  createTrackedEffect(() => {
     if (isOpen() && !fontsLoaded()) {
       loadGoogleFonts();
     }
@@ -232,14 +247,13 @@ export function SignaturePad(props: SignatureFieldProps) {
   }
 
   // Initialize canvas for drawing
-  createEffect(() => {
+  createTrackedEffect(() => {
     if (canvasRef && activeTab() === "draw") {
       const ctx = canvasRef.getContext("2d");
       if (ctx) {
-        // Set up canvas
-        ctx.fillStyle = "white";
+        ctx.fillStyle = signatureBackgroundColor();
         ctx.fillRect(0, 0, canvasRef.width, canvasRef.height);
-        ctx.strokeStyle = "black";
+        ctx.strokeStyle = signatureInkColor();
         ctx.lineWidth = 2;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
@@ -257,12 +271,10 @@ export function SignaturePad(props: SignatureFieldProps) {
         24,
         400,
         100,
+        signatureInkColor(),
+        signatureBackgroundColor(),
       );
-      const signatureWithMetadata = await createSignatureData(
-        signature,
-        "text",
-        selectedFont(),
-      );
+      const signatureWithMetadata = await createSignatureData(signature, "text", selectedFont());
       props.onChange(signatureWithMetadata);
       setIsOpen(false);
     } catch (error) {
@@ -275,10 +287,7 @@ export function SignaturePad(props: SignatureFieldProps) {
 
     try {
       const signature = canvasRef.toDataURL("image/png");
-      const signatureWithMetadata = await createSignatureData(
-        signature,
-        "draw",
-      );
+      const signatureWithMetadata = await createSignatureData(signature, "draw");
       props.onChange(signatureWithMetadata);
       setIsOpen(false);
     } catch (error) {
@@ -325,7 +334,7 @@ export function SignaturePad(props: SignatureFieldProps) {
 
     const ctx = canvasRef.getContext("2d");
     if (ctx) {
-      ctx.fillStyle = "white";
+      ctx.fillStyle = signatureBackgroundColor();
       ctx.fillRect(0, 0, canvasRef.width, canvasRef.height);
     }
     props.onChange("");
@@ -351,15 +360,13 @@ export function SignaturePad(props: SignatureFieldProps) {
     if (!file) return;
 
     try {
-      // Process the image (resize, convert to B&W, etc.)
       const processedSignature = await processSignatureImage(
         file,
         cropData() || undefined,
+        signatureInkColor(),
+        signatureBackgroundColor(),
       );
-      const signatureWithMetadata = await createSignatureData(
-        processedSignature,
-        "upload",
-      );
+      const signatureWithMetadata = await createSignatureData(processedSignature, "upload");
       props.onChange(signatureWithMetadata);
       setIsOpen(false);
     } catch (error) {
@@ -409,12 +416,12 @@ export function SignaturePad(props: SignatureFieldProps) {
           <Show
             when={getSignatureImage(props.value)}
             fallback={
-              <div class="w-full h-20 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 bg-gray-50">
-                <span class="text-sm text-gray-400">No signature</span>
+              <div class="flex h-20 w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-border-subtle bg-surface-muted">
+                <span class="text-sm text-muted-foreground">No signature</span>
               </div>
             }
           >
-            <div class="relative group border rounded-md p-4 bg-gray-50">
+            <div class="group relative rounded-md border border-border-subtle bg-surface-muted p-4">
               <img
                 src={getSignatureImage(props.value) ?? ""}
                 alt="Current signature"
@@ -433,23 +440,23 @@ export function SignaturePad(props: SignatureFieldProps) {
                 fallback={
                   <Button
                     variant="outline"
-                    class="w-full h-20 border-2 border-dashed border-gray-300 hover:border-gray-400 flex flex-col items-center justify-center gap-2"
+                    class="flex h-20 w-full flex-col items-center justify-center gap-2 border-2 border-dashed border-border-subtle text-muted-foreground hover:border-border-strong hover:text-foreground"
                     disabled={props.disabled}
                   >
-                    <Plus class="w-6 h-6 text-gray-400" />
-                    <span class="text-sm text-gray-600">Add Signature</span>
+                    <Plus class="h-6 w-6" />
+                    <span class="text-sm">Add Signature</span>
                   </Button>
                 }
               >
-                <div class="relative group border rounded-md p-4 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors">
+                <div class="group relative cursor-pointer rounded-md border border-border-subtle bg-surface-muted p-4 transition-colors hover:bg-hover">
                   <img
                     src={getSignatureImage(props.value) ?? ""}
                     alt="Current signature"
                     class="max-w-full max-h-16 object-contain mx-auto"
                     style="image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;"
                   />
-                  <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-md">
-                    <Pen class="w-4 h-4 text-gray-600" />
+                  <div class="absolute inset-0 flex items-center justify-center rounded-md bg-surface-raised opacity-0 transition-opacity group-hover:opacity-90">
+                    <Pen class="h-4 w-4 text-foreground" />
                   </div>
                 </div>
               </Show>
@@ -466,7 +473,7 @@ export function SignaturePad(props: SignatureFieldProps) {
                       onClick={clearSignature}
                       variant="ghost"
                       size="sm"
-                      class="text-destructive hover:text-destructive"
+                      class="text-danger hover:bg-danger hover:text-danger-foreground"
                     >
                       <Trash2 class="w-4 h-4 mr-1" />
                       Clear
@@ -516,9 +523,7 @@ export function SignaturePad(props: SignatureFieldProps) {
                           <option
                             value={font.value}
                             style={{
-                              "font-family": fontsLoaded()
-                                ? font.value
-                                : "inherit",
+                              "font-family": fontsLoaded() ? font.value : "inherit",
                             }}
                           >
                             {font.label}
@@ -526,23 +531,19 @@ export function SignaturePad(props: SignatureFieldProps) {
                         )}
                       </For>
                     </select>
-                    <ChevronDown class="absolute right-3 top-1/2 transform -translate-y-1/2 size-4 opacity-50 pointer-events-none" />
+                    <ChevronDown class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 opacity-50" />
                     <Show when={!fontsLoaded()}>
-                      <div class="absolute inset-0 flex items-center justify-center bg-white/50 rounded-md">
-                        <span class="text-xs text-gray-500">
-                          Loading fonts...
-                        </span>
+                      <div class="absolute inset-0 flex items-center justify-center rounded-md bg-surface-raised">
+                        <span class="text-xs text-muted-foreground">Loading fonts...</span>
                       </div>
                     </Show>
                   </div>
 
                   <Show when={textInput().trim()}>
                     <div
-                      class="p-3 border rounded-md bg-white text-center"
+                      class="rounded-md border border-border-subtle bg-surface p-3 text-center text-surface-foreground"
                       style={{
-                        "font-family": fontsLoaded()
-                          ? selectedFont()
-                          : "inherit",
+                        "font-family": fontsLoaded() ? selectedFont() : "inherit",
                         "font-size": "20px",
                         "min-height": "50px",
                         display: "flex",
@@ -564,12 +565,12 @@ export function SignaturePad(props: SignatureFieldProps) {
                 </TabsContent>
 
                 <TabsContent value="draw" class="space-y-4">
-                  <div class="border rounded-md p-2 bg-white">
+                  <div class="rounded-md border border-border-subtle bg-surface p-2">
                     <canvas
                       ref={canvasRef}
                       width={340}
                       height={100}
-                      class="border border-dashed border-gray-300 cursor-crosshair w-full"
+                      class="w-full cursor-crosshair border border-dashed border-border-subtle"
                       onMouseDown={startDrawing}
                       onMouseMove={draw}
                       onMouseUp={stopDrawing}
@@ -612,21 +613,19 @@ export function SignaturePad(props: SignatureFieldProps) {
 
                   <button
                     type="button"
-                    class="w-full border-2 border-dashed border-gray-300 rounded-md p-6 text-center cursor-pointer hover:border-gray-400 transition-colors bg-transparent"
+                    class="w-full cursor-pointer rounded-md border-2 border-dashed border-border-subtle bg-transparent p-6 text-center transition-colors hover:border-border-strong hover:bg-hover"
                     onClick={triggerFileUpload}
                   >
-                    <Upload class="w-6 h-6 mx-auto mb-2 text-gray-400" />
-                    <p class="text-sm text-gray-600">
-                      Click to upload signature image
-                    </p>
-                    <p class="text-xs text-gray-400 mt-1">
-                      Will be converted to black & white
+                    <Upload class="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
+                    <p class="text-sm text-foreground">Click to upload signature image</p>
+                    <p class="mt-1 text-xs text-muted-foreground">
+                      Will be converted to high contrast
                     </p>
                   </button>
 
                   <Show when={uploadedFile()}>
                     <div class="space-y-3">
-                      <p class="text-sm text-green-600 text-center">
+                      <p class="text-center text-sm text-success-foreground">
                         Image uploaded: {uploadedFile()?.name}
                       </p>
                       <Button
@@ -647,7 +646,7 @@ export function SignaturePad(props: SignatureFieldProps) {
 
       {/* Error message */}
       <Show when={props.error}>
-        <div class="text-sm text-destructive">{props.error}</div>
+        <div class="text-sm text-error">{props.error}</div>
       </Show>
     </div>
   );

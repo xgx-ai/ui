@@ -1,4 +1,6 @@
-import { type JSX, type ParentProps, Show, splitProps } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { splitProps } from "../utils/split-props";
+import { type ParentProps, Show } from "solid-js";
 import { cn } from "../cn";
 import { Badge } from "../feedback/badge";
 
@@ -14,10 +16,10 @@ export interface GroupHeaderProps extends ParentProps {
 
 const variantStyles = {
   default: "",
-  overdue: "bg-red-100 text-red-700 border-red-200",
-  today: "bg-blue-100 text-blue-700 border-blue-200",
-  muted: "bg-gray-100 text-gray-500 border-gray-200",
-  upcoming: "bg-slate-100 text-slate-700 border-slate-200",
+  overdue: "bg-error text-error-foreground border-error-foreground/30",
+  today: "bg-info text-info-foreground border-info-foreground/30",
+  muted: "bg-muted text-muted-foreground border-border-subtle",
+  upcoming: "bg-surface-muted text-surface-muted-foreground border-border-subtle",
 };
 
 /**
@@ -31,13 +33,7 @@ const variantStyles = {
  * ```
  */
 export function GroupHeader(props: GroupHeaderProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "label",
-    "count",
-    "variant",
-    "children",
-  ]);
+  const [local, rest] = splitProps(props, ["class", "label", "count", "variant", "children"]);
 
   const badgeClass = () => variantStyles[local.variant ?? "default"];
 
@@ -47,9 +43,7 @@ export function GroupHeader(props: GroupHeaderProps): JSX.Element {
         {local.label}
       </h3>
       <Show when={local.count !== undefined}>
-        <Badge class={cn("text-[10px] px-1.5 py-0 h-4 border", badgeClass())}>
-          {local.count}
-        </Badge>
+        <Badge class={cn("text-[10px] px-1.5 py-0 h-4 border", badgeClass())}>{local.count}</Badge>
       </Show>
       {local.children}
     </div>
