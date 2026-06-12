@@ -490,6 +490,7 @@ export {
 } from "./forms/radio-group.tsx";
 export {
   createForm,
+  Form,
   Form as SchemaForm,
   introspectField,
   introspectSchema,
@@ -500,6 +501,7 @@ export type {
   FieldBinding,
   FieldMeta,
   FieldProps,
+  FieldProps as SchemaFormFieldProps,
   FormInstance,
   FormProps,
   FormSelectOption,
@@ -831,6 +833,7 @@ export {
 // Overlays
 export {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,

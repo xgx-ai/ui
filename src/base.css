@@ -256,6 +256,10 @@ button {
   @apply cursor-pointer;
 }
 
+body {
+  @apply text-xs;
+}
+
 .xgx-text-caption {
   font-size: 0.6875rem;
   line-height: 1rem;

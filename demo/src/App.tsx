@@ -65,9 +65,11 @@ import {
   createOptimistic,
   createRenderEffect,
   createSignal,
+  onSettled,
 } from "solid-js";
 import { z } from "zod";
 
+import type { DialogContentProps, FieldBinding } from "@xgx/ui";
 import {
   AppContent,
   AppMain,
@@ -189,6 +191,7 @@ import {
   ToolbarToggleGroup,
   ToolbarToggleItem,
   toast,
+  useResponseDialog,
 } from "@xgx/ui";
 
 const themeTokens = {
@@ -423,6 +426,38 @@ const asyncReviewers = [
 ] as const;
 
 type AsyncReviewer = (typeof asyncReviewers)[number];
+
+const responseDialogQueues = [
+  {
+    value: "ops",
+    label: "Operations review",
+    detail: "Primary route for standard access changes.",
+  },
+  {
+    value: "risk",
+    label: "Risk review",
+    detail: "Escalates changes with policy or control impact.",
+  },
+  {
+    value: "legal",
+    label: "Legal review",
+    detail: "Routes contractual and regulatory exceptions.",
+  },
+] as const;
+
+type ResponseDialogQueue = (typeof responseDialogQueues)[number];
+
+const responseDialogFormSchema = z.object({
+  title: z.string().min(3).describe("Request title").meta({ placeholder: "Access review" }),
+  queue: z.string().min(1).describe("Review queue"),
+  summary: z
+    .string()
+    .min(8)
+    .describe("Decision summary")
+    .meta({ placeholder: "Summarise the routing decision", rows: 3 }),
+});
+
+type ResponseDialogFormValues = z.output<typeof responseDialogFormSchema>;
 
 type AsyncQueueItem = {
   id: string;
@@ -2995,6 +3030,31 @@ function WorkflowsPanel(props: {
 
 function OverlaysPanel() {
   const [dialogOpen, setDialogOpen] = createSignal(false);
+  const { showResponseDialog, DialogResponse } = useResponseDialog();
+
+  const loadResponseDialogQueues = action(function* () {
+    yield wait(550);
+    return [...responseDialogQueues];
+  });
+
+  const openResponseDialogForm = async () => {
+    const result = await showResponseDialog<ResponseDialogFormValues>({
+      title: "Route review",
+      description: "Submit a schema form with options loaded by an async action.",
+      class: "w-full max-w-xl",
+      content: (dialogProps) => (
+        <ResponseDialogSchemaForm dialogProps={dialogProps} loadQueues={loadResponseDialogQueues} />
+      ),
+    });
+
+    if (!result) return;
+
+    const selectedQueue = responseDialogQueues.find((queue) => queue.value === result.queue);
+    toast.success(
+      "Review routed",
+      `${result.title} sent to ${selectedQueue?.label ?? result.queue}: ${result.summary}`,
+    );
+  };
 
   return (
     <div class="grid gap-4 lg:grid-cols-2">
@@ -3007,6 +3067,10 @@ function OverlaysPanel() {
           <Button onClick={() => setDialogOpen(true)}>
             <Columns3 />
             Open dialog
+          </Button>
+          <Button variant="outline" onClick={openResponseDialogForm}>
+            <Workflow />
+            Schema response
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger class="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-input px-3 text-xs hover:bg-hover hover:text-hover-foreground">
@@ -3067,6 +3131,153 @@ function OverlaysPanel() {
           </Button>
         </CardContent>
       </Card>
+      <DialogResponse />
+    </div>
+  );
+}
+
+function ResponseDialogSchemaForm(props: {
+  dialogProps: DialogContentProps<ResponseDialogFormValues>;
+  loadQueues: () => Promise<ResponseDialogQueue[]>;
+}) {
+  const form = createForm(responseDialogFormSchema, {
+    initialValues: {
+      title: "Access review",
+      summary: "",
+    },
+  });
+
+  return (
+    <SchemaForm form={form} onSubmit={(data) => props.dialogProps.resolve(data)} class="gap-4 pt-1">
+      <form.Field name="title" />
+      <form.Field
+        name="queue"
+        component={(fieldProps) => (
+          <ResponseDialogQueueSelect
+            binding={fieldProps.binding as FieldBinding<string>}
+            loadQueues={props.loadQueues}
+          />
+        )}
+      />
+      <form.Field name="summary" />
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={props.dialogProps.reject}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={form.isSubmitting()}>
+          Submit
+        </Button>
+      </DialogFooter>
+    </SchemaForm>
+  );
+}
+
+function ResponseDialogQueueSelect(props: {
+  binding: FieldBinding<string>;
+  loadQueues: () => Promise<ResponseDialogQueue[]>;
+}) {
+  const [options, setOptions] = createSignal<ResponseDialogQueue[]>([]);
+  const [loading, setLoading] = createSignal(false);
+  const [loadError, setLoadError] = createSignal<string>();
+  let disposed = false;
+
+  const selectedOption = () => options().find((option) => option.value === props.binding.value());
+
+  const refreshOptions = async () => {
+    setLoading(true);
+    setLoadError(undefined);
+
+    try {
+      const nextOptions = await props.loadQueues();
+      if (disposed) return;
+
+      setOptions(nextOptions);
+      if (!nextOptions.some((option) => option.value === props.binding.value())) {
+        props.binding.onInput(nextOptions[0]?.value ?? "");
+      }
+    } catch {
+      if (!disposed) setLoadError("Review queues could not load.");
+    } finally {
+      if (!disposed) setLoading(false);
+    }
+  };
+
+  onSettled(() => {
+    void refreshOptions();
+    return () => {
+      disposed = true;
+    };
+  });
+
+  return (
+    <div class="grid w-full items-center gap-1.5">
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-xs font-medium leading-none">
+          {props.binding.label}
+          {props.binding.required && <span class="ml-0.5 text-error-foreground">*</span>}
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={loading()}
+          onClick={refreshOptions}
+        >
+          <RefreshCw class={loading() ? "animate-spin" : undefined} />
+          Reload
+        </Button>
+      </div>
+      <Select<ResponseDialogQueue>
+        options={options()}
+        value={selectedOption()}
+        optionValue="value"
+        optionTextValue="label"
+        optionLabel={(option) => `${option.label} ${option.detail}`}
+        disabled={props.binding.disabled || loading()}
+        onChange={(option) => {
+          const nextOption = option as ResponseDialogQueue | null;
+          if (nextOption) props.binding.onInput(nextOption.value);
+          props.binding.onBlur();
+        }}
+        itemComponent={(itemProps) => (
+          <SelectItem item={itemProps.item}>
+            <div class="min-w-0">
+              <div class="truncate font-medium">{itemProps.item.rawValue.label}</div>
+              <div class="truncate text-muted-foreground">{itemProps.item.rawValue.detail}</div>
+            </div>
+          </SelectItem>
+        )}
+      >
+        <SelectTrigger
+          aria-label={props.binding.label}
+          class={props.binding.validationState() === "invalid" ? "border-error-foreground" : ""}
+          onBlur={() => props.binding.onBlur()}
+        >
+          <SelectValue<ResponseDialogQueue>>
+            {(state) =>
+              state.selectedOption()?.label ?? (loading() ? "Loading queues" : "Select queue")
+            }
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent class="w-full min-w-72">
+          <Show when={loading()}>
+            <div class="border-t border-border-subtle px-3 py-2 text-xs text-muted-foreground">
+              Loading routing queues
+            </div>
+          </Show>
+          <Show when={loadError()}>
+            <div class="border-t border-border-subtle px-3 py-2 text-xs text-error-foreground">
+              {loadError()}
+            </div>
+          </Show>
+        </SelectContent>
+      </Select>
+      <Show when={selectedOption()}>
+        {(option) => <p class="text-xs text-muted-foreground">{option().detail}</p>}
+      </Show>
+      <Show when={props.binding.validationState() === "invalid"}>
+        <p class="text-xs text-error-foreground">{props.binding.errorMessage()}</p>
+      </Show>
     </div>
   );
 }

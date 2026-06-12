@@ -111,6 +111,32 @@ const DialogTrigger = <T extends ValidComponent = "button">(props: DialogTrigger
   );
 };
 
+type DialogCloseProps<T extends ValidComponent = "button"> = ComponentProps<"button"> & {
+  as?: T;
+  class?: string;
+  children?: JSX.Element;
+};
+
+const DialogClose = <T extends ValidComponent = "button">(props: DialogCloseProps<T>) => {
+  const dialog = useDialog();
+  const [local, rest] = splitProps(props, ["as", "children", "class", "onClick", "type"]);
+
+  return (
+    <Dynamic
+      component={local.as ?? "button"}
+      type={local.as ? undefined : (local.type ?? "button")}
+      class={local.class}
+      onClick={(event: MouseEvent & { currentTarget: HTMLElement }) => {
+        callEventHandler(local.onClick, event);
+        if (!event.defaultPrevented) dialog.close();
+      }}
+      {...rest}
+    >
+      {local.children}
+    </Dynamic>
+  );
+};
+
 const DialogPortal: Component<{
   children: JSX.Element;
   mount?: Element;
@@ -313,6 +339,7 @@ function callEventHandler<TElement, TEvent>(
 
 export {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
