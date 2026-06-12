@@ -1,3 +1,20 @@
+/**
+ * # Search
+ *
+ * Provides a combobox-style search surface with keyboard selection.
+ *
+ * @example
+ * ```tsx
+ * <Search options={users} optionValue="id" optionTextValue="name">
+ *   <SearchControl>
+ *     <SearchInput placeholder="Search users" />
+ *   </SearchControl>
+ *   <SearchContent>
+ *     <SearchListbox />
+ *   </SearchContent>
+ * </Search>
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import {
   createContext,

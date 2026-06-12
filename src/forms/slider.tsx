@@ -1,3 +1,18 @@
+/**
+ * # Slider
+ *
+ * Renders a range slider with thumb, track, and value label parts.
+ *
+ * @example
+ * ```tsx
+ * <Slider value={priority()} onChange={setPriority}>
+ *   <SliderTrack>
+ *     <SliderFill />
+ *     <SliderThumb />
+ *   </SliderTrack>
+ * </Slider>
+ * ```
+ */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import { createContext, createSignal, useContext } from "solid-js";

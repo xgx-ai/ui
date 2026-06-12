@@ -1,3 +1,13 @@
+/**
+ * # Separator
+ *
+ * Renders a visual or semantic divider.
+ *
+ * @example
+ * ```tsx
+ * <Separator />
+ * ```
+ */
 import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../cn";
 import { splitProps } from "../utils/split-props";

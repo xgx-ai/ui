@@ -1,3 +1,14 @@
+/**
+ * # Toast
+ *
+ * Renders transient status messages in a toast region.
+ *
+ * @example
+ * ```tsx
+ * toast({ title: "Saved", description: "Changes are now live." });
+ * <Toaster />
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { Component } from "solid-js";

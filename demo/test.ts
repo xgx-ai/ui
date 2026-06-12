@@ -119,6 +119,7 @@ assertNoMatch(
   "Hardcoded color styling default found",
 );
 
+const demoSource = walk("demo/src").map(read).join("\n");
 const app = read("demo/src/App.tsx");
 for (const route of [
   "ai",
@@ -152,7 +153,7 @@ for (const requiredCopy of [
   "SettingsPopoverContent",
   "AccountPopoverContent",
 ]) {
-  assert(app.includes(requiredCopy), `Missing demo coverage: ${requiredCopy}`);
+  assert(demoSource.includes(requiredCopy), `Missing demo coverage: ${requiredCopy}`);
 }
 
 const builtIndex = read("demo/dist/index.html");

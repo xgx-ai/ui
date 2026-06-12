@@ -1,3 +1,18 @@
+/**
+ * # DropdownMenu
+ *
+ * Opens a menu of actions from a trigger.
+ *
+ * @example
+ * ```tsx
+ * <DropdownMenu>
+ *   <DropdownMenuTrigger>Actions</DropdownMenuTrigger>
+ *   <DropdownMenuContent>
+ *     <DropdownMenuItem>Archive</DropdownMenuItem>
+ *   </DropdownMenuContent>
+ * </DropdownMenu>
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";
 import { splitProps } from "../utils/split-props";

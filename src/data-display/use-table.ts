@@ -1,5 +1,5 @@
-import { useInfiniteQuery } from "../query";
 import { type Accessor, createMemo, createSignal } from "solid-js";
+import { createInfiniteQuery, type InfiniteQueryResult, type QueryKey } from "../query/index.tsx";
 
 /**
  * Base interface for table row data.
@@ -10,31 +10,33 @@ export interface TableRowData {
 }
 
 export interface UseTableParams<TData extends TableRowData, TParams = Record<string, unknown>> {
-  /** Query key for TanStack Query cache */
-  queryKey: unknown[];
-  /** Function to fetch paginated data */
+  /** Query key for the local infinite query cache. */
+  queryKey: QueryKey;
+  /** Function to fetch paginated data. */
   queryFn: (
     params: TParams & { limit: number; page: number },
   ) => Promise<{ data: TData[]; count: number; totalCount?: number }>;
-  /** Number of items per page (default: 10) */
+  /** Number of items per page. */
   limit?: number;
-  /** Whether the query is enabled */
+  /** Whether the query is enabled. */
   enabled?: Accessor<boolean> | boolean;
-  /** Additional params passed to queryFn */
+  /** Additional params passed to queryFn. */
   initialParams?: Omit<TParams, "limit" | "page">;
-  /** Only allow single row selection */
+  /** Only allow single row selection. */
   singleSelect?: boolean;
 }
 
 export interface UseTableReturn<TData> {
   data: Accessor<TData[]>;
-  query: ReturnType<
-    typeof useInfiniteQuery<{
+  query: InfiniteQueryResult<
+    {
       data: TData[];
       count: number;
       totalCount?: number;
-    }>
+    },
+    number
   >;
+  isLoading: Accessor<boolean>;
   isFetchingMore: Accessor<boolean>;
   hasMore: Accessor<boolean>;
   loadMore: () => void;
@@ -53,15 +55,16 @@ export interface UseTableReturn<TData> {
   singleSelect: boolean;
 }
 
-type TablePage<TData> = {
-  data: TData[];
-  count: number;
-  totalCount?: number;
-};
-
 /**
  * Hook for table data with infinite scroll and built-in selection support.
- * Wraps TanStack Query's useInfiniteQuery with table-specific utilities.
+ *
+ * @example
+ * ```tsx
+ * const table = useTable({
+ *   queryKey: ["users"],
+ *   queryFn: ({ limit, page }) => fetchUsers({ limit, page }),
+ * });
+ * ```
  */
 export function useTable<
   TData extends TableRowData = TableRowData,
@@ -73,62 +76,74 @@ export function useTable<
     singleSelect = false,
   } = params;
 
-  const query = useInfiniteQuery(() => ({
-    queryKey: [...params.queryKey],
-    queryFn: ({ pageParam }: { pageParam: number }) =>
-      params.queryFn({
-        ...initialParams,
-        limit,
-        page: pageParam,
-      } as TParams & { limit: number; page: number }),
-    initialPageParam: 0,
-    getNextPageParam: (
-      lastPage: TablePage<TData>,
-      _allPages: TablePage<TData>[],
-      lastPageParam: number,
-    ) => {
-      // If the last page returned fewer items than the limit, there's no more data
-      if (!lastPage || !lastPage.data || lastPage.data.length < limit) {
-        return undefined;
-      }
-      // Otherwise, increment the page number
-      return lastPageParam + 1;
-    },
-    get enabled() {
-      return typeof params.enabled === "function" ? params.enabled() : (params.enabled ?? true);
-    },
-  })) as UseTableReturn<TData>["query"];
+  const query = createInfiniteQuery<{ data: TData[]; count: number; totalCount?: number }, number>(
+    () => ({
+      queryKey: params.queryKey,
+      queryFn: ({ pageParam }) =>
+        params.queryFn({
+          ...initialParams,
+          limit,
+          page: pageParam,
+        } as TParams & { limit: number; page: number }),
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, allPages, lastPageParam) => {
+        const loadedCount = allPages.reduce((total, page) => total + page.data.length, 0);
+        if (typeof lastPage.totalCount === "number" && loadedCount >= lastPage.totalCount) {
+          return undefined;
+        }
 
-  // Flatten all pages into a single array
+        if (!lastPage || !lastPage.data || lastPage.data.length < limit) {
+          return undefined;
+        }
+
+        return lastPageParam + 1;
+      },
+      enabled: () =>
+        typeof params.enabled === "function" ? params.enabled() : (params.enabled ?? true),
+    }),
+  );
+
   const data = createMemo(() => {
-    if (!query.data?.pages) return [];
-    return query.data.pages.flatMap((page) => page.data);
+    query.isFetchingNextPage;
+    query.hasNextPage;
+    return query.peek()?.pages.flatMap((page) => page.data) ?? [];
   });
 
   const count = createMemo(() => {
-    if (!query.data?.pages || query.data.pages.length === 0) return undefined;
-    const lastPage = query.data.pages[query.data.pages.length - 1];
+    query.isFetchingNextPage;
+    query.hasNextPage;
+    const pages = query.peek()?.pages;
+    if (!pages || pages.length === 0) return undefined;
+    const lastPage = pages[pages.length - 1];
     return lastPage.count;
   });
 
   const totalCount = createMemo(() => {
-    if (!query.data?.pages || query.data.pages.length === 0) return undefined;
-    const lastPage = query.data.pages[query.data.pages.length - 1];
+    query.isFetchingNextPage;
+    query.hasNextPage;
+    const pages = query.peek()?.pages;
+    if (!pages || pages.length === 0) return undefined;
+    const lastPage = pages[pages.length - 1];
     return lastPage.totalCount;
   });
 
   const loadMore = () => {
-    if (query.hasNextPage && !query.isFetching) {
-      query.fetchNextPage();
+    if (query.hasNextPage && !query.isFetchingNextPage) {
+      void query.fetchNextPage();
     }
   };
 
   const refetch = () => {
-    query.refetch();
+    void query.refetch();
   };
 
+  const isLoading = createMemo(() => {
+    query.isFetchingNextPage;
+    query.hasNextPage;
+    return !query.peek();
+  });
   const isFetchingMore = createMemo(() => query.isFetchingNextPage);
-  const hasMore = createMemo(() => query.hasNextPage ?? false);
+  const hasMore = createMemo(() => query.hasNextPage);
 
   const [selected, setSelected] = createSignal<TData[]>([]);
   const [allSelected, setAllSelected] = createSignal<boolean>(false);
@@ -146,11 +161,7 @@ export function useTable<
     const rowId = row.id;
 
     if (singleSelect) {
-      if (checked) {
-        setSelected([row]);
-      } else {
-        setSelected([]);
-      }
+      setSelected(checked ? [row] : []);
       setAllSelected(false);
       setExcludedIds([]);
       return;
@@ -162,29 +173,17 @@ export function useTable<
       } else {
         setExcludedIds((prev) => prev.filter((id) => id !== rowId));
       }
+    } else if (checked) {
+      setSelected((prev) => (prev.some((x) => x.id === rowId) ? prev : [...prev, row]));
     } else {
-      if (checked) {
-        setSelected((prev) => {
-          const all = [...prev, row];
-          const uniqueIds = new Set(all.map((x) => x.id));
-          return all.filter((x) => uniqueIds.has(x.id));
-        });
-      } else {
-        setSelected((prev) => prev.filter((x) => x.id !== rowId));
-      }
+      setSelected((prev) => prev.filter((x) => x.id !== rowId));
     }
   };
 
   const toggleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setAllSelected(true);
-      setExcludedIds([]);
-      setSelected([]);
-    } else {
-      setAllSelected(false);
-      setExcludedIds([]);
-      setSelected([]);
-    }
+    setAllSelected(checked);
+    setExcludedIds([]);
+    setSelected([]);
   };
 
   const selectedCount = createMemo(() => {
@@ -199,6 +198,7 @@ export function useTable<
   return {
     data,
     query,
+    isLoading,
     isFetchingMore,
     hasMore,
     loadMore,

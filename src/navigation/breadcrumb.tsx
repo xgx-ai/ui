@@ -1,3 +1,19 @@
+/**
+ * # Breadcrumb
+ *
+ * Renders hierarchical page navigation.
+ *
+ * @example
+ * ```tsx
+ * <Breadcrumb>
+ *   <BreadcrumbList>
+ *     <BreadcrumbItem>
+ *       <BreadcrumbLink href="/settings">Settings</BreadcrumbLink>
+ *     </BreadcrumbItem>
+ *   </BreadcrumbList>
+ * </Breadcrumb>
+ * ```
+ */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import type { Component } from "solid-js";

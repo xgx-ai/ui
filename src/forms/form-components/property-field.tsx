@@ -19,7 +19,7 @@ export interface PropertyFieldProps {
 
 /**
  * A wrapper component for property editor fields that provides consistent styling.
- * Follows the tanstack-form pattern for field layout.
+ * Follows the project form-field pattern for field layout.
  *
  * @example
  * ```tsx

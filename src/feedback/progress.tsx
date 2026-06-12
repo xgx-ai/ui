@@ -1,3 +1,13 @@
+/**
+ * # Progress
+ *
+ * Shows determinate task progress.
+ *
+ * @example
+ * ```tsx
+ * <Progress value={72} />
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { createContext, useContext } from "solid-js";
 import { Label } from "../forms/label.tsx";

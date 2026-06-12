@@ -1,3 +1,13 @@
+/**
+ * # Checkbox
+ *
+ * Renders a controlled or uncontrolled checkbox button.
+ *
+ * @example
+ * ```tsx
+ * <Checkbox checked={enabled()} onChange={setEnabled} aria-label="Enable sync" />
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { createSignal, Show } from "solid-js";
 import { Check, Minus } from "../icons.index";

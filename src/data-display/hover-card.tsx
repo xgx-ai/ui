@@ -1,3 +1,16 @@
+/**
+ * # HoverCard
+ *
+ * Reveals extra content while the trigger is hovered or focused.
+ *
+ * @example
+ * ```tsx
+ * <HoverCard>
+ *   <HoverCardTrigger>Owner</HoverCardTrigger>
+ *   <HoverCardContent>Assigned to Ada Lovelace</HoverCardContent>
+ * </HoverCard>
+ * ```
+ */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import type { Component } from "solid-js";

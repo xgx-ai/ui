@@ -1,3 +1,18 @@
+/**
+ * # ContextMenu
+ *
+ * Opens command options from a contextual trigger.
+ *
+ * @example
+ * ```tsx
+ * <ContextMenu>
+ *   <ContextMenuTrigger>Right click</ContextMenuTrigger>
+ *   <ContextMenuContent>
+ *     <ContextMenuItem>Rename</ContextMenuItem>
+ *   </ContextMenuContent>
+ * </ContextMenu>
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";
 import { Check, ChevronRight, Circle } from "../icons.index";

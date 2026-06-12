@@ -1,3 +1,15 @@
+/**
+ * # ToggleGroup
+ *
+ * Groups toggle buttons for single or multiple selection.
+ *
+ * @example
+ * ```tsx
+ * <ToggleGroup value={view()} onChange={setView}>
+ *   <ToggleGroupItem value="list">List</ToggleGroupItem>
+ * </ToggleGroup>
+ * ```
+ */
 import type { JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import type { VariantProps } from "class-variance-authority";

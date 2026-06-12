@@ -1,56 +1,40 @@
-import type { ComponentProps } from "@solidjs/web";
-import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { Index } from "../utils/indexed";
-import { createVisibilityObserver } from "../utils/visibility-observer";
-import {
-  type Column,
-  type ColumnDef,
-  type ColumnOrderState,
-  type ColumnPinningState,
-  createSolidTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  type RowSelectionState,
-  type SortingState,
-} from "./solid-table";
-import {
-  type Component,
-  createTrackedEffect,
-  createMemo,
-  createSignal,
-  merge as mergeProps,
-  Show,
-} from "solid-js";
-import { Dynamic } from "@solidjs/web";
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import { cn } from "../cn.ts";
 import { Checkbox } from "../forms/checkbox.tsx";
+import { createIntersectionLoader } from "../query/index.tsx";
+import type {
+  CellContext,
+  ColumnDef,
+  HeaderContext,
+  SortDirection,
+  TableColumn,
+  TableController,
+  TableRowContext,
+} from "../table-types.ts";
+import { splitProps } from "../utils/split-props";
 import type { UseTableReturn } from "./use-table.ts";
 
-// ============================================================================
-// Table Primitives (internal)
-// ============================================================================
-
-const TableRoot: Component<ComponentProps<"table">> = (props) => {
+const TableRoot = (props: ComponentProps<"table">) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
-    <div class="relative w-full h-full overflow-x-auto">
+    <div class="relative h-full w-full overflow-x-auto">
       <table class={cn("w-full caption-bottom !bg-none", local.class)} {...others} />
     </div>
   );
 };
 
-const TableHeader: Component<ComponentProps<"thead">> = (props) => {
+const TableHeader = (props: ComponentProps<"thead">) => {
   const [local, others] = splitProps(props, ["class"]);
   return <thead class={cn("[&_tr]:border-b", local.class)} {...others} />;
 };
 
-const TableBody: Component<ComponentProps<"tbody">> = (props) => {
+const TableBody = (props: ComponentProps<"tbody">) => {
   const [local, others] = splitProps(props, ["class"]);
   return <tbody class={cn("[&_tr:last-child]:border-0", local.class)} {...others} />;
 };
 
-const TableFooter: Component<ComponentProps<"tfoot">> = (props) => {
+const TableFooter = (props: ComponentProps<"tfoot">) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
     <tfoot
@@ -60,12 +44,12 @@ const TableFooter: Component<ComponentProps<"tfoot">> = (props) => {
   );
 };
 
-const TableRow: Component<ComponentProps<"tr">> = (props) => {
+const TableRow = (props: ComponentProps<"tr">) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
     <tr
       class={cn(
-        "border-b border-border-subtle transition-colors hover:bg-hover hover:text-hover-foreground data-[state=selected]:bg-selected data-[state=selected]:text-selected-foreground group",
+        "group border-b border-border-subtle transition-colors hover:bg-hover hover:text-hover-foreground data-[state=selected]:bg-selected data-[state=selected]:text-selected-foreground",
         local.class,
       )}
       {...others}
@@ -73,12 +57,12 @@ const TableRow: Component<ComponentProps<"tr">> = (props) => {
   );
 };
 
-const TableHead: Component<ComponentProps<"th">> = (props) => {
+const TableHead = (props: ComponentProps<"th">) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
     <th
       class={cn(
-        "xgx-text-caption h-10 px-2 text-left align-middle font-semibold uppercase tracking-wider text-muted-foreground sm:px-4 [&:has([role=checkbox])]:pr-0",
+        "xgx-text-caption h-10 px-2 text-left align-middle font-semibold uppercase text-muted-foreground sm:px-4 [&:has([role=checkbox])]:pr-0",
         local.class,
       )}
       {...others}
@@ -86,7 +70,7 @@ const TableHead: Component<ComponentProps<"th">> = (props) => {
   );
 };
 
-const TableCell: Component<ComponentProps<"td">> = (props) => {
+const TableCell = (props: ComponentProps<"td">) => {
   const [local, others] = splitProps(props, ["class"]);
   return (
     <td
@@ -99,13 +83,13 @@ const TableCell: Component<ComponentProps<"td">> = (props) => {
   );
 };
 
-type TableStatusBarProps = ComponentProps<"div"> & {
+export type TableStatusBarProps = ComponentProps<"div"> & {
   totalCount?: number;
   totalLabel?: string;
   emptyMessage?: string;
 };
 
-const TableStatusBar: Component<TableStatusBarProps> = (props) => {
+const TableStatusBar = (props: TableStatusBarProps) => {
   const [local, others] = splitProps(props, ["class", "totalCount", "totalLabel", "emptyMessage"]);
   return (
     <div
@@ -115,10 +99,10 @@ const TableStatusBar: Component<TableStatusBarProps> = (props) => {
       )}
       {...others}
     >
-      {local.emptyMessage ? (
-        <span class="text-muted-foreground italic">{local.emptyMessage}</span>
-      ) : null}
-      <div class="w-full border-t border-border pt-2 flex items-center">
+      <Show when={local.emptyMessage}>
+        <span class="italic text-muted-foreground">{local.emptyMessage}</span>
+      </Show>
+      <div class="flex w-full items-center border-t border-border pt-2">
         <span>
           {local.totalLabel ?? "Total"}: {local.totalCount ?? 0}
         </span>
@@ -127,256 +111,280 @@ const TableStatusBar: Component<TableStatusBarProps> = (props) => {
   );
 };
 
-// ============================================================================
-// Table Component
-// ============================================================================
-
-interface TableProps<TData> {
-  /** Table state from useTable hook */
-  table: UseTableReturn<TData>;
-  /** Column definitions for TanStack Table */
+export interface TableProps<TData> {
+  table: UseTableReturn<TData> | TableController<TData>;
   columns: ColumnDef<TData, unknown>[];
-  /** Function to get unique row ID */
   getRowId?: (row: TData) => string;
-  /** Enable row selection with checkboxes */
   enableRowSelection?: boolean;
-  /** Enable column sorting */
   enableSorting?: boolean;
-  /** Callback when a row is clicked */
   onRowClick?: (row: TData) => void;
-  /** Additional CSS classes */
   class?: string;
-  /** Show status bar with total count */
   showStatusBar?: boolean;
-  /** Label for status bar (e.g., "projects") */
   statusBarLabel?: string;
-  /** Message when no more results */
   statusBarEmptyMessage?: string;
 }
 
-// Helper function to get pinning styles for columns
-const getCommonPinningStyles = <TData,>(column: Column<TData, unknown>): JSX.CSSProperties => {
-  const isPinned = column.getIsPinned();
-  const columnSize = column.getSize();
-  const isDefaultSize = columnSize === 150;
-  const widthValue = isDefaultSize ? "auto" : `${columnSize}px`;
+function getColumnId<TData>(column: ColumnDef<TData, unknown>, index: number): string {
+  return column.id ?? column.accessorKey ?? `column-${index}`;
+}
+
+function getColumnValue<TData, TValue>(
+  row: TData,
+  rowIndex: number,
+  column: ColumnDef<TData, TValue>,
+): TValue {
+  if (column.accessorFn) return column.accessorFn(row, rowIndex);
+  if (column.accessorKey) return (row as Record<string, TValue>)[column.accessorKey];
+  return undefined as TValue;
+}
+
+function compareValues(left: unknown, right: unknown): number {
+  if (left == null && right == null) return 0;
+  if (left == null) return -1;
+  if (right == null) return 1;
+  if (typeof left === "number" && typeof right === "number") return left - right;
+  return String(left).localeCompare(String(right), undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function renderHeader<TData, TValue>(
+  column: TableColumn<TData, TValue>,
+  fallback: string,
+): JSX.Element {
+  const header = column.columnDef.header;
+  if (typeof header === "function")
+    return header({ column } satisfies HeaderContext<TData, TValue>);
+  return header ?? fallback;
+}
+
+function renderCell<TData, TValue>(context: CellContext<TData, TValue>): JSX.Element {
+  const cell = context.column.columnDef.cell;
+  if (typeof cell === "function") return cell(context);
+  return cell ?? String(context.getValue() ?? "");
+}
+
+function getColumnDisplayName<TData>(column: ColumnDef<TData, unknown>, index: number): string {
+  if (column.meta?.displayName) return column.meta.displayName;
+  if (typeof column.header === "string") return column.header;
+  return getColumnId(column, index)
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (value) => value.toUpperCase())
+    .trim();
+}
+
+function getColumnStyles<TData>(
+  column: TableColumn<TData, unknown>,
+  visibleColumns: TableColumn<TData, unknown>[],
+): JSX.CSSProperties {
+  const pinning = column.columnDef.meta?.pinned;
+  const columnSize = column.columnDef.size;
+  const widthValue = columnSize ? `${columnSize}px` : undefined;
+  const columnIndex = visibleColumns.findIndex((item) => item.id === column.id);
+  const pinnedBefore = visibleColumns
+    .slice(0, Math.max(0, columnIndex))
+    .filter((item) => item.columnDef.meta?.pinned === pinning)
+    .reduce((total, item) => total + (item.columnDef.size ?? 150), 0);
 
   return {
-    left: isPinned === "left" ? `${column.getStart("left")}px` : undefined,
-    right: isPinned === "right" ? `${column.getAfter("right")}px` : undefined,
-    position: isPinned ? "sticky" : "relative",
+    left: pinning === "left" ? `${pinnedBefore}px` : undefined,
+    right: pinning === "right" ? `${pinnedBefore}px` : undefined,
+    position: pinning ? "sticky" : "relative",
     width: widthValue,
-    "min-width": isDefaultSize ? undefined : widthValue,
-    "max-width": isDefaultSize ? undefined : widthValue,
-    "z-index": isPinned ? 1 : 0,
+    "min-width": widthValue,
+    "max-width": widthValue,
+    "z-index": pinning ? 1 : 0,
     background: "transparent",
   };
-};
+}
 
-const Table = <TData,>(rawProps: TableProps<TData>) => {
-  const props = mergeProps({ columns: [] as ColumnDef<TData, unknown>[] }, rawProps);
+const Table = <TData,>(props: TableProps<TData>) => {
+  const [sorting, setSorting] = createSignal<
+    { columnId: string; direction: Exclude<SortDirection, false> } | undefined
+  >();
+  const rowId = (row: TData, index: number) =>
+    props.getRowId?.(row) ?? (row as { id?: string }).id ?? String(index);
+  const enableRowSelection = () => props.enableRowSelection ?? false;
+  const enableSorting = () => props.enableSorting ?? false;
 
-  const [rowSelection, setRowSelection] = createSignal<RowSelectionState>({});
-  const [sorting, setSorting] = createSignal<SortingState>([]);
-  const [columnOrder, setColumnOrder] = createSignal<ColumnOrderState>([]);
-
-  createTrackedEffect(() => {
-    setColumnOrder(
-      tableColumns().map((col) => {
-        const columnRef = col as { id?: string; accessorKey?: string };
-        return columnRef.id ?? columnRef.accessorKey ?? "";
-      }),
-    );
+  const loader = createIntersectionLoader({
+    canLoad: () =>
+      props.table.hasMore() && !props.table.isFetchingMore() && !props.table.isLoading(),
+    load: () => props.table.loadMore(),
+    loadDelay: 80,
+    rootMargin: "0px 0px 160px 0px",
   });
 
-  // Initialize column pinning from meta
-  const [columnPinning, setColumnPinning] = createSignal<ColumnPinningState>({
-    left: props.enableRowSelection ? ["select"] : [],
-    right: props.columns
-      .filter((col) => (col.meta as { pinned?: string } | undefined)?.pinned === "right")
-      .map((col) => {
-        const columnRef = col as { id?: string; accessorKey?: string };
-        return columnRef.id ?? columnRef.accessorKey ?? "";
-      }),
-  });
+  const allColumns = createMemo<ColumnDef<TData, unknown>[]>(() => {
+    if (!enableRowSelection()) return props.columns;
 
-  // Intersection observer for infinite scroll
-  let sentinelRef: HTMLDivElement | undefined;
-  const useVisibilityObserver = createVisibilityObserver({ threshold: 0.1 });
-  const isVisible = useVisibilityObserver(() => sentinelRef);
+    return [
+      {
+        id: "select",
+        size: 40,
+        enableSorting: false,
+        header: () => {
+          const data = props.table.data();
+          const allSelected =
+            data.length > 0 && data.every((row) => props.table.isRowSelected(row));
+          const someSelected = data.some((row) => props.table.isRowSelected(row));
 
-  // Load more when sentinel becomes visible
-  createTrackedEffect(() => {
-    if (
-      isVisible() &&
-      props.table.hasMore() &&
-      !props.table.isFetchingMore() &&
-      !props.table.query.isLoading
-    ) {
-      props.table.loadMore();
-    }
-  });
-
-  const shouldShowStatusBar = () => props.showStatusBar ?? false;
-  const totalCount = () => props.table.totalCount?.() ?? props.table.data().length;
-  const showEndOfResults = () =>
-    !props.table.hasMore() && props.table.data().length > 0 && !props.table.query.isLoading;
-
-  const tableColumns = createMemo(() => {
-    if (!props.enableRowSelection) {
-      return props.columns;
-    }
-
-    const selectionColumn: ColumnDef<TData, unknown> = {
-      id: "select",
-      header: () => {
-        const currentData = props.table.data();
-        const allSelected =
-          currentData.length > 0 && currentData.every((row) => props.table.isRowSelected(row));
-        const someSelected = currentData.some((row) => props.table.isRowSelected(row));
-
-        return (
-          <div class="flex items-center justify-center h-full">
+          return (
+            <div class="flex h-full items-center justify-center">
+              <Checkbox
+                aria-label="Select all"
+                size="md"
+                checked={allSelected}
+                onChange={(value) => props.table.toggleSelectAll(value)}
+                indeterminate={someSelected && !allSelected}
+              />
+            </div>
+          );
+        },
+        cell: (context) => (
+          <div class="flex h-full items-center justify-center">
             <Checkbox
-              aria-label="Select all"
+              aria-label="Select row"
               size="md"
-              checked={allSelected}
-              onChange={(value) => props.table.toggleSelectAll(value)}
-              indeterminate={someSelected && !allSelected}
+              checked={props.table.isRowSelected(context.row.original)}
+              onChange={(value) => props.table.toggleRowSelection(context.row.original, value)}
             />
           </div>
-        );
+        ),
       },
-      cell: (info) => (
-        <div class="flex items-center justify-center h-full">
-          <Checkbox
-            checked={props.table.isRowSelected(info.row.original)}
-            onChange={(value) => props.table.toggleRowSelection(info.row.original, value)}
-            aria-label="Select row"
-            size="md"
-          />
-        </div>
-      ),
-      size: 40,
-      enableSorting: false,
-    };
-
-    return [selectionColumn, ...props.columns];
+      ...props.columns,
+    ];
   });
 
-  const solidTable = createSolidTable({
-    get data() {
-      return props.table.data();
-    },
-    get columns() {
-      return tableColumns();
-    },
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: props.enableSorting ? getSortedRowModel() : undefined,
-    state: {
-      get columnOrder() {
-        return columnOrder();
-      },
-      get rowSelection() {
-        return rowSelection();
-      },
-      get sorting() {
-        return sorting();
-      },
-      get columnPinning() {
-        return columnPinning();
-      },
-    },
-    onColumnOrderChange: setColumnOrder,
-    onRowSelectionChange: props.enableRowSelection ? setRowSelection : undefined,
-    onSortingChange: props.enableSorting ? setSorting : undefined,
-    onColumnPinningChange: setColumnPinning,
-    getRowId: props.getRowId,
-    enableRowSelection: props.enableRowSelection ?? false,
-    enableColumnPinning: true,
+  const columns = createMemo<TableColumn<TData, unknown>[]>(() =>
+    allColumns().map((columnDef, index) => {
+      const id = getColumnId(columnDef, index);
+      const column: TableColumn<TData, unknown> = {
+        id,
+        index,
+        columnDef,
+        getCanSort: () => enableSorting() && columnDef.enableSorting !== false,
+        getIsSorted: () => {
+          const current = sorting();
+          return current?.columnId === id ? current.direction : false;
+        },
+        getToggleSortingHandler: () => () => {
+          if (!column.getCanSort()) return;
+          setSorting((current) => {
+            if (current?.columnId !== id) return { columnId: id, direction: "asc" };
+            if (current.direction === "asc") return { columnId: id, direction: "desc" };
+            return undefined;
+          });
+        },
+      };
+      return column;
+    }),
+  );
+
+  const rows = createMemo<TableRowContext<TData>[]>(() => {
+    const data = props.table.data().map((row, index) => ({
+      id: rowId(row, index),
+      index,
+      original: row,
+      getIsSelected: () => props.table.isRowSelected(row),
+    }));
+    const sort = sorting();
+    if (!sort) return data;
+
+    const column = columns().find((item) => item.id === sort.columnId);
+    if (!column) return data;
+
+    return [...data].sort((left, right) => {
+      const result = compareValues(
+        getColumnValue(left.original, left.index, column.columnDef),
+        getColumnValue(right.original, right.index, column.columnDef),
+      );
+      return sort.direction === "asc" ? result : -result;
+    });
   });
+
+  const totalCount = () => props.table.totalCount?.() ?? props.table.data().length;
+  const showEndOfResults = () =>
+    !props.table.hasMore() && props.table.data().length > 0 && !props.table.isLoading();
 
   return (
-    <div class={cn("w-full flex-1 min-h-0 flex flex-col", props.class)}>
-      <div class="flex-1 min-h-0 overflow-auto">
+    <div class={cn("flex min-h-0 w-full flex-1 flex-col", props.class)}>
+      <div class="min-h-0 flex-1 overflow-auto">
         <TableRoot>
-          <TableHeader
-            style={{
-              position: "sticky",
-              top: "0",
-              "z-index": "10",
-            }}
-          >
-            <Index each={solidTable.getHeaderGroups()}>
-              {(headerGroup) => (
-                <TableRow class="border-b border-border cursor-default hover:bg-transparent">
-                  <Index each={headerGroup().headers}>
-                    {(header) => (
-                      <TableHead
-                        class={cn(header().column.getCanSort() && "cursor-pointer select-none")}
-                        onClick={header().column.getToggleSortingHandler()}
-                        style={getCommonPinningStyles(header().column)}
-                      >
-                        <Dynamic
-                          component={header().column.columnDef.header}
-                          {...header().getContext()}
-                        />
-                        <Show when={header().column.getIsSorted()}>
-                          {(sorted) => <span class="ml-2">{sorted() === "asc" ? "↑" : "↓"}</span>}
-                        </Show>
-                      </TableHead>
+          <TableHeader class="bg-card" style={{ position: "sticky", top: "0", "z-index": "10" }}>
+            <TableRow class="cursor-default hover:bg-transparent">
+              <For each={columns()}>
+                {(column) => (
+                  <TableHead
+                    class={cn(
+                      "whitespace-nowrap",
+                      column.getCanSort() && "cursor-pointer select-none",
                     )}
-                  </Index>
-                </TableRow>
-              )}
-            </Index>
+                    onClick={column.getToggleSortingHandler()}
+                    style={getColumnStyles(column, columns())}
+                  >
+                    {renderHeader(column, getColumnDisplayName(column.columnDef, column.index))}
+                    <Show when={column.getIsSorted()}>
+                      {(sorted) => <span class="ml-2 text-xs">{sorted()}</span>}
+                    </Show>
+                  </TableHead>
+                )}
+              </For>
+            </TableRow>
           </TableHeader>
           <TableBody>
             <Show
-              when={solidTable.getRowModel().rows.length > 0}
+              when={!props.table.isLoading() && rows().length > 0}
               fallback={
-                <TableRow class="border-none bg-none cursor-default hover:bg-transparent">
+                <TableRow class="border-none bg-transparent hover:bg-transparent">
                   <TableCell
-                    colspan={props.columns.length}
+                    colspan={Math.max(columns().length, 1)}
                     class="h-24 text-center text-xs text-muted-foreground"
                   >
-                    {props.table.query.isLoading ? "Loading..." : "No results."}
+                    {props.table.isLoading() ? "Loading..." : "No results."}
                   </TableCell>
                 </TableRow>
               }
             >
-              <Index each={solidTable.getRowModel().rows}>
+              <For each={rows()}>
                 {(row) => (
                   <TableRow
-                    data-state={row().getIsSelected() ? "selected" : undefined}
-                    onClick={() => props.onRowClick?.(row().original)}
+                    data-state={row.getIsSelected() ? "selected" : undefined}
+                    onClick={() => props.onRowClick?.(row.original)}
                     class={props.onRowClick ? "cursor-pointer" : undefined}
                   >
-                    <Index each={row().getVisibleCells()}>
-                      {(cell) => (
-                        <TableCell style={getCommonPinningStyles(cell().column)}>
-                          <Dynamic
-                            component={cell().column.columnDef.cell}
-                            {...cell().getContext()}
-                          />
-                        </TableCell>
-                      )}
-                    </Index>
+                    <For each={columns()}>
+                      {(column) => {
+                        const context: CellContext<TData, unknown> = {
+                          row,
+                          column,
+                          getValue: () => getColumnValue(row.original, row.index, column.columnDef),
+                        };
+
+                        return (
+                          <TableCell
+                            class="whitespace-nowrap"
+                            style={getColumnStyles(column, columns())}
+                          >
+                            {renderCell(context)}
+                          </TableCell>
+                        );
+                      }}
+                    </For>
                   </TableRow>
                 )}
-              </Index>
+              </For>
             </Show>
           </TableBody>
           <TableFooter class="bg-transparent">
-            <TableRow class="border-none cursor-default hover:bg-transparent">
-              <TableCell colspan={props.columns.length} class="text-center">
-                <div
-                  ref={sentinelRef}
-                  class="flex justify-center py-4"
-                  hidden={!props.table.hasMore() || props.table.query.isLoading}
-                >
-                  <div class="text-xs text-muted-foreground">Loading more...</div>
-                </div>
+            <TableRow class="border-none hover:bg-transparent">
+              <TableCell colspan={Math.max(columns().length, 1)} class="text-center">
+                <Show when={props.table.hasMore() && !props.table.isLoading()}>
+                  <div ref={loader.ref} class="flex justify-center py-4">
+                    <div class="text-xs text-muted-foreground">Loading more...</div>
+                  </div>
+                </Show>
                 <Show when={showEndOfResults()}>
                   <div class="flex justify-center py-4">
                     <div class="text-xs text-muted-foreground/70">
@@ -389,57 +397,19 @@ const Table = <TData,>(rawProps: TableProps<TData>) => {
           </TableFooter>
         </TableRoot>
       </div>
-      <Show when={shouldShowStatusBar()}>
-        <div class="border-border/50">
-          <TableStatusBar
-            totalCount={totalCount()}
-            totalLabel={props.statusBarLabel}
-            emptyMessage={undefined}
-          />
-        </div>
+      <Show when={props.showStatusBar ?? false}>
+        <TableStatusBar totalCount={totalCount()} totalLabel={props.statusBarLabel} />
       </Show>
     </div>
   );
 };
 
-/**
- * # Table
- *
- * A data table with infinite scroll, row selection, sorting, and column pinning.
- *
- * @example
- * ```
- * <div class="text-center p-8 text-muted-foreground border rounded-lg">
- *   <p class="font-medium">Table</p>
- *   <p class="text-sm mt-2">Requires QueryClientProvider and useTable hook.</p>
- *   <p class="text-sm">See documentation for usage examples.</p>
- * </div>
- * ```
- */
-export {
-  Table,
-  TableRoot as TableCaption, // Alias for the older TableCaption import
-  TableRoot,
-  TableHeader,
-  TableBody,
-  TableFooter,
-  TableRow,
-  TableHead,
-  TableCell,
-  TableStatusBar,
-};
-export type { TableProps };
-
-// ============================================================================
-// SimpleTable - Basic data table without tanstack machinery
-// ============================================================================
-
-interface SimpleTableColumn<TData> {
+export interface SimpleTableColumn<TData> {
   header: string;
   accessor: keyof TData | ((row: TData) => JSX.Element | string | number);
 }
 
-interface SimpleTableProps<TData> {
+export interface SimpleTableProps<TData> {
   data: TData[];
   columns: SimpleTableColumn<TData>[];
   class?: string;
@@ -447,33 +417,65 @@ interface SimpleTableProps<TData> {
 
 function SimpleTable<TData>(props: SimpleTableProps<TData>) {
   const getCellValue = (row: TData, column: SimpleTableColumn<TData>) => {
-    if (typeof column.accessor === "function") {
-      return column.accessor(row);
-    }
+    if (typeof column.accessor === "function") return column.accessor(row);
     return row[column.accessor] as string | number;
   };
 
   return (
     <TableRoot class={props.class}>
       <TableHeader>
-        <TableRow class="border-b border-border cursor-default hover:bg-transparent">
-          <Index each={props.columns}>{(column) => <TableHead>{column().header}</TableHead>}</Index>
+        <TableRow class="cursor-default border-b border-border hover:bg-transparent">
+          <For each={props.columns}>{(column) => <TableHead>{column.header}</TableHead>}</For>
         </TableRow>
       </TableHeader>
       <TableBody>
-        <Index each={props.data}>
+        <For each={props.data}>
           {(row) => (
             <TableRow>
-              <Index each={props.columns}>
-                {(column) => <TableCell>{getCellValue(row(), column())}</TableCell>}
-              </Index>
+              <For each={props.columns}>
+                {(column) => <TableCell>{getCellValue(row, column)}</TableCell>}
+              </For>
             </TableRow>
           )}
-        </Index>
+        </For>
       </TableBody>
     </TableRoot>
   );
 }
 
-export { SimpleTable };
-export type { SimpleTableColumn, SimpleTableProps };
+const TableCaption = TableRoot;
+
+/**
+ * # Table
+ *
+ * Native table primitives and a controller-backed data table without TanStack dependencies.
+ *
+ * @example
+ * ```tsx
+ * <TableRoot>
+ *   <TableHeader>
+ *     <TableRow>
+ *       <TableHead>Name</TableHead>
+ *     </TableRow>
+ *   </TableHeader>
+ *   <TableBody>
+ *     <TableRow>
+ *       <TableCell>Ada Lovelace</TableCell>
+ *     </TableRow>
+ *   </TableBody>
+ * </TableRoot>
+ * ```
+ */
+export {
+  SimpleTable,
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRoot,
+  TableRow,
+  TableStatusBar,
+};

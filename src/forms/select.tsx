@@ -1,3 +1,18 @@
+/**
+ * # Select
+ *
+ * Builds a select control from the native Search parts.
+ *
+ * @example
+ * ```tsx
+ * <Select options={queues} optionValue="value" optionTextValue="label">
+ *   <SelectTrigger>
+ *     <SelectValue />
+ *   </SelectTrigger>
+ *   <SelectContent />
+ * </Select>
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { Show } from "solid-js";
 import { Check, ChevronsUpDown } from "../icons.index";

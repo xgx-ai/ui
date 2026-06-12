@@ -1,3 +1,16 @@
+/**
+ * # Popover
+ *
+ * Anchors floating content to a trigger.
+ *
+ * @example
+ * ```tsx
+ * <Popover>
+ *   <PopoverTrigger>Open filters</PopoverTrigger>
+ *   <PopoverContent>Filter controls</PopoverContent>
+ * </Popover>
+ * ```
+ */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";

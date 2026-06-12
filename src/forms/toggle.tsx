@@ -1,3 +1,15 @@
+/**
+ * # Toggle
+ *
+ * Renders a pressable on/off button.
+ *
+ * @example
+ * ```tsx
+ * <Toggle pressed={bold()} onChange={setBold} aria-label="Bold">
+ *   B
+ * </Toggle>
+ * ```
+ */
 import type { JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import type { VariantProps } from "class-variance-authority";

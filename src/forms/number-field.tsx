@@ -1,3 +1,16 @@
+/**
+ * # NumberField
+ *
+ * Renders a numeric input with controls and labels.
+ *
+ * @example
+ * ```tsx
+ * <NumberField value={quantity()} onChange={setQuantity}>
+ *   <NumberFieldLabel>Quantity</NumberFieldLabel>
+ *   <NumberFieldInput />
+ * </NumberField>
+ * ```
+ */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import {
   createContext,

@@ -1,3 +1,13 @@
+/**
+ * # Skeleton
+ *
+ * Displays a placeholder while content is loading.
+ *
+ * @example
+ * ```tsx
+ * <Skeleton class="h-6 w-40" />
+ * ```
+ */
 import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../cn";
 import { splitProps } from "../utils/split-props";

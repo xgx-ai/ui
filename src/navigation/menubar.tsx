@@ -1,3 +1,20 @@
+/**
+ * # Menubar
+ *
+ * Renders persistent menu navigation.
+ *
+ * @example
+ * ```tsx
+ * <Menubar>
+ *   <MenubarMenu>
+ *     <MenubarTrigger>File</MenubarTrigger>
+ *     <MenubarContent>
+ *       <MenubarItem>Export</MenubarItem>
+ *     </MenubarContent>
+ *   </MenubarMenu>
+ * </Menubar>
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";
 import { Check, ChevronRight, Circle } from "../icons.index";

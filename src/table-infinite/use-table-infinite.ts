@@ -1,11 +1,15 @@
-import { keepPreviousData, useInfiniteQuery } from "../query";
 import { type Accessor, createMemo, createSignal } from "solid-js";
+import { createInfiniteQuery, type InfiniteQueryResult, type QueryKey } from "../query/index.tsx";
+
+export interface TableInfinitePage<TData> {
+  data: TData[];
+  count: number;
+  totalCount?: number;
+}
 
 export interface UseTableInfiniteParams<TData, TParams = any> {
-  queryKey: Accessor<any[]> | any[];
-  queryFn: (
-    params: TParams & { limit: number; page: number },
-  ) => Promise<{ data: TData[]; count: number; totalCount?: number }>;
+  queryKey: Accessor<QueryKey> | QueryKey;
+  queryFn: (params: TParams & { limit: number; page: number }) => Promise<TableInfinitePage<TData>>;
   limit?: number;
   enabled?: Accessor<boolean> | boolean;
   initialParams?: Omit<TParams, "limit" | "page">;
@@ -17,15 +21,38 @@ export interface UseTableInfiniteParams<TData, TParams = any> {
   tableId?: string;
 }
 
-export interface UseTableInfiniteReturn<TData> {
+export interface UseTableInfiniteFromQueryParams<TData, TPage, TPageParam = unknown> {
+  query: InfiniteQueryResult<TPage, TPageParam>;
+  getRows: (page: TPage) => readonly TData[];
+  getCount?: (page: TPage) => number | undefined;
+  getTotalCount?: (page: TPage) => number | undefined;
+  singleSelect?: boolean;
+  /**
+   * Unique identifier for the table, used for persisting state like column visibility.
+   */
+  tableId?: string;
+}
+
+export interface UseTableInfiniteFromDefaultQueryParams<TData, TPageParam = unknown>
+  extends Omit<
+    UseTableInfiniteFromQueryParams<TData, TableInfinitePage<TData>, TPageParam>,
+    "getRows" | "getCount" | "getTotalCount" | "query"
+  > {
+  query: InfiniteQueryResult<TableInfinitePage<TData>, TPageParam>;
+  getRows?: (page: TableInfinitePage<TData>) => readonly TData[];
+  getCount?: (page: TableInfinitePage<TData>) => number | undefined;
+  getTotalCount?: (page: TableInfinitePage<TData>) => number | undefined;
+}
+
+export interface UseTableInfiniteReturn<
+  TData,
+  TPage = TableInfinitePage<TData>,
+  TPageParam = unknown,
+> {
   data: Accessor<TData[]>;
-  query: ReturnType<
-    typeof useInfiniteQuery<{
-      data: TData[];
-      count: number;
-      totalCount?: number;
-    }>
-  >;
+  latestData: Accessor<TData[]>;
+  query: InfiniteQueryResult<TPage, TPageParam>;
+  isLoading: Accessor<boolean>;
   isFetchingMore: Accessor<boolean>;
   hasMore: Accessor<boolean>;
   loadMore: () => void;
@@ -48,92 +75,95 @@ export interface UseTableInfiniteReturn<TData> {
   tableId: string;
 }
 
-type TableInfinitePage<TData> = {
-  data: TData[];
-  count: number;
-  totalCount?: number;
-};
-
 // Helper to resolve queryKey whether it's an accessor or static array
-function resolveQueryKey(queryKey: Accessor<any[]> | any[]): any[] {
+function resolveQueryKey(queryKey: Accessor<QueryKey> | QueryKey): QueryKey {
   return typeof queryKey === "function" ? queryKey() : queryKey;
 }
 
-export function useTableInfinite<TData = any, TParams = any>(
-  params: UseTableInfiniteParams<TData, TParams>,
-): UseTableInfiniteReturn<TData> {
-  const {
-    limit = 10,
-    initialParams = {} as Omit<TParams, "limit" | "page">,
-    singleSelect = false,
-  } = params;
+function getDefaultRows<TData>(page: TableInfinitePage<TData>): readonly TData[] {
+  return page.data;
+}
 
-  // Generate tableId from queryKey if not provided
-  const tableId =
-    params.tableId ??
-    (() => {
-      const key = resolveQueryKey(params.queryKey);
-      return Array.isArray(key) ? (key[0]?.toString() ?? "table") : String(key);
-    })();
+function getDefaultCount<TData>(page: TableInfinitePage<TData>): number | undefined {
+  return page.count;
+}
 
-  const query = useInfiniteQuery(() => ({
-    queryKey: resolveQueryKey(params.queryKey),
-    queryFn: ({ pageParam }: { pageParam: number }) =>
-      params.queryFn({
-        ...initialParams,
-        limit,
-        page: pageParam,
-      } as TParams & { limit: number; page: number }),
-    initialPageParam: 0,
-    getNextPageParam: (
-      lastPage: TableInfinitePage<TData>,
-      _allPages: TableInfinitePage<TData>[],
-      lastPageParam: number,
-    ) => {
-      // If the last page returned fewer items than the limit, there's no more data
-      if (!lastPage || !lastPage.data || lastPage.data.length < limit) {
-        return undefined;
-      }
-      // Otherwise, increment the page number
-      return lastPageParam + 1;
-    },
-    get enabled() {
-      return typeof params.enabled === "function" ? params.enabled() : (params.enabled ?? true);
-    },
-    // Keep showing previous data while new data is loading (prevents Suspense flash)
-    placeholderData: keepPreviousData,
-  })) as UseTableInfiniteReturn<TData>["query"];
+function getDefaultTotalCount<TData>(page: TableInfinitePage<TData>): number | undefined {
+  return page.totalCount;
+}
 
-  // Flatten all pages into a single array
+export function useTableInfiniteFromQuery<TData, TPageParam = unknown>(
+  params: UseTableInfiniteFromDefaultQueryParams<TData, TPageParam>,
+): UseTableInfiniteReturn<TData, TableInfinitePage<TData>, TPageParam>;
+export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
+  params: UseTableInfiniteFromQueryParams<TData, TPage, TPageParam>,
+): UseTableInfiniteReturn<TData, TPage, TPageParam>;
+export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
+  params:
+    | UseTableInfiniteFromQueryParams<TData, TPage, TPageParam>
+    | UseTableInfiniteFromDefaultQueryParams<TData, TPageParam>,
+): UseTableInfiniteReturn<TData, TPage, TPageParam> {
+  const singleSelect = params.singleSelect ?? false;
+  const query = params.query as InfiniteQueryResult<TPage, TPageParam>;
+  const getRows =
+    "getRows" in params && params.getRows
+      ? (params.getRows as (page: TPage) => readonly TData[])
+      : (page: TPage) => getDefaultRows(page as TableInfinitePage<TData>);
+  const getCount =
+    "getCount" in params && params.getCount
+      ? (params.getCount as (page: TPage) => number | undefined)
+      : (page: TPage) => getDefaultCount(page as TableInfinitePage<TData>);
+  const getTotalCount =
+    "getTotalCount" in params && params.getTotalCount
+      ? (params.getTotalCount as (page: TPage) => number | undefined)
+      : (page: TPage) => getDefaultTotalCount(page as TableInfinitePage<TData>);
+
+  const flattenPages = (pages: readonly TPage[] | undefined): TData[] =>
+    pages?.flatMap((page) => [...getRows(page)]) ?? [];
+
   const data = createMemo(() => {
-    if (!query.data?.pages) return [];
-    return query.data.pages.flatMap((page) => page.data);
+    query.hasNextPage;
+    query.isFetchingNextPage;
+    return flattenPages(query.peek()?.pages);
   });
 
+  const latestData = createMemo(() => flattenPages(query.latest().pages));
+
   const count = createMemo(() => {
-    if (!query.data?.pages || query.data.pages.length === 0) return undefined;
-    const lastPage = query.data.pages[query.data.pages.length - 1];
-    return lastPage.count;
+    query.hasNextPage;
+    query.isFetchingNextPage;
+    const pages = query.peek()?.pages;
+    if (!pages || pages.length === 0) return undefined;
+    const lastPage = pages[pages.length - 1];
+    return getCount(lastPage);
   });
 
   const totalCount = createMemo(() => {
-    if (!query.data?.pages || query.data.pages.length === 0) return undefined;
-    const lastPage = query.data.pages[query.data.pages.length - 1];
-    return lastPage.totalCount;
+    query.hasNextPage;
+    query.isFetchingNextPage;
+    const pages = query.peek()?.pages;
+    if (!pages || pages.length === 0) return undefined;
+    const lastPage = pages[pages.length - 1];
+    return getTotalCount(lastPage);
   });
 
   const loadMore = () => {
-    if (query.hasNextPage && !query.isFetching) {
-      query.fetchNextPage();
+    if (query.hasNextPage && !query.isFetchingNextPage) {
+      void query.fetchNextPage();
     }
   };
 
   const refetch = () => {
-    query.refetch();
+    void query.refetch();
   };
 
+  const isLoading = createMemo(() => {
+    query.hasNextPage;
+    query.isFetchingNextPage;
+    return !query.peek();
+  });
   const isFetchingMore = createMemo(() => query.isFetchingNextPage);
-  const hasMore = createMemo(() => query.hasNextPage ?? false);
+  const hasMore = createMemo(() => query.hasNextPage);
 
   const [selected, setSelected] = createSignal<TData[]>([]);
   const [allSelected, setAllSelected] = createSignal<boolean>(false);
@@ -171,11 +201,7 @@ export function useTableInfinite<TData = any, TParams = any>(
       }
     } else {
       if (checked) {
-        setSelected((prev) => {
-          const all = [...prev, row];
-          const uniqueIds = new Set(all.map((x) => (x as any).id));
-          return all.filter((x) => uniqueIds.has((x as any).id));
-        });
+        setSelected((prev) => (prev.some((x) => (x as any).id === rowId) ? prev : [...prev, row]));
       } else {
         setSelected((prev) => prev.filter((x) => (x as any).id !== rowId));
       }
@@ -205,7 +231,9 @@ export function useTableInfinite<TData = any, TParams = any>(
 
   return {
     data,
+    latestData,
     query,
+    isLoading,
     isFetchingMore,
     hasMore,
     loadMore,
@@ -222,6 +250,51 @@ export function useTableInfinite<TData = any, TParams = any>(
     selectedCount,
     setSelected,
     singleSelect,
-    tableId,
+    tableId: params.tableId ?? "table",
   };
+}
+
+export function useTableInfinite<TData = any, TParams = any>(
+  params: UseTableInfiniteParams<TData, TParams>,
+): UseTableInfiniteReturn<TData, TableInfinitePage<TData>, number> {
+  const { limit = 10, initialParams = {} as Omit<TParams, "limit" | "page"> } = params;
+
+  // Generate tableId from queryKey if not provided
+  const tableId =
+    params.tableId ??
+    (() => {
+      const key = resolveQueryKey(params.queryKey);
+      return Array.isArray(key) ? (key[0]?.toString() ?? "table") : String(key);
+    })();
+
+  const query = createInfiniteQuery<TableInfinitePage<TData>, number>(() => ({
+    queryKey: resolveQueryKey(params.queryKey),
+    queryFn: ({ pageParam }) =>
+      params.queryFn({
+        ...initialParams,
+        limit,
+        page: pageParam,
+      } as TParams & { limit: number; page: number }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      const loadedCount = _allPages.reduce((total, page) => total + page.data.length, 0);
+      if (typeof lastPage.totalCount === "number" && loadedCount >= lastPage.totalCount) {
+        return undefined;
+      }
+
+      if (!lastPage || !lastPage.data || lastPage.data.length < limit) {
+        return undefined;
+      }
+
+      return lastPageParam + 1;
+    },
+    enabled: () =>
+      typeof params.enabled === "function" ? params.enabled() : (params.enabled ?? true),
+  }));
+
+  return useTableInfiniteFromQuery({
+    query,
+    tableId,
+    singleSelect: params.singleSelect,
+  });
 }

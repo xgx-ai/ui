@@ -1,3 +1,13 @@
+/**
+ * # Autocomplete
+ *
+ * Combines a text field with suggestions for fast selection.
+ *
+ * @example
+ * ```tsx
+ * <Autocomplete options={["Design", "Engineering"]} placeholder="Team" />
+ * ```
+ */
 import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../cn";
 import { splitProps } from "../utils/split-props";

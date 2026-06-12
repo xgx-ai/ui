@@ -1,3 +1,18 @@
+/**
+ * # Accordion
+ *
+ * Shows one or more expandable content panels.
+ *
+ * @example
+ * ```tsx
+ * <Accordion value={section()} onChange={setSection}>
+ *   <AccordionItem value="details">
+ *     <AccordionTrigger>Details</AccordionTrigger>
+ *     <AccordionContent>Project details</AccordionContent>
+ *   </AccordionItem>
+ * </Accordion>
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { createContext, createSignal, Show, useContext } from "solid-js";
 import { ChevronDown } from "../icons.index";

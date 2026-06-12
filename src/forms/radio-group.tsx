@@ -1,3 +1,15 @@
+/**
+ * # RadioGroup
+ *
+ * Groups mutually exclusive radio options.
+ *
+ * @example
+ * ```tsx
+ * <RadioGroup value={role()} onChange={setRole}>
+ *   <RadioGroupItem value="admin">Admin</RadioGroupItem>
+ * </RadioGroup>
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { createContext, createSignal, useContext } from "solid-js";
 import { Circle } from "../icons.index";

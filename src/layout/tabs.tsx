@@ -1,3 +1,18 @@
+/**
+ * # Tabs
+ *
+ * Switches between related panels.
+ *
+ * @example
+ * ```tsx
+ * <Tabs defaultValue="overview">
+ *   <TabsList>
+ *     <TabsTrigger value="overview">Overview</TabsTrigger>
+ *   </TabsList>
+ *   <TabsContent value="overview">Summary</TabsContent>
+ * </Tabs>
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { createContext, createSignal, createUniqueId, Show, useContext } from "solid-js";
 import { cn } from "../cn";

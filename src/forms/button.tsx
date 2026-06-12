@@ -1,3 +1,15 @@
+/**
+ * # Button
+ *
+ * Renders an action button with project variants and sizes.
+ *
+ * @example
+ * ```tsx
+ * <Button variant="outline" loading={saving()}>
+ *   Save changes
+ * </Button>
+ * ```
+ */
 import type { JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import type { VariantProps } from "class-variance-authority";

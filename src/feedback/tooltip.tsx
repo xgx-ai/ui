@@ -1,3 +1,16 @@
+/**
+ * # Tooltip
+ *
+ * Shows concise help text for a trigger.
+ *
+ * @example
+ * ```tsx
+ * <Tooltip>
+ *   <TooltipTrigger>Archive</TooltipTrigger>
+ *   <TooltipContent>Move this item to the archive.</TooltipContent>
+ * </Tooltip>
+ * ```
+ */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import {

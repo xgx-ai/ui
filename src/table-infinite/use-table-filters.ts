@@ -6,14 +6,14 @@ export interface UseTableFiltersOptions<TFilters extends Record<string, unknown>
    */
   tableId: string;
   /**
-   * Navigate function from TanStack Router (Route.useNavigate())
+   * Navigate function from the host router.
    */
   navigate: (opts: {
     search: (prev: Record<string, unknown>) => Record<string, unknown>;
     replace?: boolean;
   }) => void;
   /**
-   * Search accessor from TanStack Router (Route.useSearch())
+   * Search accessor from the host router.
    */
   search: Accessor<{ filters?: Record<string, Record<string, unknown>> }>;
   /**
@@ -50,7 +50,7 @@ export interface UseTableFiltersReturn<TFilters extends Record<string, unknown>>
 }
 
 /**
- * Hook for managing table filters via TanStack Router's search params.
+ * Hook for managing table filters via router search params.
  * Filters are namespaced by tableId to support multiple tables on the same page.
  *
  * @example

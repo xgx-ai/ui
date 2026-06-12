@@ -1,3 +1,16 @@
+/**
+ * # Collapsible
+ *
+ * Toggles visibility for a single content region.
+ *
+ * @example
+ * ```tsx
+ * <Collapsible open={open()} onOpenChange={setOpen}>
+ *   <CollapsibleTrigger>Filters</CollapsibleTrigger>
+ *   <CollapsibleContent>Filter controls</CollapsibleContent>
+ * </Collapsible>
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { createContext, createSignal, Show, useContext } from "solid-js";
 import { splitProps } from "../utils/split-props";

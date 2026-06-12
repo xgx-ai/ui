@@ -1,3 +1,16 @@
+/**
+ * # Switch
+ *
+ * Renders a binary on/off control.
+ *
+ * @example
+ * ```tsx
+ * <Switch checked={enabled()} onChange={setEnabled}>
+ *   <SwitchControl />
+ *   <SwitchLabel>Email alerts</SwitchLabel>
+ * </Switch>
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { createContext, createSignal, useContext } from "solid-js";
 

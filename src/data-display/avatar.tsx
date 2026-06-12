@@ -1,3 +1,16 @@
+/**
+ * # Avatar
+ *
+ * Renders a user image with a styled fallback.
+ *
+ * @example
+ * ```tsx
+ * <Avatar>
+ *   <AvatarImage src="/users/ada.png" alt="Ada Lovelace" />
+ *   <AvatarFallback>AL</AvatarFallback>
+ * </Avatar>
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { createContext, createSignal, Show, useContext } from "solid-js";
 import { cn } from "../cn";

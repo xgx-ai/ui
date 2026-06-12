@@ -1,3 +1,16 @@
+/**
+ * # TextField
+ *
+ * Groups text inputs, labels, descriptions, and errors.
+ *
+ * @example
+ * ```tsx
+ * <TextField>
+ *   <TextFieldLabel>Email</TextFieldLabel>
+ *   <TextFieldInput type="email" placeholder="you@example.com" />
+ * </TextField>
+ * ```
+ */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import { createContext, createSignal, createUniqueId, useContext } from "solid-js";

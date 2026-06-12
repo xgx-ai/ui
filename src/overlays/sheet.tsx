@@ -1,3 +1,19 @@
+/**
+ * # Sheet
+ *
+ * Opens a side panel for secondary tasks.
+ *
+ * @example
+ * ```tsx
+ * <Sheet open={open()} onOpenChange={setOpen}>
+ *   <SheetContent side="right">
+ *     <SheetHeader>
+ *       <SheetTitle>Record details</SheetTitle>
+ *     </SheetHeader>
+ *   </SheetContent>
+ * </Sheet>
+ * ```
+ */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import { cva, type VariantProps } from "class-variance-authority";

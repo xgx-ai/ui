@@ -1,3 +1,13 @@
+/**
+ * # Combobox
+ *
+ * Renders a trigger and listbox pattern for searchable choices.
+ *
+ * @example
+ * ```tsx
+ * <ComboboxTrigger aria-label="Open options" />
+ * ```
+ */
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { Show } from "solid-js";
 import { Check, ChevronsUpDown } from "../icons.index";

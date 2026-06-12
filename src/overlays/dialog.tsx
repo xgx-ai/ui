@@ -1,3 +1,19 @@
+/**
+ * # Dialog
+ *
+ * Opens modal or non-modal content above the page.
+ *
+ * @example
+ * ```tsx
+ * <Dialog open={open()} onOpenChange={setOpen}>
+ *   <DialogContent>
+ *     <DialogHeader>
+ *       <DialogTitle>Review decision</DialogTitle>
+ *     </DialogHeader>
+ *   </DialogContent>
+ * </Dialog>
+ * ```
+ */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import {
