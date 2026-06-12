@@ -15,7 +15,7 @@
 
 ## Catalog Rules
 
-- Every visible interactive example should use exported `@xgx/ui` components.
+- Every visible interactive example should use exported `@xgx/ui` primitives or `@xgx/solid-prefabs` workflows.
 - Demo-only layout glue may use plain `div` and semantic HTML, but should not reimplement existing shared components.
 - Code examples must show package-root imports unless documenting a subpath export.
 - Catalog copy stays generic and product-neutral.
@@ -25,9 +25,9 @@
 Run these before release:
 
 ```sh
-rg "vite|@tailwindcss/vite|vite-plugin-solid|demo/static" package.json demo src
-rg "<svg|</svg" demo/src src/shell-controls.tsx src/layout/app-shell.tsx
-rg "bg-[a-z-]+-foreground.*text-foreground|bg-\\w+-foreground\\s+text-foreground" src demo
+rg "vite|@tailwindcss/vite|vite-plugin-solid|apps/demo/static" package.json apps packages
+rg "<svg|</svg" apps/demo/src packages/ui/src/shell-controls.tsx packages/ui/src/layout/app-shell.tsx
+rg "bg-[a-z-]+-foreground.*text-foreground|bg-\\w+-foreground\\s+text-foreground" packages apps
 rg "file://" .
 ```
 

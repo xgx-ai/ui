@@ -20,4 +20,4 @@
 - `createMemo` is for derived values; do not use it for side effects.
 - Writes inside owned scopes require explicit intent; do not sprinkle ownership overrides through app code.
 - Reimplement any dependency behavior that is not v2-compatible as native SolidJS v2 code. Do not fake missing behavior.
-- Do not add compatibility layers or `src/vendor` shims. Shared UI source should read like idiomatic Solid v2.
+- Do not add compatibility layers or `packages/ui/src/vendor` shims. Shared UI source should read like idiomatic Solid v2.

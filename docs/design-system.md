@@ -3,13 +3,20 @@
 ## Principles
 
 - Build operational application UI first: dense, scan-friendly, predictable, and keyboard-accessible.
-- Keep shared components app-agnostic. No product names, logos, app palettes, or app-specific copy belong in `src`.
+- Keep shared components app-agnostic. No product names, logos, app palettes, or app-specific copy belong in `packages/ui/src`.
 - Apps provide raw CSS variable values. `@xgx/ui` owns semantic token names, state styling, and foreground/background pairing.
 - Prefer existing primitives before adding new abstractions. Add a primitive only when a real workflow needs it.
 
+## Package Boundaries
+
+- `@xgx/ui` contains query-free primitives, tokens, forms, overlays, layout, and shared types.
+- `@xgx/solid-query` contains Solid v2 async/query primitives.
+- `@xgx/solid-prefabs` contains composed workflows that may depend on both `@xgx/ui` and `@xgx/solid-query`.
+- The demo may import all three packages; `@xgx/ui` must not import query or prefabs.
+
 ## Token Contract
 
-Apps may define raw values such as `--primary`, `--background`, `--control`, and `--sidebar`. Shared components consume semantic Tailwind tokens from `src/base.css`.
+Apps may define raw values such as `--primary`, `--background`, `--control`, and `--sidebar`. Shared components consume semantic Tailwind tokens from `packages/ui/src/base.css`.
 
 Required pairing rules:
 

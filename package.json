@@ -1,20 +1,21 @@
 {
-  "name": "@xgx/ui",
+  "name": "xgx-solid-v2",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
-  "sideEffects": [
-    "*.css",
-    "**/*.css"
+  "workspaces": [
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
-    "demo": "bun --port=5174 ./demo/index.html",
-    "demo:build": "bun ./demo/build.ts",
-    "demo:preview": "bun --port=5174 ./demo/dist/index.html",
+    "demo": "bun ./apps/demo/index.html --port=5174",
+    "demo:build": "bun ./apps/demo/build.ts",
+    "demo:preview": "bun ./apps/demo/dist/index.html --port=5174",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "test": "bun run typecheck && bun run demo:typecheck && bun run demo:build && bun run test:static",
-    "test:static": "bun ./demo/test.ts",
+    "test": "bun run query:typecheck && bun run typecheck && bun run prefabs:typecheck && bun run demo:typecheck && bun run demo:build && bun run test:static",
+    "test:static": "bun ./apps/demo/test.ts",
     "test:browser": "env -u FORCE_COLOR -u NO_COLOR playwright test",
     "test:aria": "env -u FORCE_COLOR -u NO_COLOR playwright test tests/aria.spec.ts",
     "test:keyboard": "env -u FORCE_COLOR -u NO_COLOR playwright test tests/keyboard.spec.ts",
@@ -23,41 +24,10 @@
     "test:visual": "env -u FORCE_COLOR -u NO_COLOR playwright test tests/visual.spec.ts",
     "test:visual:update": "env -u FORCE_COLOR -u NO_COLOR playwright test tests/visual.spec.ts --update-snapshots",
     "test:ci": "bun run lint && bun run format:check && bun run test && bun run test:browser",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "demo:typecheck": "tsc -p demo/tsconfig.json --noEmit"
-  },
-  "main": "./src/index.ts",
-  "exports": {
-    ".": "./src/index.ts",
-    "./base.css": "./src/base.css",
-    "./icons": "./src/icons.index.ts",
-    "./schema-form": "./src/forms/schema-form/index.ts",
-    "./table-infinite": "./src/table-infinite/index.ts",
-    "./query": "./src/query/index.tsx",
-    "./bun-plugin-solid": "./src/bun-plugins/solid.ts"
-  },
-  "dependencies": {
-    "@floating-ui/dom": "^1.7.6",
-    "@atlaskit/pragmatic-drag-and-drop": "^1.5.0",
-    "@atlaskit/pragmatic-drag-and-drop-hitbox": "^1.0.0",
-    "@tiptap/core": "^3.19.0",
-    "@tiptap/extension-bubble-menu": "^3.19.0",
-    "@tiptap/extension-collaboration": "^3.19.0",
-    "@tiptap/extension-collaboration-caret": "^3.19.0",
-    "@tiptap/extension-color": "^3.19.0",
-    "@tiptap/extension-highlight": "^3.19.0",
-    "@tiptap/extension-link": "^3.19.0",
-    "@tiptap/extension-placeholder": "^3.19.0",
-    "@tiptap/extension-text-style": "^3.19.0",
-    "@tiptap/extension-underline": "^3.19.0",
-    "@tiptap/pm": "^3.19.0",
-    "@tiptap/starter-kit": "^3.19.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "date-fns": "^4.1.0",
-    "lucide-solid": "^0.563.0",
-    "markdown-it": "^14.1.0",
-    "tailwind-merge": "^3.4.0"
+    "typecheck": "tsc -p packages/ui/tsconfig.json --noEmit",
+    "query:typecheck": "tsc -p packages/solid-query/tsconfig.json --noEmit",
+    "prefabs:typecheck": "tsc -p packages/solid-prefabs/tsconfig.json --noEmit",
+    "demo:typecheck": "tsc -p apps/demo/tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
@@ -74,11 +44,5 @@
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "zod": "^4.4.3"
-  },
-  "peerDependencies": {
-    "@solidjs/web": "^2.0.0-beta.14",
-    "chart.js": ">=4.0.0",
-    "solid-js": "^2.0.0-beta.14",
-    "zod": "^4.0.0"
   }
 }

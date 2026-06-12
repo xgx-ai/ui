@@ -20,20 +20,20 @@ jobs:
           key: audit-${{ runner.os }}-${{ hashFiles('bun.lock') }}
       - run: bun install --frozen-lockfile
       - run: bunx playwright install --with-deps chromium
-      - run: bun ./demo/build.ts
+      - run: bun ./apps/demo/build.ts
       - name: Lighthouse accessibility report
         run: bunx @lhci/cli autorun --config=./lighthouserc.cjs
       - name: Pa11y crawl
         run: |
           mkdir -p audit-artifacts
-          ./node_modules/.bin/bun --port=5174 ./demo/index.html > /tmp/xgx-ui-demo.log 2>&1 &
-          echo $! > /tmp/xgx-ui-demo.pid
+          ./node_modules/.bin/bun ./apps/demo/index.html --port=5174 > /tmp/xgx-solid-v2-demo.log 2>&1 &
+          echo $! > /tmp/xgx-solid-v2-demo.pid
           for i in {1..30}; do
             curl -fsS http://localhost:5174 >/dev/null && break
             sleep 1
           done
           bunx pa11y-ci --config ./pa11yci.json --reporter json > pa11y-report.json
-          cp /tmp/xgx-ui-demo.log audit-artifacts/demo.log
+          cp /tmp/xgx-solid-v2-demo.log audit-artifacts/demo.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

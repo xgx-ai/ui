@@ -1,15 +1,9 @@
 {
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "strict": true,
-    "jsx": "preserve",
-    "jsxImportSource": "@solidjs/web",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "noEmit": true
-  },
-  "include": ["src"]
+  "files": [],
+  "references": [
+    { "path": "./packages/solid-query" },
+    { "path": "./packages/ui" },
+    { "path": "./packages/solid-prefabs" },
+    { "path": "./apps/demo" }
+  ]
 }

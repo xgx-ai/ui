@@ -6,7 +6,7 @@ module.exports = {
         "http://localhost:5174/#forms",
         "http://localhost:5174/#async",
       ],
-      startServerCommand: "./node_modules/.bin/bun --port=5174 ./demo/index.html",
+      startServerCommand: "./node_modules/.bin/bun ./apps/demo/index.html --port=5174",
       startServerReadyPattern: "url: http://localhost:5174/",
       numberOfRuns: 1,
       settings: {

@@ -1,8 +1,0 @@
-{
-  "extends": "../tsconfig.json",
-  "compilerOptions": {
-    "noEmit": true,
-    "types": ["bun"]
-  },
-  "include": ["src", "build.ts", "../src/bun-plugins/babel.d.ts"]
-}

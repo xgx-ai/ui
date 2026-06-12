@@ -1,3 +1,2 @@
 [serve.static]
-plugins = ["bun-plugin-tailwind", "./src/bun-plugins/solid.ts"]
-
+plugins = ["bun-plugin-tailwind", "./packages/ui/src/bun-plugins/solid.ts"]

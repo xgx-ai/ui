@@ -25,7 +25,7 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: `${bunBin} --port=${demoPort} ./demo/index.html`,
+    command: `${bunBin} ./apps/demo/index.html --port=${demoPort}`,
     env: webServerEnv,
     url: demoUrl,
     reuseExistingServer: true,

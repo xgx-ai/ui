@@ -1,0 +1,11 @@
+{
+  "name": "@xgx/solid-v2-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@xgx/solid-prefabs": "workspace:*",
+    "@xgx/solid-query": "workspace:*",
+    "@xgx/ui": "workspace:*"
+  }
+}
