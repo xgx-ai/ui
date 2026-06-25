@@ -1,5 +1,5 @@
 {
-  "name": "@xgx/solid-prefabs",
+  "name": "@xgx/prefabs",
   "version": "0.1.0",
   "type": "module",
   "sideEffects": [
@@ -14,7 +14,7 @@
     "./table-infinite": "./src/table-infinite/index.ts"
   },
   "dependencies": {
-    "@xgx/solid-query": "workspace:*",
+    "@xgx/query": "workspace:*",
     "@xgx/ui": "workspace:*"
   },
   "peerDependencies": {

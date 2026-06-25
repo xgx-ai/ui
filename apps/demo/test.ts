@@ -74,12 +74,12 @@ const sourceFiles = [
   "bun.lock",
   "AGENTS.md",
   "packages/ui/package.json",
-  "packages/solid-query/package.json",
-  "packages/solid-prefabs/package.json",
+  "packages/query/package.json",
+  "packages/prefabs/package.json",
   "apps/demo/package.json",
   ...walk("packages/ui/src"),
-  ...walk("packages/solid-query/src"),
-  ...walk("packages/solid-prefabs/src"),
+  ...walk("packages/query/src"),
+  ...walk("packages/prefabs/src"),
   ...walk("apps/demo/src"),
   ...walk("docs"),
 ];
@@ -88,20 +88,20 @@ const runtimeFiles = [
   "package.json",
   "bun.lock",
   "packages/ui/package.json",
-  "packages/solid-query/package.json",
-  "packages/solid-prefabs/package.json",
+  "packages/query/package.json",
+  "packages/prefabs/package.json",
   "apps/demo/package.json",
   ...walk("packages/ui/src"),
-  ...walk("packages/solid-query/src"),
-  ...walk("packages/solid-prefabs/src"),
+  ...walk("packages/query/src"),
+  ...walk("packages/prefabs/src"),
   ...walk("apps/demo"),
 ].filter((file) => !file.startsWith("apps/demo/dist/") && file !== "apps/demo/test.ts");
 
 const srcFiles = walk("packages/ui/src");
 const packageSourceFiles = [
   ...srcFiles,
-  ...walk("packages/solid-query/src"),
-  ...walk("packages/solid-prefabs/src"),
+  ...walk("packages/query/src"),
+  ...walk("packages/prefabs/src"),
 ];
 const demoSourceFiles = walk("apps/demo/src");
 
@@ -111,11 +111,7 @@ assertNoMatch(
   "Internal @xgx/ui self-import found",
 );
 
-assertNoMatch(
-  srcFiles,
-  /@xgx\/solid-query|@xgx\/solid-prefabs/,
-  "UI package must not import query or prefabs",
-);
+assertNoMatch(srcFiles, /@xgx\/query|@xgx\/prefabs/, "UI package must not import query or prefabs");
 
 assertNoMatch(
   sourceFiles,

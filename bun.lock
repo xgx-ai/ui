@@ -17,7 +17,6 @@
         "bun-plugin-tailwind": "^0.1.2",
         "solid-js": "2.0.0-beta.14",
         "tailwindcss": "^4.1.18",
-        "typescript": "^5.9.3",
         "zod": "^4.4.3",
       },
     },
@@ -25,16 +24,16 @@
       "name": "@xgx/solid-v2-demo",
       "version": "0.1.0",
       "dependencies": {
-        "@xgx/solid-prefabs": "workspace:*",
-        "@xgx/solid-query": "workspace:*",
+        "@xgx/prefabs": "workspace:*",
+        "@xgx/query": "workspace:*",
         "@xgx/ui": "workspace:*",
       },
     },
-    "packages/solid-prefabs": {
-      "name": "@xgx/solid-prefabs",
+    "packages/prefabs": {
+      "name": "@xgx/prefabs",
       "version": "0.1.0",
       "dependencies": {
-        "@xgx/solid-query": "workspace:*",
+        "@xgx/query": "workspace:*",
         "@xgx/ui": "workspace:*",
       },
       "peerDependencies": {
@@ -42,8 +41,8 @@
         "solid-js": "^2.0.0-beta.14",
       },
     },
-    "packages/solid-query": {
-      "name": "@xgx/solid-query",
+    "packages/query": {
+      "name": "@xgx/query",
       "version": "0.1.0",
       "peerDependencies": {
         "@solidjs/web": "^2.0.0-beta.14",
@@ -299,9 +298,9 @@
 
     "@types/node": ["@types/node@25.9.2", "", { "dependencies": { "undici-types": ">=7.24.0 <7.24.7" } }, "sha512-G05zqtJhcDLb8uslf5EjCxXg9G1KQxiV8OS0R26IC//Eoyitzqe8z37I7cqvnZlrlSfgocQRfSn/AHBZJJFyGw=="],
 
-    "@xgx/solid-prefabs": ["@xgx/solid-prefabs@workspace:packages/solid-prefabs"],
+    "@xgx/prefabs": ["@xgx/prefabs@workspace:packages/prefabs"],
 
-    "@xgx/solid-query": ["@xgx/solid-query@workspace:packages/solid-query"],
+    "@xgx/query": ["@xgx/query@workspace:packages/query"],
 
     "@xgx/solid-v2-demo": ["@xgx/solid-v2-demo@workspace:apps/demo"],
 
@@ -434,8 +433,6 @@
     "tailwind-merge": ["tailwind-merge@3.6.0", "", {}, "sha512-uxL7qAVQriqRQPAyK3pj66VqskWqoZ37PW94jwOTwNfq/z9oyu1V+eqrZqtR2+fCiXdYOZe/Modt8GtvqNzu+w=="],
 
     "tailwindcss": ["tailwindcss@4.3.0", "", {}, "sha512-y6nxMGB1nMW9R6k96e5gdIFzcfL/gTJRNaqGes1YvkLnPVXzWgbqFF2yLC0T8G774n24cx3Pe8XrKoniCOAH+Q=="],
-
-    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "uc.micro": ["uc.micro@2.1.0", "", {}, "sha512-ARDJmphmdvUk6Glw7y9DQ2bFkKBHwQHLi2lsaH6PPmz/Ka9sFOBsBluozhDltWmnv9u/cF6Rt87znRTPV+yp/A=="],
 

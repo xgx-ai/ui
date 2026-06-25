@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@xgx/solid-prefabs": "workspace:*",
-    "@xgx/solid-query": "workspace:*",
+    "@xgx/prefabs": "workspace:*",
+    "@xgx/query": "workspace:*",
     "@xgx/ui": "workspace:*"
   }
 }

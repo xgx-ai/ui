@@ -15,7 +15,7 @@
 
 ## Catalog Rules
 
-- Every visible interactive example should use exported `@xgx/ui` primitives or `@xgx/solid-prefabs` workflows.
+- Every visible interactive example should use exported `@xgx/ui` primitives or `@xgx/prefabs` workflows.
 - Demo-only layout glue may use plain `div` and semantic HTML, but should not reimplement existing shared components.
 - Code examples must show package-root imports unless documenting a subpath export.
 - Catalog copy stays generic and product-neutral.

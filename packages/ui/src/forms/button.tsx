@@ -68,25 +68,48 @@ const Button = <T extends ValidComponent = "button">(props: ButtonProps<T>) => {
     "loading",
     "children",
     "disabled",
+    "onClick",
     "type",
   ]);
 
   const disabled = () => Boolean(local.disabled || local.loading);
+  const content = () => (
+    <>
+      <Show when={local.loading}>
+        <Spinner class="mr-2 size-4" />
+      </Show>
+      {local.children}
+    </>
+  );
+
+  if (!local.as) {
+    return (
+      <button
+        type={local.type ?? "button"}
+        class={cn(buttonVariants({ variant: local.variant, size: local.size }), local.class)}
+        disabled={disabled()}
+        data-disabled={disabled() ? "" : undefined}
+        aria-disabled={disabled() ? "true" : undefined}
+        {...others}
+        onClick={local.onClick}
+      >
+        {content()}
+      </button>
+    );
+  }
 
   return (
     <Dynamic
-      component={local.as ?? "button"}
-      type={local.as ? local.type : (local.type ?? "button")}
+      component={local.as}
+      type={local.type}
       class={cn(buttonVariants({ variant: local.variant, size: local.size }), local.class)}
       disabled={disabled()}
       data-disabled={disabled() ? "" : undefined}
       aria-disabled={disabled() ? "true" : undefined}
       {...others}
+      onClick={local.onClick}
     >
-      <Show when={local.loading}>
-        <Spinner class="mr-2 size-4" />
-      </Show>
-      {local.children}
+      {content()}
     </Dynamic>
   );
 };

@@ -1,9 +1,9 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/solid-query" },
+    { "path": "./packages/query" },
     { "path": "./packages/ui" },
-    { "path": "./packages/solid-prefabs" },
+    { "path": "./packages/prefabs" },
     { "path": "./apps/demo" }
   ]
 }

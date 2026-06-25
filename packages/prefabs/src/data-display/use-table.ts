@@ -1,5 +1,5 @@
 import { type Accessor, createMemo, createSignal } from "solid-js";
-import { createInfiniteQuery, type InfiniteQueryResult, type QueryKey } from "@xgx/solid-query";
+import { createInfiniteQuery, type InfiniteQueryResult, type QueryKey } from "@xgx/query";
 
 /**
  * Base interface for table row data.

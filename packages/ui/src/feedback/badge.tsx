@@ -4,6 +4,7 @@ import { splitProps } from "../utils/split-props";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import type { Component } from "solid-js";
+import { children } from "solid-js";
 import { Show } from "solid-js";
 
 import { cn } from "../cn";
@@ -57,7 +58,15 @@ type BadgeProps = ComponentProps<"div"> &
   };
 
 const Badge: Component<BadgeProps> = (props) => {
-  const [local, others] = splitProps(props, ["class", "variant", "size", "round", "style"]);
+  const [local, others] = splitProps(props, [
+    "children",
+    "class",
+    "variant",
+    "size",
+    "round",
+    "style",
+  ]);
+  const resolvedChildren = children(() => local.children);
   const borderStyle = "color-mix(in oklch, currentColor 30%, transparent)";
   const style = () => {
     if (!colorBorderVariants.has(local.variant ?? "default")) {
@@ -83,7 +92,9 @@ const Badge: Component<BadgeProps> = (props) => {
         local.class,
       )}
       style={style()}
-    />
+    >
+      {resolvedChildren()}
+    </div>
   );
 };
 

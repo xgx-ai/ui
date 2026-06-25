@@ -17,7 +17,7 @@ import {
 import { Settings } from "@xgx/ui/icons";
 import { createEffect, createMemo, createSignal, For, Show, snapshot } from "solid-js";
 import { createStore } from "solid-js";
-import { createIntersectionLoader } from "@xgx/solid-query";
+import { createIntersectionLoader } from "@xgx/query";
 import type {
   CellContext,
   ColumnDef,

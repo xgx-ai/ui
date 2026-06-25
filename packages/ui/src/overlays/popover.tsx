@@ -20,6 +20,8 @@ import { assignRef, containsNode } from "./floating";
 import { PopperPositioner, PopperRoot } from "./popper";
 import { PortalMount } from "./portal";
 
+const DynamicAny = Dynamic as any;
+
 type Placement =
   | "bottom"
   | "bottom-start"
@@ -163,10 +165,28 @@ const PopoverTrigger = <T extends ValidComponent = "button">(props: PopoverTrigg
     if (!event.defaultPrevented) popover.setOpen(!popover.open());
   };
 
+  if (!local.as) {
+    return (
+      <button
+        type={local.type ?? "button"}
+        aria-expanded={popover.open() ? "true" : "false"}
+        data-expanded={popover.open() ? "" : undefined}
+        ref={(element) => {
+          popover.setTriggerRef(element);
+          assignRef(local.ref, element);
+        }}
+        {...others}
+        onClick={onClick}
+      >
+        {local.children}
+      </button>
+    );
+  }
+
   return (
-    <Dynamic
-      component={local.as ?? "button"}
-      type={local.as ? local.type : (local.type ?? "button")}
+    <DynamicAny
+      component={local.as}
+      type={local.type}
       aria-expanded={popover.open() ? "true" : "false"}
       data-expanded={popover.open() ? "" : undefined}
       ref={(element: HTMLElement) => {
@@ -177,7 +197,7 @@ const PopoverTrigger = <T extends ValidComponent = "button">(props: PopoverTrigg
       {...others}
     >
       {local.children}
-    </Dynamic>
+    </DynamicAny>
   );
 };
 

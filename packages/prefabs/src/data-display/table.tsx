@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { createIntersectionLoader } from "@xgx/solid-query";
+import { createIntersectionLoader } from "@xgx/query";
 import {
   Checkbox,
   cn,

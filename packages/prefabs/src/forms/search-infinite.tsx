@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { keepPreviousData, useInfiniteQuery } from "@xgx/solid-query";
+import { keepPreviousData, useInfiniteQuery } from "@xgx/query";
 import {
   cn,
   ComboboxTrigger,

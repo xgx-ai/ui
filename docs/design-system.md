@@ -10,8 +10,8 @@
 ## Package Boundaries
 
 - `@xgx/ui` contains query-free primitives, tokens, forms, overlays, layout, and shared types.
-- `@xgx/solid-query` contains Solid v2 async/query primitives.
-- `@xgx/solid-prefabs` contains composed workflows that may depend on both `@xgx/ui` and `@xgx/solid-query`.
+- `@xgx/query` contains Solid v2 async/query primitives.
+- `@xgx/prefabs` contains composed workflows that may depend on both `@xgx/ui` and `@xgx/query`.
 - The demo may import all three packages; `@xgx/ui` must not import query or prefabs.
 
 ## Token Contract

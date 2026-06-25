@@ -27,6 +27,7 @@
             packages = [
               pkgs.biome
               pkgs.bun
+              pkgs.typescript-go
             ];
           };
         }

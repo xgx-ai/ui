@@ -24,10 +24,10 @@
     "test:visual": "env -u FORCE_COLOR -u NO_COLOR playwright test tests/visual.spec.ts",
     "test:visual:update": "env -u FORCE_COLOR -u NO_COLOR playwright test tests/visual.spec.ts --update-snapshots",
     "test:ci": "bun run lint && bun run format:check && bun run test && bun run test:browser",
-    "typecheck": "tsc -p packages/ui/tsconfig.json --noEmit",
-    "query:typecheck": "tsc -p packages/solid-query/tsconfig.json --noEmit",
-    "prefabs:typecheck": "tsc -p packages/solid-prefabs/tsconfig.json --noEmit",
-    "demo:typecheck": "tsc -p apps/demo/tsconfig.json --noEmit"
+    "typecheck": "tsgo -p packages/ui/tsconfig.json --noEmit",
+    "query:typecheck": "tsgo -p packages/query/tsconfig.json --noEmit",
+    "prefabs:typecheck": "tsgo -p packages/prefabs/tsconfig.json --noEmit",
+    "demo:typecheck": "tsgo -p apps/demo/tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
@@ -42,7 +42,6 @@
     "bun-plugin-tailwind": "^0.1.2",
     "solid-js": "2.0.0-beta.14",
     "tailwindcss": "^4.1.18",
-    "typescript": "^5.9.3",
     "zod": "^4.4.3"
   }
 }

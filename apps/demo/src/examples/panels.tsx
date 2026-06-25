@@ -160,12 +160,12 @@ import {
   X,
 } from "@xgx/ui/icons";
 import {
-  action,
+  createEffect,
   createMemo,
   createOptimistic,
   createSignal,
+  flush,
   For,
-  Loading,
   onSettled,
   Show,
 } from "solid-js";
@@ -2449,10 +2449,10 @@ export function OverlaysPanel() {
   const [dialogOpen, setDialogOpen] = createSignal(false);
   const { showResponseDialog, DialogResponse } = useResponseDialog();
 
-  const loadResponseDialogQueues = action(function* () {
-    yield wait(550);
+  const loadResponseDialogQueues = async () => {
+    await wait(550);
     return [...responseDialogQueues];
-  });
+  };
 
   const openResponseDialogForm = async () => {
     const result = await showResponseDialog<ResponseDialogFormValues>({
@@ -2705,19 +2705,19 @@ type AsyncSummary = {
   status: string;
 };
 
-function AsyncSummarySlot(props: { summary: () => AsyncSummary }) {
-  const summary = () => props.summary();
-
+function AsyncSummarySlot(props: { summary: AsyncSummary }) {
   return (
     <div
       data-testid="async-summary-ready"
       class="rounded-md border border-border-subtle bg-surface-muted px-3 py-2"
     >
       <div class="flex items-center justify-between gap-3">
-        <span class="text-xs font-medium text-foreground">{summary().status}</span>
-        <Badge variant="default">Run {summary().run}</Badge>
+        <span class="text-xs font-medium text-foreground">{props.summary.status}</span>
+        <span class="inline-flex items-center gap-1.5 whitespace-nowrap rounded border border-border-subtle bg-surface-muted px-2 py-0.5 text-xs font-medium text-surface-muted-foreground">
+          Run {props.summary.run}
+        </span>
       </div>
-      <p class="mt-1 text-sm text-muted-foreground">{summary().detail}</p>
+      <p class="mt-1 text-sm text-muted-foreground">{props.summary.detail}</p>
     </div>
   );
 }
@@ -2731,64 +2731,89 @@ export function AsyncRuntimePanel() {
   const [reviewer, setReviewer] = createSignal<AsyncReviewer | null>(null);
   const [selectLoading, setSelectLoading] = createSignal(false);
   const [summaryRun, setSummaryRun] = createSignal(1);
+  const [summaryLoading, setSummaryLoading] = createSignal(true);
+  const [summaryValue, setSummaryValue] = createSignal<AsyncSummary>();
   const [actionBusy, setActionBusy] = createSignal(false);
   const [queue, setQueue] = createOptimistic<AsyncQueueItem[]>([
     { id: "baseline", label: "Baseline approval", state: "committed" },
   ]);
+  let summaryRequest = 0;
 
-  const summary = createMemo<AsyncSummary>(async () => {
-    const run = summaryRun();
+  const loadSummary = async (run: number) => {
+    const request = ++summaryRequest;
+    setSummaryLoading(true);
+    flush();
     await wait(500);
-    return {
+    if (request !== summaryRequest) return;
+    setSummaryValue({
       detail: "Deferred summary resolved without replacing the surrounding page chrome.",
       run,
       status: "Async summary ready",
-    };
-  });
+    });
+    setSummaryLoading(false);
+    flush();
+  };
 
-  const commitQueueItem = action(function* () {
+  createEffect(
+    () => summaryRun(),
+    (run) => {
+      void loadSummary(run);
+    },
+  );
+
+  const commitQueueItem = async () => {
     const id = `optimistic-${Date.now()}`;
     setQueue((items) => [{ id, label: "Async approval", state: "pending" }, ...items]);
-    yield wait(650);
+    flush();
+    await wait(650);
     setQueue((items) =>
       items.map((item) => (item.id === id ? { ...item, state: "committed" } : item)),
     );
-  });
+    flush();
+  };
 
   const openAsyncDialog = async () => {
     setPortalBusy(true);
     setPortalStatus("Checking access before opening portal");
+    flush();
     await wait(450);
     setPortalStatus("Access check complete");
     setDialogOpen(true);
     setPortalBusy(false);
+    flush();
   };
 
   const openAsyncPopover = async () => {
     setPortalBusy(true);
     setPortalStatus("Loading popover context");
+    flush();
     await wait(350);
     setPortalStatus("Popover context loaded");
     setPopoverOpen(true);
     setPortalBusy(false);
+    flush();
   };
 
   const loadReviewerOptions = async () => {
     setSelectLoading(true);
     setReviewers([]);
     setReviewer(null);
+    flush();
     await wait(600);
     setReviewers([...asyncReviewers]);
     setReviewer(asyncReviewers[0]);
     setSelectLoading(false);
+    flush();
   };
 
   const runOptimisticAction = async () => {
     setActionBusy(true);
+    flush();
     try {
       await commitQueueItem();
     } finally {
       setActionBusy(false);
+      flush();
     }
   };
 
@@ -2939,8 +2964,8 @@ export function AsyncRuntimePanel() {
             <RefreshCw />
             Refresh summary
           </Button>
-          <Loading
-            on={summaryRun()}
+          <Show
+            when={!summaryLoading() && summaryValue()}
             fallback={
               <div
                 data-testid="async-summary-fallback"
@@ -2951,8 +2976,8 @@ export function AsyncRuntimePanel() {
               </div>
             }
           >
-            <AsyncSummarySlot summary={summary} />
-          </Loading>
+            {(summary) => <AsyncSummarySlot summary={summary()} />}
+          </Show>
         </CardContent>
       </Card>
 
