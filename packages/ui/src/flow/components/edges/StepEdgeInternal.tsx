@@ -1,11 +1,10 @@
 // @ts-nocheck
 import { getSmoothStepPath } from "@xyflow/system";
-import { createMemo } from "solid-js";
 import type { EdgeProps } from "../../types";
 import { BaseEdge } from "./BaseEdge";
 
 export function StepEdgeInternal(props: EdgeProps) {
-	const pathData = createMemo(() =>
+	const pathData = () =>
 		getSmoothStepPath({
 			sourceX: props.sourceX,
 			sourceY: props.sourceY,
@@ -14,8 +13,7 @@ export function StepEdgeInternal(props: EdgeProps) {
 			sourcePosition: props.sourcePosition,
 			targetPosition: props.targetPosition,
 			borderRadius: 0,
-		}),
-	);
+		});
 
 	return (
 		<BaseEdge

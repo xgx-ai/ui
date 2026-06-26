@@ -1,18 +1,16 @@
 // @ts-nocheck
 import { getStraightPath } from "@xyflow/system";
-import { createMemo } from "solid-js";
 import type { EdgeProps } from "../../types";
 import { BaseEdge } from "./BaseEdge";
 
 export function StraightEdgeInternal(props: EdgeProps) {
-	const pathData = createMemo(() =>
+	const pathData = () =>
 		getStraightPath({
 			sourceX: props.sourceX,
 			sourceY: props.sourceY,
 			targetX: props.targetX,
 			targetY: props.targetY,
-		}),
-	);
+		});
 
 	return (
 		<BaseEdge

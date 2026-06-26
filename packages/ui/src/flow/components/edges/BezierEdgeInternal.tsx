@@ -1,11 +1,10 @@
 // @ts-nocheck
 import { getBezierPath } from "@xyflow/system";
-import { createMemo } from "solid-js";
 import type { EdgeProps } from "../../types";
 import { BaseEdge } from "./BaseEdge";
 
 export function BezierEdgeInternal(props: EdgeProps) {
-	const pathData = createMemo(() =>
+	const pathData = () =>
 		getBezierPath({
 			sourceX: props.sourceX,
 			sourceY: props.sourceY,
@@ -13,8 +12,7 @@ export function BezierEdgeInternal(props: EdgeProps) {
 			targetY: props.targetY,
 			sourcePosition: props.sourcePosition,
 			targetPosition: props.targetPosition,
-		}),
-	);
+		});
 
 	return (
 		<BaseEdge
