@@ -143,6 +143,7 @@ export function getInitialStore<
 		createSignal<ConnectionState>(initialConnection);
 	const [clickConnectStartHandle, setClickConnectStartHandle] =
 		createSignal<Pick<Handle, "id" | "nodeId" | "type"> | null>(null);
+	const [nodeInternalsVersion, setNodeInternalsVersion] = createSignal(0);
 
 	// Viewport
 	const [_viewport, set_Viewport] = createSignal<Viewport>({
@@ -467,6 +468,7 @@ export function getInitialStore<
 		() => {
 			// Force dependency on nodes
 			nodesInitialized();
+			nodeInternalsVersion();
 			const edges = _edges();
 
 			// In SolidJS, nodeLookup entries are mutated in place by adoptUserNodes,
@@ -613,6 +615,9 @@ export function getInitialStore<
 
 		get nodesInitialized() {
 			return nodesInitialized();
+		},
+		notifyNodeInternalsUpdated() {
+			setNodeInternalsVersion((version) => version + 1);
 		},
 		get viewportInitialized() {
 			return viewportInitialized();

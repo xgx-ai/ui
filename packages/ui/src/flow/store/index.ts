@@ -100,6 +100,7 @@ export function createStore<
 			nodeExtent: store.nodeExtent,
 			zIndexMode: store.zIndexMode,
 		});
+		store.notifyNodeInternalsUpdated?.();
 
 		if (store.fitViewQueued) {
 			store.resolveFitView();

@@ -36,6 +36,7 @@ export type SolidFlowStoreActions<
 	setCenter: SetCenter;
 	updateNodePositions: UpdateNodePositions;
 	updateNodeInternals: (updates: Map<string, InternalNodeUpdate>) => void;
+	notifyNodeInternalsUpdated?: () => void;
 	unselectNodesAndEdges: (params?: {
 		nodes?: NodeType[];
 		edges?: EdgeType[];
