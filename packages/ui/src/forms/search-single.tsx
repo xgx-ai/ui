@@ -62,7 +62,6 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
   const [infiniteEnd, setInfiniteEnd] = createSignal(false);
   const [currentSearchQuery, setCurrentSearchQuery] = createSignal("");
   const [searchQuery, setSearchQuery] = createSignal("");
-  const _limit = props.infiniteScrollLimit ?? 20;
   let loadMoreEl: HTMLDivElement | undefined;
 
   const filteredOptions = () => {
@@ -79,7 +78,6 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
     });
   };
 
-  let _selectionMade = false;
   // Function to find matching option based on input value
   const findMatchingOption = (inputValue: string): T | null => {
     if (!inputValue.trim()) return null;
@@ -180,8 +178,6 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
 
   onSignal(isOpen, (open) => {
     if (open) {
-      _selectionMade = false;
-
       if (inputEl) {
         inputEl.value = "";
       }
@@ -219,7 +215,6 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
   });
 
   const handleSearchChange = (query: string) => {
-    _selectionMade = false;
     setSearchQuery(query);
 
     if (props.enableInfiniteScroll) {
@@ -276,7 +271,6 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
             optionLabel={props.optionTextValue}
             onChange={(e) => {
               if (e) {
-                _selectionMade = true;
                 props.onChange?.(e);
                 setIsOpen(false);
               }

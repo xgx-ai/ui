@@ -13,6 +13,7 @@ const calloutVariants = cva("rounded-md p-2 pl-4 text-sm", {
       success: "border-success-foreground bg-success text-success-foreground",
       warning: "border-warning-foreground bg-warning text-warning-foreground",
       error: "border-error-foreground bg-error text-error-foreground",
+      destructive: "border-error-foreground bg-error text-error-foreground",
     },
   },
   defaultVariants: {

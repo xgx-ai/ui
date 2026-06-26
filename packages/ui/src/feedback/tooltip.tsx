@@ -31,8 +31,10 @@ const DynamicAny = Dynamic as any;
 type TooltipContextValue = {
   close: () => void;
   contentId: string;
+  gutter: () => number;
   open: () => boolean;
   openNow: () => void;
+  placement: () => TooltipPlacement;
   setTrigger: (element: HTMLElement) => void;
   trigger: () => HTMLElement | undefined;
 };
@@ -51,7 +53,10 @@ type TooltipProps = {
   gutter?: number;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  placement?: TooltipPlacement;
 };
+
+type TooltipPlacement = "top" | "right" | "bottom" | "left";
 
 const Tooltip = (props: TooltipProps) => {
   const [uncontrolledOpen, setUncontrolledOpen] = createSignal(Boolean(props.defaultOpen));
@@ -77,8 +82,10 @@ const Tooltip = (props: TooltipProps) => {
       value={{
         close: () => setOpen(false),
         contentId,
+        gutter: () => props.gutter ?? 6,
         open,
         openNow: () => setOpen(true),
+        placement: () => props.placement ?? "bottom",
         setTrigger,
         trigger,
       }}
@@ -157,11 +164,34 @@ const TooltipContent = <T extends ValidComponent = "div">(props: TooltipContentP
   const style = () => {
     const rect = tooltip.trigger()?.getBoundingClientRect();
     if (!rect) return { left: "0px", top: "0px" };
-    return {
-      left: `${rect.left + rect.width / 2}px`,
-      top: `${rect.bottom + 6}px`,
-      transform: "translateX(-50%)",
-    };
+    const gutter = tooltip.gutter();
+
+    switch (tooltip.placement()) {
+      case "top":
+        return {
+          left: `${rect.left + rect.width / 2}px`,
+          top: `${rect.top - gutter}px`,
+          transform: "translate(-50%, -100%)",
+        };
+      case "right":
+        return {
+          left: `${rect.right + gutter}px`,
+          top: `${rect.top + rect.height / 2}px`,
+          transform: "translateY(-50%)",
+        };
+      case "left":
+        return {
+          left: `${rect.left - gutter}px`,
+          top: `${rect.top + rect.height / 2}px`,
+          transform: "translate(-100%, -50%)",
+        };
+      default:
+        return {
+          left: `${rect.left + rect.width / 2}px`,
+          top: `${rect.bottom + gutter}px`,
+          transform: "translateX(-50%)",
+        };
+    }
   };
 
   return (

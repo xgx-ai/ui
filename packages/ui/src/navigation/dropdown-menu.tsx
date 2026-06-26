@@ -13,7 +13,8 @@
  * </DropdownMenu>
  * ```
  */
-import type { ComponentProps, JSX } from "@solidjs/web";
+import { Dynamic } from "@solidjs/web";
+import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";
 import { splitProps } from "../utils/split-props";
 import { Check, ChevronRight, Circle } from "../icons.index";
@@ -23,6 +24,8 @@ import { assignRef, containsNode } from "../overlays/floating";
 import { PopperPositioner, PopperRoot } from "../overlays/popper";
 import { PortalMount } from "../overlays/portal";
 import { createMenuKeyboard, focusFirstMenuItem } from "./menu-behavior";
+
+const DynamicAny = Dynamic as any;
 
 type Placement =
   | "bottom"
@@ -164,12 +167,22 @@ const DropdownMenu = (props: DropdownMenuProps) => {
   );
 };
 
-const DropdownMenuTrigger = (props: ComponentProps<"button">) => {
+type DropdownMenuTriggerProps<T extends ValidComponent = "button"> = Omit<
+  ComponentProps<"button">,
+  "ref"
+> & {
+  as?: T;
+  ref?: any;
+};
+
+const DropdownMenuTrigger = <T extends ValidComponent = "button">(
+  props: DropdownMenuTriggerProps<T>,
+) => {
   const menu = useDropdownMenu();
-  const [local, rest] = splitProps(props, ["class", "onKeyDown", "ref", "type"]);
-  const onKeyDown: JSX.EventHandler<HTMLButtonElement, KeyboardEvent> = (event) => {
+  const [local, rest] = splitProps(props, ["as", "class", "onKeyDown", "ref", "type"]);
+  const onKeyDown: JSX.EventHandler<HTMLElement, KeyboardEvent> = (event) => {
     const handler = local.onKeyDown as
-      | JSX.EventHandler<HTMLButtonElement, KeyboardEvent>
+      | JSX.EventHandler<HTMLElement, KeyboardEvent>
       | undefined;
     handler?.(event);
     if (event.defaultPrevented) return;
@@ -182,12 +195,13 @@ const DropdownMenuTrigger = (props: ComponentProps<"button">) => {
   };
 
   return (
-    <button
+    <DynamicAny
+      component={local.as ?? "button"}
       data-xgx-dropdown-trigger
       type={local.type ?? "button"}
       aria-expanded={menu.open() ? "true" : "false"}
       data-expanded={menu.open() ? "" : undefined}
-      ref={(element) => {
+      ref={(element: HTMLElement) => {
         menu.setTriggerRef(element);
         assignRef(local.ref, element);
       }}

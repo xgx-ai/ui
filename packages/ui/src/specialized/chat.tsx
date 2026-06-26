@@ -60,6 +60,7 @@ export interface ChatProps extends Omit<ComponentProps<"div">, "children"> {
   centered?: boolean;
   /** Use a transparent/subtle background for the input area */
   transparentInput?: boolean;
+  postProcessHtml?: (html: string) => string;
 }
 
 // Regex to match hex colors
@@ -156,7 +157,12 @@ function renderInlineTokens(tokens: NonNullable<ReturnType<typeof md.parseInline
   return renderRange(0)[0];
 }
 
-function MarkdownContent(props: { content: string; class?: string }) {
+function MarkdownContent(props: {
+  content: string;
+  class?: string;
+  postProcessHtml?: (html: string) => string;
+}) {
+  const processedHtml = () => props.postProcessHtml?.(md.render(props.content)) ?? "";
   const tokens = () => md.parse(props.content, {});
 
   const renderBlocks = (start: number, endType?: string): [JSX.Element[], number] => {
@@ -232,11 +238,21 @@ function MarkdownContent(props: { content: string; class?: string }) {
     return [nodes, i];
   };
 
-  return <div class={props.class}>{renderBlocks(0)[0]}</div>;
+  return (
+    <Show
+      when={props.postProcessHtml}
+      fallback={<div class={props.class}>{renderBlocks(0)[0]}</div>}
+    >
+      <div class={props.class} innerHTML={processedHtml()} />
+    </Show>
+  );
 }
 
 // Message bubble component
-export const ChatMessageBubble: Component<{ message: ChatMessage }> = (props) => {
+export const ChatMessageBubble: Component<{
+  message: ChatMessage;
+  postProcessHtml?: (html: string) => string;
+}> = (props) => {
   const isUser = () => props.message.role === "user";
 
   const renderUserContent = () => {
@@ -266,6 +282,7 @@ export const ChatMessageBubble: Component<{ message: ChatMessage }> = (props) =>
           <MarkdownContent
             class="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-pre:my-2 prose-code:bg-surface-muted prose-code:px-1 prose-code:rounded text-inherit prose-headings:text-inherit prose-strong:text-inherit prose-p:text-inherit prose-li:text-inherit"
             content={props.message.content}
+            postProcessHtml={props.postProcessHtml}
           />
         </Show>
       </div>
@@ -282,7 +299,10 @@ export const ChatMessageBubble: Component<{ message: ChatMessage }> = (props) =>
 };
 
 // Plain message display without bubble styling
-export const ChatMessagePlain: Component<{ message: ChatMessage }> = (props) => {
+export const ChatMessagePlain: Component<{
+  message: ChatMessage;
+  postProcessHtml?: (html: string) => string;
+}> = (props) => {
   const isUser = () => props.message.role === "user";
 
   const renderUserContent = () => {
@@ -311,6 +331,7 @@ export const ChatMessagePlain: Component<{ message: ChatMessage }> = (props) => 
         <MarkdownContent
           class="prose prose-lg max-w-none prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-0 prose-pre:my-3 prose-code:bg-muted prose-code:px-1 prose-code:rounded text-inherit prose-headings:text-inherit prose-strong:text-inherit prose-p:text-inherit prose-li:text-inherit"
           content={props.message.content}
+          postProcessHtml={props.postProcessHtml}
         />
       </Show>
     </div>
@@ -410,6 +431,7 @@ export const Chat: Component<ChatProps> = (props) => {
     "noBubbles",
     "centered",
     "transparentInput",
+    "postProcessHtml",
   ]);
 
   const [internalInputValue, setInternalInputValue] = createSignal("");
@@ -488,8 +510,16 @@ export const Chat: Component<ChatProps> = (props) => {
           <div class="space-y-2">
             <For each={messages()}>
               {(message) => (
-                <Show when={!local.noBubbles} fallback={<ChatMessagePlain message={message} />}>
-                  <ChatMessageBubble message={message} />
+                <Show
+                  when={!local.noBubbles}
+                  fallback={
+                    <ChatMessagePlain
+                      message={message}
+                      postProcessHtml={local.postProcessHtml}
+                    />
+                  }
+                >
+                  <ChatMessageBubble message={message} postProcessHtml={local.postProcessHtml} />
                 </Show>
               )}
             </For>

@@ -124,7 +124,7 @@ export default function SearchMultiple<T>(props: SearchProps<T>) {
                         <button
                           type="button"
                           class="ml-1 cursor-pointer text-muted-foreground hover:text-foreground focus:outline-none"
-                          onClick={(e) => {
+                          onClick={() => {
                             props.onRemove?.(item);
                           }}
                         >

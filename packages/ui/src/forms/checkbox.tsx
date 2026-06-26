@@ -21,6 +21,7 @@ type CheckboxProps = Omit<ComponentProps<"button">, "onChange"> & {
   onChange?: (checked: boolean) => void;
   onCheckedChange?: (checked: boolean) => void;
   size?: "sm" | "md" | "lg";
+  variant?: "default" | "secondary";
 };
 
 const Checkbox = (props: CheckboxProps) => {
@@ -32,6 +33,7 @@ const Checkbox = (props: CheckboxProps) => {
     "onChange",
     "onCheckedChange",
     "size",
+    "variant",
     "disabled",
     "onClick",
     "type",
@@ -39,6 +41,7 @@ const Checkbox = (props: CheckboxProps) => {
   const [uncontrolledChecked, setUncontrolledChecked] = createSignal(Boolean(local.defaultChecked));
   const checked = () => local.checked ?? uncontrolledChecked();
   const size = () => local.size ?? "md";
+  const variant = () => local.variant ?? "default";
   const sizeClasses = () =>
     ({
       sm: "size-3.5",
@@ -68,6 +71,8 @@ const Checkbox = (props: CheckboxProps) => {
       data-indeterminate={local.indeterminate ? "" : undefined}
       class={cn(
         "inline-flex shrink-0 cursor-pointer items-center justify-center rounded-sm border border-input bg-background text-primary-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[checked]:border-primary data-[checked]:bg-primary data-[indeterminate]:border-primary data-[indeterminate]:bg-primary",
+        variant() === "secondary" &&
+          "data-[checked]:border-secondary data-[checked]:bg-secondary data-[indeterminate]:border-secondary data-[indeterminate]:bg-secondary",
         sizeClasses(),
         local.class,
       )}
