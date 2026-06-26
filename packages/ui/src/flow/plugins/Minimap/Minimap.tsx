@@ -6,8 +6,8 @@ import {
 	XYMinimap,
 } from "@xyflow/system";
 import {
-	createEffect,
 	createMemo,
+	createRenderEffect,
 	createSignal,
 	For,
 	onCleanup,
