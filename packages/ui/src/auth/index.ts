@@ -29,9 +29,12 @@ export function useReadableAtom<T>(store: ReadableAtom<T>): Accessor<T> {
     { value: store.get() },
     { equals: false },
   );
+  let isSubscribing = true;
   const unsubscribe = store.subscribe((newValue) => {
+    if (isSubscribing) return;
     setValue({ value: newValue });
   });
+  isSubscribing = false;
   onCleanup(() => unsubscribe());
   unbindActivation();
   return (() => value().value) as Accessor<T>;
