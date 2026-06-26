@@ -6,6 +6,7 @@
   "main": "./packages/ui/src/index.ts",
   "exports": {
     ".": "./packages/ui/src/index.ts",
+    "./auth": "./packages/ui/src/auth/index.ts",
     "./base.css": "./packages/ui/src/base.css",
     "./collab": "./packages/ui/src/collab/index.ts",
     "./documents": "./packages/ui/src/documents/index.ts",
@@ -127,9 +128,18 @@
     "@types/bun": "latest",
     "@types/markdown-it": "^14.1.2",
     "babel-preset-solid": "2.0.0-beta.14",
+    "better-auth": "^1.5.5",
     "bun-plugin-tailwind": "^0.1.2",
     "solid-js": "2.0.0-beta.14",
     "tailwindcss": "^4.1.18",
     "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "better-auth": "^1.5.5"
+  },
+  "peerDependenciesMeta": {
+    "better-auth": {
+      "optional": true
+    }
   }
 }
