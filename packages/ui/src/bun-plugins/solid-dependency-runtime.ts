@@ -7,6 +7,8 @@ export * from "solid-js";
 type StoreSetter = (...args: any[]) => void;
 
 export const mergeProps = solid.merge;
+export const Suspense = solid.Loading;
+export const Index = solid.For;
 
 export function createComputed(fn: (previous?: any) => any) {
   return solid.createRenderEffect((previous) => fn(previous), () => undefined, {
