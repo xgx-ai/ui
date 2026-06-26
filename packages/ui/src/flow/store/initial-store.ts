@@ -145,13 +145,6 @@ export function getInitialStore<
 		createSignal<Pick<Handle, "id" | "nodeId" | "type"> | null>(null);
 	const [nodeInternalsVersion, setNodeInternalsVersion] = createSignal(0);
 
-	// Viewport
-	const [_viewport, set_Viewport] = createSignal<Viewport>({
-		x: 0,
-		y: 0,
-		zoom: 1,
-	});
-
 	// fitView state
 	let fitViewQueued = signals.props.fitView ?? false;
 	let fitViewOptions: FitViewOptions | undefined = signals.props.fitViewOptions;
@@ -212,13 +205,9 @@ export function getInitialStore<
 			);
 
 			if (fitViewQueued && initialized) {
-				if (fitViewOptions?.duration) {
-					resolveFitView();
-				} else {
-					queueMicrotask(() => {
-						resolveFitView();
-					});
-				}
+				queueMicrotask(() => {
+					void resolveFitView();
+				});
 			}
 
 			return initialized;
@@ -369,6 +358,18 @@ export function getInitialStore<
 			defaultMarkerStart: defaultEdgeOptions().markerStart,
 			defaultMarkerEnd: defaultEdgeOptions().markerEnd,
 		}),
+	);
+
+	// Viewport
+	const [_viewport, set_Viewport] = createSignal<Viewport>(
+		getInitialViewport(
+			nodesInitialized(),
+			signals.props.fitView,
+			signals.props.initialViewport,
+			width(),
+			height(),
+			nodeLookup,
+		),
 	);
 
 	// Viewport getter/setter
@@ -561,18 +562,6 @@ export function getInitialStore<
 		set_Viewport(signals.props.initialViewport ?? { x: 0, y: 0, zoom: 1 });
 		setAriaLiveMessage("");
 	}
-
-	// Initialize viewport
-	set_Viewport(
-		getInitialViewport(
-			nodesInitialized(),
-			signals.props.fitView,
-			signals.props.initialViewport,
-			width(),
-			height(),
-			nodeLookup,
-		),
-	);
 
 	// The store object exposes getters that call the signals,
 	// and setters that call the signal setters.
