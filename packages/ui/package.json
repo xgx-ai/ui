@@ -30,6 +30,8 @@
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "^1.5.0",
     "@atlaskit/pragmatic-drag-and-drop-hitbox": "^1.0.0",
+    "@babel/core": "^7.29.7",
+    "@babel/preset-typescript": "^7.29.7",
     "@floating-ui/dom": "^1.7.6",
     "@tanstack/router-generator": "^1.150.0",
     "@tiptap/core": "3.20.4",
@@ -49,6 +51,7 @@
     "@tiptap/pm": "3.20.4",
     "@tiptap/starter-kit": "3.20.4",
     "@xyflow/system": "^0.0.75",
+    "babel-preset-solid": "2.0.0-beta.14",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
