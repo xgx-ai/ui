@@ -25,16 +25,16 @@ export type SolidAuthClient<Option extends BetterAuthClientOptions> =
 
 export function useReadableAtom<T>(store: ReadableAtom<T>): Accessor<T> {
   const unbindActivation = store.listen(() => {});
-  const [value, setValue] = createSignal<T | undefined>(undefined, {
-    equals: false,
-  });
-  setValue(() => store.get());
+  const [value, setValue] = createSignal<{ value: T }>(
+    { value: store.get() },
+    { equals: false },
+  );
   const unsubscribe = store.subscribe((newValue) => {
-    setValue(() => newValue);
+    setValue({ value: newValue });
   });
   onCleanup(() => unsubscribe());
   unbindActivation();
-  return value as Accessor<T>;
+  return (() => value().value) as Accessor<T>;
 }
 
 export function withSolidSessionClient<
