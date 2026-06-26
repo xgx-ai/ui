@@ -1,6 +1,13 @@
 import type { JSX } from "@solidjs/web";
 import { createInfiniteQuery } from "../../query/src/index.tsx";
 import { createMemo, For, Show } from "solid-js";
+import type {
+  CellContext,
+  ColumnDef,
+  HeaderContext,
+  TableColumn,
+  TableRowContext,
+} from "./table-types.ts";
 
 export type UseTableReturn<TData> = {
   data: () => TData[];
@@ -84,21 +91,9 @@ export function useTableInfinite<TData>(
   };
 }
 
-export type ColumnLike<TData> = {
-  id?: string;
-  accessorKey?: keyof TData | string;
-  header?: unknown;
-  cell?: unknown;
-};
-
-type CellRenderer<TData> = (info: {
-  getValue: () => unknown;
-  row: { original: TData };
-}) => JSX.Element;
-
 type TableCompatProps<TData> = {
   table: UseTableReturn<TData>;
-  columns: ColumnLike<TData>[];
+  columns: ColumnDef<TData>[];
   getRowId?: (row: TData) => string;
   onRowClick?: (row: TData) => void;
   enableSorting?: boolean;
@@ -110,25 +105,76 @@ type TableCompatProps<TData> = {
   enableColumnVisibility?: boolean;
 };
 
-function renderHeader<TData>(column: ColumnLike<TData>) {
-  if (typeof column.header === "function") return column.header({});
+function getColumnId<TData>(column: ColumnDef<TData>, index: number) {
+  return column.id ?? String(column.accessorKey ?? index);
+}
+
+function getColumn<TData>(
+  column: ColumnDef<TData>,
+  index: number,
+): TableColumn<TData> {
+  return {
+    id: getColumnId(column, index),
+    index,
+    columnDef: column,
+    getCanSort: () => column.enableSorting ?? false,
+    getIsSorted: () => false,
+    getToggleSortingHandler: () => () => undefined,
+  };
+}
+
+function getRowContext<TData>(
+  row: TData,
+  rowIndex: number,
+  getRowId?: (row: TData) => string,
+): TableRowContext<TData> {
+  return {
+    id: getRowId?.(row) ?? String(rowIndex),
+    index: rowIndex,
+    original: row,
+    getIsSelected: () => false,
+  };
+}
+
+function renderHeader<TData>(column: ColumnDef<TData>, index: number) {
+  if (typeof column.header === "function") {
+    const context: HeaderContext<TData> = {
+      column: getColumn(column, index),
+    };
+    return column.header(context);
+  }
   return column.header ?? column.id ?? String(column.accessorKey ?? "");
 }
 
-function getCellValue<TData>(row: TData, column: ColumnLike<TData>) {
+function getCellValue<TData>(
+  row: TData,
+  rowIndex: number,
+  column: ColumnDef<TData>,
+) {
+  if (column.accessorFn) return column.accessorFn(row, rowIndex);
   if (!column.accessorKey) return undefined;
   return (row as Record<string, unknown>)[String(column.accessorKey)];
 }
 
-function renderCell<TData>(row: TData, column: ColumnLike<TData>) {
+function renderCell<TData>(
+  row: TData,
+  rowIndex: number,
+  column: ColumnDef<TData>,
+  columnIndex: number,
+  getRowId?: (row: TData) => string,
+) {
   if (typeof column.cell === "function") {
-    return (column.cell as CellRenderer<TData>)({
-      getValue: () => getCellValue(row, column),
-      row: { original: row },
-    });
+    const context: CellContext<TData> = {
+      column: getColumn(column, columnIndex),
+      getValue: () => getCellValue(row, rowIndex, column),
+      row: getRowContext(row, rowIndex, getRowId),
+    };
+    return column.cell(context);
   }
 
-  const value = getCellValue(row, column);
+  if (column.cell) return column.cell;
+
+  const value = getCellValue(row, rowIndex, column);
   return value == null ? "" : String(value);
 }
 
@@ -139,20 +185,30 @@ export function TableInfinite<TData>(props: TableCompatProps<TData>) {
         <thead class="border-b bg-muted/40 text-left">
           <tr>
             <For each={props.columns}>
-              {(column) => <th class="px-4 py-2">{renderHeader(column)}</th>}
+              {(column, index) => (
+                <th class="px-4 py-2">{renderHeader(column, index())}</th>
+              )}
             </For>
           </tr>
         </thead>
         <tbody>
           <For each={props.table.data()}>
-            {(row) => (
+            {(row, rowIndex) => (
               <tr
                 class="border-b hover:bg-muted/40"
                 onClick={() => props.onRowClick?.(row)}
               >
                 <For each={props.columns}>
-                  {(column) => (
-                    <td class="px-4 py-3 align-middle">{renderCell(row, column)}</td>
+                  {(column, columnIndex) => (
+                    <td class="px-4 py-3 align-middle">
+                      {renderCell(
+                        row,
+                        rowIndex(),
+                        column,
+                        columnIndex(),
+                        props.getRowId,
+                      )}
+                    </td>
                   )}
                 </For>
               </tr>

@@ -43,6 +43,7 @@ export interface ColumnDef<TData, TValue = unknown> {
   cell?: JSX.Element | ((context: CellContext<TData, TValue>) => JSX.Element);
   size?: number;
   enableSorting?: boolean;
+  enableHiding?: boolean;
   meta?: TableColumnMeta;
 }
 
