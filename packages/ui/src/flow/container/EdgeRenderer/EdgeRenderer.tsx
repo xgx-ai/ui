@@ -73,9 +73,6 @@ function ReactiveEdge<
 	const selectable = () => edgeData()?.selectable ?? store.elementsSelectable;
 	const focusable = () => edgeData()?.focusable ?? store.edgesFocusable;
 
-	const getEdgeComponent = () =>
-		store.edgeTypes[edgeData()?.type ?? "default"] ?? BezierEdgeInternal;
-
 	const markerStartUrl = () => {
 		const e = edgeData();
 		return e?.markerStart
@@ -99,24 +96,22 @@ function ReactiveEdge<
 	}
 
 	return (
-		<Show when={edgeData()}>
-			{(_edge) => {
-				// This inner function re-runs whenever edgeData changes
-				const e = () => edgeData()!;
-				const Comp = getEdgeComponent();
+		<Show when={edgeData()} keyed>
+			{(e) => {
+				const Comp = store.edgeTypes[e.type ?? "default"] ?? BezierEdgeInternal;
 
 				return (
 					<EdgeIdContext value={id}>
 						<svg
-							style={{ "z-index": e().zIndex }}
+							style={{ "z-index": e.zIndex }}
 							class="xy-flow__edge-wrapper"
 						>
 							<g
 								class={[
 									"xy-flow__edge",
-									e().class ?? "",
-									e().animated ? "animated" : "",
-									e().selected ? "selected" : "",
+									e.class ?? "",
+									e.animated ? "animated" : "",
+									e.selected ? "selected" : "",
 									selectable() ? "selectable" : "",
 								]
 									.filter(Boolean)
@@ -148,33 +143,33 @@ function ReactiveEdge<
 										: undefined
 								}
 								aria-label={
-									e().ariaLabel ?? `Edge from ${e().source} to ${e().target}`
+									e.ariaLabel ?? `Edge from ${e.source} to ${e.target}`
 								}
-								role={e().ariaRole ?? (focusable() ? "group" : "img")}
+								role={e.ariaRole ?? (focusable() ? "group" : "img")}
 								aria-roledescription="edge"
 							>
 								<Comp
 									id={id}
-									source={e().source}
-									target={e().target}
-									sourceX={e().sourceX}
-									sourceY={e().sourceY}
-									targetX={e().targetX}
-									targetY={e().targetY}
-									sourcePosition={e().sourcePosition}
-									targetPosition={e().targetPosition}
-									animated={e().animated}
-									selected={e().selected}
-									label={e().label}
-									labelStyle={e().labelStyle}
-									data={e().data}
-									style={e().style}
-									interactionWidth={e().interactionWidth}
+									source={e.source}
+									target={e.target}
+									sourceX={e.sourceX}
+									sourceY={e.sourceY}
+									targetX={e.targetX}
+									targetY={e.targetY}
+									sourcePosition={e.sourcePosition}
+									targetPosition={e.targetPosition}
+									animated={e.animated}
+									selected={e.selected}
+									label={e.label}
+									labelStyle={e.labelStyle}
+									data={e.data}
+									style={e.style}
+									interactionWidth={e.interactionWidth}
 									selectable={selectable()}
-									deletable={e().deletable}
-									type={e().type}
-									sourceHandleId={e().sourceHandleId}
-									targetHandleId={e().targetHandleId}
+									deletable={e.deletable}
+									type={e.type}
+									sourceHandleId={e.sourceHandleId}
+									targetHandleId={e.targetHandleId}
 									markerStart={markerStartUrl()}
 									markerEnd={markerEndUrl()}
 								/>
