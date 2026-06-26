@@ -21,6 +21,7 @@
     "./flow/system": "./src/flow/system.ts",
     "./flow/style.css": "./src/flow/styles/index.css",
     "./icons": "./src/icons.index.ts",
+    "./query": "../query/src/index.tsx",
     "./schema-form": "./src/forms/schema-form/index.ts",
     "./bun-plugin-solid": "./src/bun-plugins/solid.ts",
     "./bun-plugin-tanstack-router": "./src/bun-plugins/tanstack-router.ts"
