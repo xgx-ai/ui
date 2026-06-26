@@ -31,6 +31,13 @@ function splitPropsImport(fromPath: string): string {
   return localImport(fromPath, `${uiSrcDir}/utils/split-props.ts`);
 }
 
+function isSolidOneDependencyImport(importer: string): boolean {
+  return (
+    importer.includes("/node_modules/@tanstack/solid-query/") ||
+    importer.includes("/node_modules/better-auth/dist/client/solid/")
+  );
+}
+
 function upgradeRendererImports(code: string): string {
   return code.replace(rendererImportPattern, `"@solidjs/web"`);
 }
@@ -411,6 +418,12 @@ export function SolidPlugin(options: SolidPluginOptions = {}): Bun.BunPlugin {
     name: "xgx-solid-v2",
     setup(build) {
       let babel: typeof import("@babel/core") | undefined;
+      const dependencyRuntimePath = `${pluginDir}/solid-dependency-runtime.ts`;
+
+      build.onResolve({ filter: /^solid-js(?:\/store)?$/ }, (args) => {
+        if (!isSolidOneDependencyImport(args.importer)) return;
+        return { path: dependencyRuntimePath };
+      });
 
       build.onLoad({ filter: /node_modules\/lucide-solid\/.*\.js$/ }, async ({ path }) => ({
         contents: upgradeLucideImports(await Bun.file(path).text(), path),

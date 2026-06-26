@@ -13,9 +13,7 @@ import {
   SearchSection,
 } from "./search";
 import { Skeleton } from "../feedback/skeleton";
-import { createSignal, createUniqueId, Show, Loading as Suspense } from "solid-js";
-
-import { onSignal } from "../utils/on-signal";
+import { createEffect, createSignal, createUniqueId, Show, Loading as Suspense } from "solid-js";
 import { Label } from "./label";
 import { X } from "../icons.index";
 
@@ -176,7 +174,7 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
     }
   };
 
-  onSignal(isOpen, (open) => {
+  createEffect(isOpen, (open) => {
     if (open) {
       if (inputEl) {
         inputEl.value = "";
@@ -225,7 +223,7 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
     props.onInputChange?.(query);
   };
 
-  onSignal(
+  createEffect(
     () => props.options,
     (options) => {
       //get element by id

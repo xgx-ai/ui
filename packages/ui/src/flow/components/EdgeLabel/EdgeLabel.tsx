@@ -4,7 +4,7 @@ import { useStore } from "../../store";
 import { getEdgeIdContext } from "../../store/context";
 import { toPxString } from "../../utils";
 import type { EdgeLabelProps } from "./types";
-import { splitProps } from "../../utils/solid-compat";
+import { splitProps } from "../../../utils/split-props";
 
 export function EdgeLabel(allProps: EdgeLabelProps) {
 	const [props, rest] = splitProps(allProps, [

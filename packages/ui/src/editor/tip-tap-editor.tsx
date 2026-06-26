@@ -7,10 +7,9 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import { TableRow } from "@tiptap/extension-table-row";
 import StarterKit from "@tiptap/starter-kit";
 import type { Component } from "solid-js";
-import { createSignal, onCleanup } from "solid-js";
+import { createEffect, createSignal, onCleanup } from "solid-js";
 import type { WebsocketProvider } from "y-websocket";
 import type * as Y from "yjs";
-import { onSignal } from "../solid-runtime/index.ts";
 import { ParameterNode } from "./extensions/parameter-node";
 import { VegaLiteChart } from "./extensions/vega-lite-code-block";
 
@@ -73,7 +72,7 @@ export const TipTapEditor: Component<TipTapEditorProps> = (props) => {
 		createSignal<HTMLDivElement | null>(null);
 	const [editor, setEditor] = createSignal<Editor | null>(null);
 
-	onSignal(editorContainer, (container) => {
+	createEffect(editorContainer, (container) => {
 		if (!container || editor()) return;
 
 		// Get current user info for collaboration cursor
@@ -147,8 +146,8 @@ export const TipTapEditor: Component<TipTapEditorProps> = (props) => {
 		props.onReady?.(editorInstance);
 	});
 
-	onSignal(
-		[editor, () => props.editable] as const,
+	createEffect(
+		() => [editor(), props.editable] as const,
 		([currentEditor, editable]) => {
 			if (!currentEditor) {
 				return;

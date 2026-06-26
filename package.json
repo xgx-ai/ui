@@ -15,7 +15,6 @@
     "./flow/style.css": "./packages/ui/src/flow/styles/index.css",
     "./icons": "./packages/ui/src/icons.index.ts",
     "./schema-form": "./packages/ui/src/forms/schema-form/index.ts",
-    "./solid-runtime": "./packages/ui/src/solid-runtime/index.ts",
     "./bun-plugin-solid": "./packages/ui/src/bun-plugins/solid.ts",
     "./bun-plugin-tanstack-router": "./packages/ui/src/bun-plugins/tanstack-router.ts"
   },

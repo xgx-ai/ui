@@ -9,7 +9,7 @@ import { MinusIcon } from "./Icons/Minus";
 import { PlusIcon } from "./Icons/Plus";
 import { UnlockIcon } from "./Icons/Unlock";
 import type { ControlsProps } from "./types";
-import { splitProps } from "../../utils/solid-compat";
+import { splitProps } from "../../../utils/split-props";
 
 export function Controls(allProps: ControlsProps) {
 	const [props, rest] = splitProps(allProps, [

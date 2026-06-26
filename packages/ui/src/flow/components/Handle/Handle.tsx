@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { areConnectionMapsEqual, type Connection, ConnectionMode, type ConnectionState, getHostForElement, type HandleConnection, handleConnectionChange, isMouseEvent, type Optional, Position, XYHandle, } from "@xyflow/system";
 import { createMemo, createRenderEffect } from "solid-js";
-import { splitProps } from "../../utils/solid-compat";
+import { splitProps } from "../../../utils/split-props";
 
 import { useStore } from "../../store";
 import {

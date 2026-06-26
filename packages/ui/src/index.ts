@@ -941,8 +941,6 @@ export type {
   TreePreviewSection,
 } from "./specialized/tree-preview.tsx";
 export { TreePreview } from "./specialized/tree-preview.tsx";
-// Utils
-export { onSignal } from "./utils/on-signal.ts";
 // Data Display - Charts
 export {
   BarChart,

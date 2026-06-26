@@ -1,26 +1,14 @@
-// @ts-nocheck
+// Compatibility for third-party packages that still publish Solid 1 imports.
+// App and @xgx/ui source should import native Solid 2 APIs directly.
 import * as solid from "solid-js";
-import { onSignal } from "../utils/on-signal.ts";
 
 export * from "solid-js";
-export { onSignal };
-export type { AccessorArray, OnSignalOptions } from "../utils/on-signal.ts";
-
-export const mergeProps = solid.merge;
-export const Suspense = solid.Loading;
-export const Index = solid.For;
 
 type StoreSetter = (...args: any[]) => void;
 
-function withOwnedWrite(options: any) {
-  return { ...(options ?? {}), ownedWrite: options?.ownedWrite ?? true };
-}
+export const mergeProps = solid.merge;
 
-export function createSignal(value: any, options?: any) {
-  return solid.createSignal(value, withOwnedWrite(options));
-}
-
-export function createComputed(fn: (previous?: any) => any, value?: any) {
+export function createComputed(fn: (previous?: any) => any) {
   return solid.createRenderEffect((previous) => fn(previous), () => undefined, {
     name: "computed",
   });
@@ -28,11 +16,7 @@ export function createComputed(fn: (previous?: any) => any, value?: any) {
 
 export function createRenderEffect(source: any, fn?: any, options?: any) {
   if (typeof fn !== "function") {
-    return solid.createRenderEffect(
-      (previous) => source(previous),
-      () => undefined,
-      fn,
-    );
+    return solid.createRenderEffect((previous) => source(previous), () => undefined, fn);
   }
 
   return solid.createRenderEffect(source, fn, options);
@@ -40,11 +24,7 @@ export function createRenderEffect(source: any, fn?: any, options?: any) {
 
 export function createEffect(source: any, fn?: any, options?: any) {
   if (typeof fn !== "function") {
-    return solid.createEffect(
-      (previous) => source(previous),
-      () => undefined,
-      fn,
-    );
+    return solid.createEffect((previous) => source(previous), () => undefined, fn);
   }
 
   let cleanup: (() => void) | undefined;
@@ -65,26 +45,12 @@ export function createEffect(source: any, fn?: any, options?: any) {
 
 export function createContext(defaultValue?: any, options?: any) {
   const context = solid.createContext(defaultValue, options);
-  context.Provider = context;
+  (context as any).Provider = context;
   return context;
 }
 
 export function batch<T>(fn: () => T): T {
   return fn();
-}
-
-export function splitProps(props: any, ...keyGroups: any[]) {
-  const usedKeys = new Set(keyGroups.flat());
-  const picked = keyGroups.map((keys) => {
-    const group: Record<PropertyKey, unknown> = {};
-    for (const key of keys) group[key] = props[key];
-    return group;
-  });
-  const rest: Record<PropertyKey, unknown> = {};
-  for (const key of Object.keys(props)) {
-    if (!usedKeys.has(key)) rest[key] = props[key];
-  }
-  return [...picked, rest];
 }
 
 export function on(dependency: any, fn: any, options?: any) {
@@ -162,16 +128,12 @@ export function createStore<T extends object>(initialValue: T): [T, StoreSetter]
   return [store as T, setCompatStore];
 }
 
-export function produce<T = any>(fn: (state: T) => void | T) {
-  return fn;
-}
-
 export function reconcile<T>(value: T, _options?: unknown) {
   return () => value;
 }
 
 export function unwrap<T>(value: T): T {
-  return value;
+  return solid.snapshot(value as any) as T;
 }
 
 export function createResource(source: any, fetcherOrOptions?: any, maybeOptions?: any) {
@@ -179,10 +141,10 @@ export function createResource(source: any, fetcherOrOptions?: any, maybeOptions
   const fetcher = hasFetcher ? fetcherOrOptions : undefined;
   const options = hasFetcher ? maybeOptions : fetcherOrOptions;
   const storage = options?.storage?.();
-  const [read, write] = storage ?? createSignal(undefined);
-  const [latest, setLatest] = createSignal(read());
-  const [loading, setLoading] = createSignal(false);
-  const [error, setError] = createSignal(undefined);
+  const [read, write] = storage ?? solid.createSignal(undefined);
+  const [latest, setLatest] = solid.createSignal(read());
+  const [loading, setLoading] = solid.createSignal(false);
+  const [error, setError] = solid.createSignal<unknown>(undefined);
 
   const resource = (() => read()) as any;
   Object.defineProperties(resource, {
@@ -219,10 +181,7 @@ export function createResource(source: any, fetcherOrOptions?: any, maybeOptions
     setLatest(read());
   };
 
-  createEffect(() => {
-    void refetch();
-    return undefined;
-  });
+  void refetch();
 
-  return [resource, { refetch, mutate }];
+  return [resource, { mutate, refetch }] as const;
 }

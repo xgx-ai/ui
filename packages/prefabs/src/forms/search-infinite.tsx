@@ -4,7 +4,6 @@ import {
   cn,
   ComboboxTrigger,
   Label,
-  onSignal,
   Search,
   SearchContent,
   SearchControl,
@@ -17,7 +16,7 @@ import {
   SearchSection,
   Spinner,
 } from "@xgx/ui";
-import { type Accessor, createSignal, createUniqueId, onCleanup, Show } from "solid-js";
+import { type Accessor, createEffect, createSignal, createUniqueId, onCleanup, Show } from "solid-js";
 import { Search as SearchIcon, X } from "@xgx/ui/icons";
 
 export interface SearchInfiniteQueryConfig<T> {
@@ -185,7 +184,7 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
   onCleanup(cleanupIntersectionObserver);
 
   // Handle open/close
-  onSignal(isOpen, (open) => {
+  createEffect(isOpen, (open) => {
     if (open) {
       setSearchTerm("");
       setDebouncedSearchTerm("");

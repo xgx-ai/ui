@@ -1,8 +1,7 @@
 /**
  * useYjsProvider - Hook for managing Y.Doc and WebSocket provider
  */
-import { createMemo, createSignal, onCleanup } from "solid-js";
-import { onSignal } from "../solid-runtime/index.ts";
+import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
@@ -31,8 +30,8 @@ export function useYjsProvider(
 		return backendUrl.replace(/^http/, "ws");
 	});
 
-	onSignal(
-		[ydoc, wsUrl, () => options.projectId] as const,
+	createEffect(
+		() => [ydoc(), wsUrl(), options.projectId] as const,
 		([doc, url, projectId]) => {
 			// Create WebSocket provider - use project: prefix for project tree docs
 			const wsProvider = new WebsocketProvider(

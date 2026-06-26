@@ -10,7 +10,7 @@ import {
 import { createMemo, createRenderEffect, createSignal, onCleanup } from "solid-js";
 import { useStore } from "../../store";
 import { getNodeIdContext } from "../../store/context";
-import { splitProps } from "../../utils/solid-compat";
+import { splitProps } from "../../../utils/split-props";
 import type { ResizeControlProps } from "./types";
 
 export function ResizeControl(allProps: ResizeControlProps) {

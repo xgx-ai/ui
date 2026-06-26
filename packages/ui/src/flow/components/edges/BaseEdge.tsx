@@ -2,7 +2,7 @@
 import { Show } from "solid-js";
 import type { BaseEdgeProps } from "../../types";
 import { EdgeLabel } from "../EdgeLabel";
-import { splitProps } from "../../utils/solid-compat";
+import { splitProps } from "../../../utils/split-props";
 
 export function BaseEdge(allProps: BaseEdgeProps) {
 	const [props, rest] = splitProps(allProps, [

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { splitProps } from "../../utils/solid-compat";
+import { splitProps } from "../../../utils/split-props";
 
 import type { PanelProps } from "./types";
 

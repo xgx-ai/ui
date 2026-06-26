@@ -6,7 +6,7 @@ import { useStore } from "../../store";
 import { getNodeIdContext } from "../../store/context";
 import type { InternalNode } from "../../types";
 import type { NodeToolbarProps } from "./types";
-import { splitProps } from "../../utils/solid-compat";
+import { splitProps } from "../../../utils/split-props";
 
 export function NodeToolbar(allProps: NodeToolbarProps) {
 	const [props, rest] = splitProps(allProps, [

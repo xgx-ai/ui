@@ -1,6 +1,5 @@
 // @ts-nocheck
 import { evaluateAbsolutePosition, type FitBoundsOptions, getElementsToRemove, getNodesBounds, getOverlappingArea, getViewportForBounds, type HandleConnection, type HandleType, isRectObject, nodeToRect, pointToRendererPoint, type Rect, rendererPointToPoint, type SetCenterOptions, type Viewport, type ViewportHelperFunctionOptions, type XYPosition, type ZoomInOut, } from "@xyflow/system";
-import { batch } from "../utils/solid-compat";
 
 import type { Edge, FitViewOptions, InternalNode, Node } from "../types";
 import { isEdge, isNode } from "../utils";
@@ -272,19 +271,17 @@ export function useSolidFlow<
 					onBeforeDelete: store.onbeforedelete,
 				});
 
-			batch(() => {
-				if (matchingNodes) {
-					store.nodes = store.nodes.filter(
-						(node) => !matchingNodes.some(({ id }) => id === node.id),
-					);
-				}
+			if (matchingNodes) {
+				store.nodes = store.nodes.filter(
+					(node) => !matchingNodes.some(({ id }) => id === node.id),
+				);
+			}
 
-				if (matchingEdges) {
-					store.edges = store.edges.filter(
-						(edge) => !matchingEdges.some(({ id }) => id === edge.id),
-					);
-				}
-			});
+			if (matchingEdges) {
+				store.edges = store.edges.filter(
+					(edge) => !matchingEdges.some(({ id }) => id === edge.id),
+				);
+			}
 
 			if (matchingNodes.length > 0 || matchingEdges.length > 0) {
 				store.ondelete?.({

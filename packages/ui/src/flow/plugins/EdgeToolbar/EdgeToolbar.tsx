@@ -5,7 +5,7 @@ import { EdgeLabel } from "../../components/EdgeLabel";
 import { useStore } from "../../store";
 import { getEdgeIdContext } from "../../store/context";
 import type { EdgeToolbarProps } from "./types";
-import { splitProps } from "../../utils/solid-compat";
+import { splitProps } from "../../../utils/split-props";
 
 export function EdgeToolbar(allProps: EdgeToolbarProps) {
 	const [props, rest] = splitProps(allProps, [
