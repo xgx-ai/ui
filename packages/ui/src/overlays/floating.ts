@@ -9,6 +9,14 @@ export function assignRef<T>(ref: unknown, value: T) {
   }
 }
 
-export function containsNode(element: HTMLElement | undefined, target: Node) {
-  return !!element && (element === target || element.contains(target));
+function isNode(value: unknown): value is Node {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    ("nodeType" in value || (typeof Node === "function" && value instanceof Node))
+  );
+}
+
+export function containsNode(element: HTMLElement | undefined, target: unknown) {
+  return !!element && isNode(target) && (element === target || element.contains(target));
 }
