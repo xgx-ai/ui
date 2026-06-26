@@ -466,7 +466,9 @@ export function getInitialStore<
 	// Visible elements
 	const visible = createMemo(
 		() => {
-			// Force dependency on nodes
+			// Force direct dependencies on public node updates and internal
+			// measurements; nodeLookup itself is mutated outside Solid signals.
+			void signals.nodes;
 			nodesInitialized();
 			nodeInternalsVersion();
 			const edges = _edges();
