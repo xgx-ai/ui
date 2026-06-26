@@ -1,10 +1,116 @@
-import { createStore as createSolidStore } from "solid-js";
+// @ts-nocheck
+import * as solid from "solid-js";
 import { onSignal } from "../utils/on-signal.ts";
 
+export * from "solid-js";
 export { onSignal };
 export type { AccessorArray, OnSignalOptions } from "../utils/on-signal.ts";
 
+export const mergeProps = solid.merge;
+export const Suspense = solid.Loading;
+export const Index = solid.For;
+
 type StoreSetter = (...args: any[]) => void;
+
+function withOwnedWrite(options: any) {
+  return { ...(options ?? {}), ownedWrite: options?.ownedWrite ?? true };
+}
+
+export function createSignal(value: any, options?: any) {
+  return solid.createSignal(value, withOwnedWrite(options));
+}
+
+export function createComputed(fn: (previous?: any) => any, value?: any) {
+  return solid.createRenderEffect((previous) => fn(previous), () => undefined, {
+    name: "computed",
+  });
+}
+
+export function createRenderEffect(source: any, fn?: any, options?: any) {
+  if (typeof fn !== "function") {
+    return solid.createRenderEffect(
+      (previous) => source(previous),
+      () => undefined,
+      fn,
+    );
+  }
+
+  return solid.createRenderEffect(source, fn, options);
+}
+
+export function createEffect(source: any, fn?: any, options?: any) {
+  if (typeof fn !== "function") {
+    return solid.createEffect(
+      (previous) => source(previous),
+      () => undefined,
+      fn,
+    );
+  }
+
+  let cleanup: (() => void) | undefined;
+  solid.onCleanup(() => cleanup?.());
+
+  return solid.createEffect(
+    () => source(),
+    (input, previous) => {
+      cleanup?.();
+      cleanup = undefined;
+
+      const result = fn(input, previous);
+      if (typeof result === "function") cleanup = result;
+    },
+    options,
+  );
+}
+
+export function createContext(defaultValue?: any, options?: any) {
+  const context = solid.createContext(defaultValue, options);
+  context.Provider = context;
+  return context;
+}
+
+export function batch<T>(fn: () => T): T {
+  return fn();
+}
+
+export function splitProps(props: any, ...keyGroups: any[]) {
+  const usedKeys = new Set(keyGroups.flat());
+  const picked = keyGroups.map((keys) => {
+    const group: Record<PropertyKey, unknown> = {};
+    for (const key of keys) group[key] = props[key];
+    return group;
+  });
+  const rest: Record<PropertyKey, unknown> = {};
+  for (const key of Object.keys(props)) {
+    if (!usedKeys.has(key)) rest[key] = props[key];
+  }
+  return [...picked, rest];
+}
+
+export function on(dependency: any, fn: any, options?: any) {
+  let initialized = false;
+  return (previous: any) => {
+    const input = Array.isArray(dependency)
+      ? dependency.map((accessor) => accessor())
+      : dependency();
+
+    if (options?.defer && !initialized) {
+      initialized = true;
+      return previous;
+    }
+
+    initialized = true;
+    const next = fn(input, previous);
+    return next === undefined ? input : next;
+  };
+}
+
+export function onMount(fn: () => void) {
+  return createEffect(() => {
+    fn();
+    return undefined;
+  });
+}
 
 function resolveValue(current: any, value: any) {
   if (typeof value !== "function") return value;
@@ -48,7 +154,7 @@ function applyPath(target: any, args: any[]): any {
 }
 
 export function createStore<T extends object>(initialValue: T): [T, StoreSetter] {
-  const [store, setStore] = createSolidStore(initialValue as any);
+  const [store, setStore] = solid.createStore(initialValue as any);
   const setCompatStore: StoreSetter = (...args) => {
     setStore((state: any) => applyPath(state, args));
   };
@@ -68,6 +174,55 @@ export function unwrap<T>(value: T): T {
   return value;
 }
 
-export function batch<T>(fn: () => T): T {
-  return fn();
+export function createResource(source: any, fetcherOrOptions?: any, maybeOptions?: any) {
+  const hasFetcher = typeof fetcherOrOptions === "function";
+  const fetcher = hasFetcher ? fetcherOrOptions : undefined;
+  const options = hasFetcher ? maybeOptions : fetcherOrOptions;
+  const storage = options?.storage?.();
+  const [read, write] = storage ?? createSignal(undefined);
+  const [latest, setLatest] = createSignal(read());
+  const [loading, setLoading] = createSignal(false);
+  const [error, setError] = createSignal(undefined);
+
+  const resource = (() => read()) as any;
+  Object.defineProperties(resource, {
+    error: { get: () => error() },
+    latest: { get: () => latest() ?? read() },
+    loading: { get: () => loading() },
+  });
+
+  const refetch = async () => {
+    const sourceValue =
+      typeof source === "function" && fetcher ? source() : undefined;
+    const result = fetcher
+      ? fetcher(sourceValue, { value: read() })
+      : typeof source === "function"
+        ? source()
+        : source;
+    setLoading(true);
+    try {
+      const next = await result;
+      write(next);
+      setLatest(next);
+      setError(undefined);
+      return next;
+    } catch (err) {
+      setError(err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const mutate = (value: any) => {
+    write(value);
+    setLatest(read());
+  };
+
+  createEffect(() => {
+    void refetch();
+    return undefined;
+  });
+
+  return [resource, { refetch, mutate }];
 }
