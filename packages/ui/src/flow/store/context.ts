@@ -2,7 +2,7 @@
 import { createContext, useContext } from "solid-js";
 
 export type ConnectableContext = {
-	value: () => boolean;
+	value: boolean | (() => boolean);
 };
 
 /**

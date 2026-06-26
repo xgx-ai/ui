@@ -41,9 +41,9 @@ export function Handle(allProps: HandleProps) {
 
 	const isTarget = createMemo(() => type() === "target");
 	const isConnectable = createMemo(() =>
-		props.isConnectable !== undefined
-			? props.isConnectable
-			: isConnectableContext.value(),
+		props.isConnectable !== undefined ? props.isConnectable : typeof isConnectableContext.value === "function"
+			? isConnectableContext.value()
+			: isConnectableContext.value,
 	);
 
 	const store = useStore();
