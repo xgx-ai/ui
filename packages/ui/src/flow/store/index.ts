@@ -115,25 +115,39 @@ export function createStore<
 			}
 
 			const node = { ...userNode };
+			let nodeChanged = false;
 
 			switch (change.type) {
 				case "dimensions": {
 					const measured = { ...node.measured, ...change.dimensions };
+					nodeChanged =
+						measured.width !== node.measured?.width ||
+						measured.height !== node.measured?.height;
 
 					if (change.setAttributes) {
-						node.width = change.dimensions?.width ?? node.width;
-						node.height = change.dimensions?.height ?? node.height;
+						const width = change.dimensions?.width ?? node.width;
+						const height = change.dimensions?.height ?? node.height;
+						nodeChanged =
+							nodeChanged || width !== node.width || height !== node.height;
+						node.width = width;
+						node.height = height;
 					}
 
 					node.measured = measured;
 					break;
 				}
-				case "position":
-					node.position = change.position ?? node.position;
+				case "position": {
+					const position = change.position ?? node.position;
+					nodeChanged =
+						position.x !== node.position.x || position.y !== node.position.y;
+					node.position = position;
 					break;
+				}
 			}
 
-			newNodes.set(change.id, node);
+			if (nodeChanged) {
+				newNodes.set(change.id, node);
+			}
 		}
 
 		if (newNodes.size > 0) {
