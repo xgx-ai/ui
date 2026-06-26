@@ -19,6 +19,7 @@ import type { ComponentProps, JSX } from "@solidjs/web";
 import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";
 import { Check, ChevronRight, Circle } from "../icons.index";
 import { cn } from "../cn";
+import { containsNode } from "../overlays/floating";
 import { splitProps } from "../utils/split-props";
 import { PortalMount } from "../overlays/portal";
 import { createMenuKeyboard, focusFirstMenuItem } from "./menu-behavior";
@@ -72,8 +73,8 @@ const MenubarMenu = (props: MenubarMenuProps) => {
   createEffect(open, (isOpen) => {
     if (!isOpen) return;
     const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (root && !root.contains(target) && !contentRef()?.contains(target)) {
+      const target = event.target;
+      if (!containsNode(root, target) && !containsNode(contentRef(), target)) {
         setOpen(false);
       }
     };

@@ -1,4 +1,5 @@
 import { createEffect } from "solid-js";
+import { containsNode } from "./floating";
 
 const focusableSelector = [
   "a[href]",
@@ -45,7 +46,7 @@ export function createModalBehavior(options: {
       if (shouldPreventScroll) document.body.style.overflow = "hidden";
 
       queueMicrotask(() => {
-        if (!content.contains(document.activeElement)) {
+        if (!containsNode(content, document.activeElement)) {
           const first = getFocusableElements(content)[0] ?? content;
           first.focus();
         }

@@ -9,6 +9,7 @@ import {
 	onParameterValuesChange,
 	updateParameterValue,
 } from "./parameter-store";
+import { containsNode } from "../../overlays/floating";
 
 function getDisplayValue(paramName: string) {
 	const value = getParameterValue(paramName);
@@ -183,10 +184,7 @@ export const ParameterNode = Node.create({
 				render();
 
 				outsidePointerHandler = (event: PointerEvent) => {
-					if (
-						event.target instanceof globalThis.Node &&
-						dom.contains(event.target)
-					) {
+					if (containsNode(dom, event.target)) {
 						return;
 					}
 					save();

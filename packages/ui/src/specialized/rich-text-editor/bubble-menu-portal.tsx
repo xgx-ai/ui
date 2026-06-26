@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import { createSignal, Show } from "solid-js";
+import { containsNode } from "../../overlays/floating";
 import { createMountEffect } from "../../utils/lifecycle";
 import { FloatingToolbar } from "./floating-toolbar";
 import type { ToolbarConfig } from "./types";
@@ -76,8 +77,8 @@ export function BubbleMenuPortal(props: BubbleMenuPortalProps) {
     if (!editor || editor.isDestroyed) return;
 
     const handlePointerDown = (e: PointerEvent) => {
-      const target = e.target as Node;
-      if (!editor.view.dom.contains(target) && !menuRef?.contains(target)) {
+      const target = e.target;
+      if (!containsNode(editor.view.dom, target) && !containsNode(menuRef, target)) {
         setIsDismissed(true);
       }
     };
@@ -89,7 +90,7 @@ export function BubbleMenuPortal(props: BubbleMenuPortalProps) {
     const handleBlur = () => {
       setTimeout(() => {
         const active = document.activeElement;
-        if (active && !editor.view.dom.contains(active) && !menuRef?.contains(active)) {
+        if (active && !containsNode(editor.view.dom, active) && !containsNode(menuRef, active)) {
           setIsDismissed(true);
         }
       }, 0);

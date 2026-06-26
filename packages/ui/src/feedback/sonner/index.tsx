@@ -7,6 +7,7 @@ import { createMountEffect } from "../../utils/lifecycle";
  * https://github.com/emilkowalski/sonner/blob/main/src/index.tsx
  */
 import { X } from "../../icons.index";
+import { containsNode } from "../../overlays/floating";
 import type { Component } from "solid-js";
 import { createRenderEffect, createSignal, For, merge as mergeProps, Show } from "solid-js";
 import { createStore } from "solid-js";
@@ -554,7 +555,7 @@ const Toaster: Component<ToasterProps> = (props) => {
 
       if (
         event.code === "Escape" &&
-        (document.activeElement === listRef || listRef?.contains(document.activeElement))
+        (document.activeElement === listRef || containsNode(listRef, document.activeElement))
       )
         setExpanded(false);
     };
@@ -616,7 +617,7 @@ const Toaster: Component<ToasterProps> = (props) => {
                 onBlur={(event) => {
                   if (
                     isFocusedWithinRef() &&
-                    !event.currentTarget.contains(event.relatedTarget as HTMLElement)
+                    !containsNode(event.currentTarget, event.relatedTarget)
                   ) {
                     setIsFocusedWithinRef(false);
                     if (lastFocusedElementRef()) {

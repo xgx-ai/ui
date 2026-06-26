@@ -2,6 +2,7 @@ import { mergeAttributes, Node } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { NodeSelection } from "@tiptap/pm/state";
 import type { EditorView, NodeView } from "@tiptap/pm/view";
+import { containsNode } from "../../overlays/floating";
 const DRAG_HANDLE_SVG =
 	'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>';
 
@@ -493,16 +494,13 @@ export const VegaLiteChart = Node.create({
 			return {
 				dom: wrapper,
 				stopEvent(event) {
-					if (
-						event.target === dragHandle ||
-						dragHandle.contains(event.target as globalThis.Node)
-					) {
+					if (event.target === dragHandle || containsNode(dragHandle, event.target)) {
 						return false;
 					}
 
 					if (
 						event.type === "mousedown" &&
-						(event.target === chart || chart.contains(event.target as globalThis.Node))
+						(event.target === chart || containsNode(chart, event.target))
 					) {
 						selectThisNode();
 						return true;
