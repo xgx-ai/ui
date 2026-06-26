@@ -1,0 +1,29 @@
+/* XYFlow SolidJS - Combined styles */
+@import "./init.css";
+@import "./style.css";
+@import "./node-resizer.css";
+
+/* Wrapper styles */
+.xy-flow {
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	position: relative;
+	z-index: 0;
+}
+
+.xy-flow__container {
+	user-select: none;
+}
+
+.xy-flow__edge-label {
+	text-align: center;
+	position: absolute;
+	padding: 2px;
+	font-size: 10px;
+	color: var(--xy-edge-label-color, var(--xy-edge-label-color-default));
+	background: var(
+		--xy-edge-label-background-color,
+		var(--xy-edge-label-background-color-default)
+	);
+}
