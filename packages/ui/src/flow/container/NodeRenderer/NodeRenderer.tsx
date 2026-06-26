@@ -6,7 +6,7 @@ import {
 	XYDrag,
 	type XYDragParams,
 } from "@xyflow/system";
-import { Dynamic, type JSX } from "@solidjs/web";
+import type { JSX } from "@solidjs/web";
 import { createMemo, createRenderEffect, For, onCleanup, untrack } from "solid-js";
 import { DefaultNode } from "../../components/nodes/DefaultNode";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -122,7 +122,10 @@ function NodeWrapper<
 	const getNodeComponent = () =>
 		store.nodeTypes[node().type ?? "default"] ?? DefaultNode;
 
-	const NodeComponent = createMemo(getNodeComponent);
+	function RenderNodeComponent(nodeProps: any) {
+		const Comp = getNodeComponent();
+		return <Comp {...nodeProps} />;
+	}
 
 	const nodeStyle = createMemo(() => {
 		const n = node();
@@ -377,8 +380,7 @@ function NodeWrapper<
 					role={node().ariaRole ?? (focusable() ? "group" : undefined)}
 					aria-roledescription="node"
 				>
-					<Dynamic
-						component={NodeComponent()}
+					<RenderNodeComponent
 						id={id}
 						data={node().internals.userNode.data}
 						type={node().type}
