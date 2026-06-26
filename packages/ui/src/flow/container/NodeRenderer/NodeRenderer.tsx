@@ -49,7 +49,6 @@ export function NodeRenderer<
 						updates.set(id, {
 							id,
 							nodeElement: entry.target as HTMLDivElement,
-							force: true,
 						});
 					}
 					props.store.updateNodeInternals(updates);
