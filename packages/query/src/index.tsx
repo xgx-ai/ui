@@ -25,6 +25,7 @@ export type QueryOptions<TData> = {
   placeholderData?: typeof keepPreviousData | TData | (() => TData | undefined);
   retry?: boolean | number | ((failureCount: number, error: unknown) => boolean);
   staleTime?: number;
+  timeoutMs?: number;
 };
 
 export type QueryDefaultOptions = {
@@ -33,6 +34,7 @@ export type QueryDefaultOptions = {
   refetchOnWindowFocus?: boolean;
   retry?: QueryOptions<unknown>["retry"];
   staleTime?: number;
+  timeoutMs?: number;
 };
 
 export type MutationDefaultOptions = {
@@ -254,6 +256,26 @@ function refreshableKey(key: QueryKey, refresh: number): QueryKey {
   return [...key, { refresh }];
 }
 
+export class QueryTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Query timed out after ${timeoutMs}ms`);
+    this.name = "QueryTimeoutError";
+  }
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs?: number): Promise<T> {
+  if (!timeoutMs || timeoutMs <= 0) return promise;
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new QueryTimeoutError(timeoutMs)), timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
 function resultProxy<TResult extends object>(read: () => TResult): TResult {
   return new Proxy({} as TResult, {
     get(_, key) {
@@ -470,8 +492,10 @@ export class QueryClient {
 
     if (cached?.promise) return cached.promise;
 
-    const promise = resolvedQuery
-      .queryFn({ queryKey: resolvedQuery.queryKey })
+    const promise = withTimeout(
+      Promise.resolve().then(() => resolvedQuery.queryFn({ queryKey: resolvedQuery.queryKey })),
+      resolvedQuery.timeoutMs,
+    )
       .then((data) => {
         this.#cache.set(key, {
           data,
@@ -515,6 +539,7 @@ export class QueryClient {
       gcTime: query.gcTime ?? defaults.gcTime,
       retry: query.retry ?? defaults.retry,
       staleTime: query.staleTime ?? defaults.staleTime,
+      timeoutMs: query.timeoutMs ?? defaults.timeoutMs,
     };
   }
 
