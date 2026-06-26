@@ -270,14 +270,18 @@ function NodeWrapper<
 			observedNodeRef = nodeRef;
 		}
 
-		// Force initial handle bounds measurement after handles are rendered
-		requestAnimationFrame(() => {
+		const updateInternals = () => {
 			if (nodeRef) {
 				store.updateNodeInternals(
 					new Map([[id, { id, nodeElement: nodeRef, force: true }]]),
 				);
 			}
-		});
+		};
+
+		// Force initial handle bounds measurement after handles are rendered.
+		queueMicrotask(updateInternals);
+		requestAnimationFrame(updateInternals);
+		requestAnimationFrame(() => requestAnimationFrame(updateInternals));
 	};
 
 	onCleanup(() => {
