@@ -105,11 +105,12 @@ type ValueQueryState<TData> =
 
 type QueryState<TData> = {
   data: TData | undefined;
-  error: unknown;
+  error: Error | undefined;
   isError: boolean;
   isFetching: boolean;
   isLoading: boolean;
   isPending: boolean;
+  isPlaceholderData: boolean;
   isSuccess: boolean;
 };
 
@@ -128,8 +129,8 @@ type MutationState<TData> = {
 };
 
 export interface UseMutationResult<TData, TVariables> extends MutationState<TData> {
-  mutate: (variables: TVariables) => void;
-  mutateAsync: (variables: TVariables) => Promise<TData>;
+  mutate: (variables?: TVariables) => void;
+  mutateAsync: (variables?: TVariables) => Promise<TData>;
   reset: () => void;
 }
 
@@ -202,6 +203,7 @@ const initialQueryState = <TData,>(): QueryState<TData> => ({
   isFetching: false,
   isLoading: false,
   isPending: false,
+  isPlaceholderData: false,
   isSuccess: false,
 });
 
@@ -634,6 +636,7 @@ export function useQuery<TData>(options: () => QueryOptions<TData>): UseQueryRes
           isFetching: false,
           isLoading: false,
           isPending: false,
+          isPlaceholderData: false,
           isSuccess: true,
         });
         return;
@@ -641,13 +644,15 @@ export function useQuery<TData>(options: () => QueryOptions<TData>): UseQueryRes
         failureCount += 1;
         if (!shouldRetry(resolvedOptions.retry, failureCount, error)) {
           if (currentRequestId !== requestId) return;
+          const nextError = error instanceof Error ? error : new Error(String(error));
           setState({
             ...state(),
-            error,
+            error: nextError,
             isError: true,
             isFetching: false,
             isLoading: false,
             isPending: false,
+            isPlaceholderData: false,
             isSuccess: false,
           });
           return;
@@ -704,6 +709,7 @@ export function useQuery<TData>(options: () => QueryOptions<TData>): UseQueryRes
               ...initialQueryState<TData>(),
               data: placeholder as TData,
               isFetching: true,
+              isPlaceholderData: true,
               isSuccess: true,
             }
           : initialQueryState<TData>();
@@ -732,6 +738,7 @@ export function useQuery<TData>(options: () => QueryOptions<TData>): UseQueryRes
       isFetching: current.isFetching,
       isLoading: current.isLoading,
       isPending: current.isPending,
+      isPlaceholderData: current.isPlaceholderData,
       isSuccess: current.isSuccess,
       refetch,
       peek: () => current.data,
@@ -803,7 +810,8 @@ export function createMutation<TData, TVariables>(
     { equals: false },
   );
 
-  const mutateAsync = async (variables: TVariables) => {
+  const mutateAsync = async (variables?: TVariables) => {
+    const resolvedVariables = variables as TVariables;
     const mutation = options();
     setState({
       data: undefined,
@@ -814,7 +822,7 @@ export function createMutation<TData, TVariables>(
     });
 
     try {
-      const data = await mutation.mutationFn(variables);
+      const data = await mutation.mutationFn(resolvedVariables);
       for (const invalidation of mutation.invalidates ?? []) {
         if (isQueryKey(invalidation)) {
           void client.invalidateQueries(invalidation);
@@ -823,8 +831,8 @@ export function createMutation<TData, TVariables>(
           if (invalidation.prefix) void client.invalidateQueries(invalidation.prefix);
         }
       }
-      mutation.onSuccess?.(data, variables);
-      mutation.onSettled?.(data, undefined, variables);
+      mutation.onSuccess?.(data, resolvedVariables);
+      mutation.onSettled?.(data, undefined, resolvedVariables);
       setState({
         data,
         error: undefined,
@@ -836,8 +844,8 @@ export function createMutation<TData, TVariables>(
     } catch (cause) {
       const nextError = cause instanceof Error ? cause : new Error(String(cause));
       client.notifyMutationError(nextError);
-      mutation.onError?.(nextError, variables);
-      mutation.onSettled?.(undefined, nextError, variables);
+      mutation.onError?.(nextError, resolvedVariables);
+      mutation.onSettled?.(undefined, nextError, resolvedVariables);
       setState({
         data: undefined,
         error: nextError,
@@ -857,7 +865,7 @@ export function createMutation<TData, TVariables>(
       isError: current.isError,
       isPending: current.isPending,
       isSuccess: current.isSuccess,
-      mutate: (variables: TVariables) => {
+      mutate: (variables?: TVariables) => {
         void mutateAsync(variables).catch(() => {});
       },
       mutateAsync,
