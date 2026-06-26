@@ -138,8 +138,6 @@ export function createStore<
 
 		if (newNodes.size > 0) {
 			store.nodes = store.nodes.map((node) => newNodes.get(node.id) ?? node);
-		} else {
-			store.nodes = [...store.nodes];
 		}
 	}
 
