@@ -6,8 +6,8 @@ import {
 	XYDrag,
 	type XYDragParams,
 } from "@xyflow/system";
-import type { JSX } from "@solidjs/web";
-import { createMemo, createRenderEffect, For, onCleanup } from "solid-js";
+import { Dynamic, type JSX } from "@solidjs/web";
+import { createMemo, createRenderEffect, For, onCleanup, untrack } from "solid-js";
 import { DefaultNode } from "../../components/nodes/DefaultNode";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { NodeConnectableContext, NodeIdContext } from "../../store/context";
@@ -39,6 +39,7 @@ export function NodeRenderer<
 	NodeType extends Node = Node,
 	EdgeType extends Edge = Edge,
 >(props: NodeRendererProps<NodeType, EdgeType>) {
+	const store = untrack(() => props.store);
 	const resizeObserver: ResizeObserver | null =
 		typeof ResizeObserver === "undefined"
 			? null
@@ -51,14 +52,14 @@ export function NodeRenderer<
 							nodeElement: entry.target as HTMLDivElement,
 						});
 					}
-					props.store.updateNodeInternals(updates);
+					store.updateNodeInternals(updates);
 				});
 
 	onCleanup(() => {
 		resizeObserver?.disconnect();
 	});
 
-	const nodeEntries = () => Array.from(props.store.visible.nodes.values());
+	const nodeEntries = () => Array.from(store.visible.nodes.values());
 
 	return (
 		<div class="xy-flow__nodes">
@@ -66,7 +67,7 @@ export function NodeRenderer<
 				{(node) => (
 					<NodeWrapper
 						node={node}
-						store={props.store}
+						store={store}
 						resizeObserver={resizeObserver}
 						nodeClickDistance={props.nodeClickDistance}
 						onNodeClick={props.onNodeClick}
@@ -95,8 +96,9 @@ function NodeWrapper<
 		nodeClickDistance?: number;
 	} & NodeEvents<NodeType>,
 ) {
-	const store = props.store;
-	const id = props.node.id;
+	const store = untrack(() => props.store);
+	const id = untrack(() => props.node.id);
+	const initialNode = untrack(() => props.node);
 
 	let nodeRef!: HTMLDivElement;
 	let dragInstance: ReturnType<typeof XYDrag> | null = null;
@@ -108,7 +110,7 @@ function NodeWrapper<
 	const node = createMemo(() => {
 		// subscribing to store.nodes forces re-evaluation after every drag / update
 		void store.nodes;
-		return store.nodeLookup.get(id) ?? props.node;
+		return store.nodeLookup.get(id) ?? initialNode;
 	});
 
 	const draggable = () => node().draggable ?? store.nodesDraggable;
@@ -120,10 +122,7 @@ function NodeWrapper<
 	const getNodeComponent = () =>
 		store.nodeTypes[node().type ?? "default"] ?? DefaultNode;
 
-	function RenderNodeComponent(nodeProps: any) {
-		const Comp = getNodeComponent();
-		return <Comp {...nodeProps} />;
-	}
+	const NodeComponent = createMemo(getNodeComponent);
 
 	const nodeStyle = createMemo(() => {
 		const n = node();
@@ -313,7 +312,7 @@ function NodeWrapper<
 
 	return (
 		<NodeIdContext value={id}>
-			<NodeConnectableContext value={{ value: connectable() }}>
+			<NodeConnectableContext value={{ value: connectable }}>
 				<div
 					ref={(el) => {
 						nodeRef = el;
@@ -378,7 +377,8 @@ function NodeWrapper<
 					role={node().ariaRole ?? (focusable() ? "group" : undefined)}
 					aria-roledescription="node"
 				>
-					<RenderNodeComponent
+					<Dynamic
+						component={NodeComponent()}
 						id={id}
 						data={node().internals.userNode.data}
 						type={node().type}

@@ -43,7 +43,7 @@ export function Handle(allProps: HandleProps) {
 	const isConnectable = createMemo(() =>
 		props.isConnectable !== undefined
 			? props.isConnectable
-			: isConnectableContext.value,
+			: isConnectableContext.value(),
 	);
 
 	const store = useStore();
