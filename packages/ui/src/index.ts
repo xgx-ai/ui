@@ -126,6 +126,13 @@ export {
   TableRow,
   TableStatusBar,
 } from "./data-display/table.tsx";
+export type { UseTableReturn } from "./table-compat.tsx";
+export {
+  Table,
+  TableColumnHeader,
+  TableInfinite,
+  useTableInfinite,
+} from "./table-compat.tsx";
 export type {
   CellContext,
   ColumnDef,
