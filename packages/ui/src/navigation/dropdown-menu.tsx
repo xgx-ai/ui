@@ -23,6 +23,7 @@ import { cn } from "../cn";
 import { assignRef, containsNode } from "../overlays/floating";
 import { PopperPositioner, PopperRoot } from "../overlays/popper";
 import { PortalMount } from "../overlays/portal";
+import type { PolymorphicProps } from "../utils/polymorphic";
 import { createMenuKeyboard, focusFirstMenuItem } from "./menu-behavior";
 
 const DynamicAny = Dynamic as any;
@@ -167,13 +168,18 @@ const DropdownMenu = (props: DropdownMenuProps) => {
   );
 };
 
-type DropdownMenuTriggerProps<T extends ValidComponent = "button"> = Omit<
-  ComponentProps<"button">,
-  "ref"
-> & {
-  as?: T;
+type DropdownMenuTriggerOwnProps = {
+  children?: JSX.Element;
+  class?: string | undefined;
+  onKeyDown?: JSX.EventHandler<HTMLElement, KeyboardEvent>;
   ref?: any;
+  type?: ComponentProps<"button">["type"];
 };
+
+type DropdownMenuTriggerProps<T extends ValidComponent = "button"> = PolymorphicProps<
+  T,
+  DropdownMenuTriggerOwnProps
+>;
 
 const DropdownMenuTrigger = <T extends ValidComponent = "button">(
   props: DropdownMenuTriggerProps<T>,

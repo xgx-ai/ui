@@ -1,3 +1,5 @@
+/// <reference path="./babel.d.ts" />
+
 import tsPreset from "@babel/preset-typescript";
 import solidPreset from "babel-preset-solid";
 import { dirname, relative } from "node:path";
