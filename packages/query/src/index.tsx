@@ -20,7 +20,30 @@ export type QueryContext = {
 export type QueryOptions<TData> = {
   queryKey: QueryKey;
   queryFn: (context: QueryContext) => Promise<TData>;
+  enabled?: boolean | (() => boolean);
+  gcTime?: number;
+  placeholderData?: typeof keepPreviousData | TData | (() => TData | undefined);
+  retry?: boolean | number | ((failureCount: number, error: unknown) => boolean);
   staleTime?: number;
+};
+
+export type QueryDefaultOptions = {
+  experimental_prefetchInRender?: boolean;
+  gcTime?: number;
+  refetchOnWindowFocus?: boolean;
+  retry?: QueryOptions<unknown>["retry"];
+  staleTime?: number;
+};
+
+export type MutationDefaultOptions = {
+  onError?: (error: unknown) => void;
+};
+
+export type QueryClientConfig = {
+  defaultOptions?: {
+    mutations?: MutationDefaultOptions;
+    queries?: QueryDefaultOptions;
+  };
 };
 
 export type QueryFactory = {
@@ -62,6 +85,8 @@ export type DefineQueryOptions<TData, TArgs extends unknown[]> = {
 export type MutationOptions<TData, TVariables> = {
   mutationFn: (variables: TVariables) => Promise<TData>;
   invalidates?: Array<QueryFactory | QueryKey>;
+  onError?: (error: Error, variables: TVariables) => void;
+  onSettled?: (data: TData | undefined, error: Error | undefined, variables: TVariables) => void;
   onSuccess?: (data: TData, variables: TVariables) => void;
 };
 
@@ -77,6 +102,36 @@ type ValueQueryState<TData> =
   | { status: "pending"; promise?: Promise<TData> }
   | { status: "success"; data: TData }
   | { status: "error"; error: unknown };
+
+type QueryState<TData> = {
+  data: TData | undefined;
+  error: unknown;
+  isError: boolean;
+  isFetching: boolean;
+  isLoading: boolean;
+  isPending: boolean;
+  isSuccess: boolean;
+};
+
+export interface UseQueryResult<TData> extends QueryState<TData> {
+  refetch: () => Promise<void>;
+  peek: () => TData | undefined;
+  latest: () => TData | undefined;
+}
+
+type MutationState<TData> = {
+  data: TData | undefined;
+  error: Error | undefined;
+  isError: boolean;
+  isPending: boolean;
+  isSuccess: boolean;
+};
+
+export interface UseMutationResult<TData, TVariables> extends MutationState<TData> {
+  mutate: (variables: TVariables) => void;
+  mutateAsync: (variables: TVariables) => Promise<TData>;
+  reset: () => void;
+}
 
 export interface InfiniteData<TPage, TPageParam = unknown> {
   pages: TPage[];
@@ -140,6 +195,16 @@ const initialInfiniteState = <TPage, TPageParam>(): InfiniteQueryState<TPage, TP
 
 export const keepPreviousData = Symbol("keepPreviousData");
 
+const initialQueryState = <TData,>(): QueryState<TData> => ({
+  data: undefined,
+  error: undefined,
+  isError: false,
+  isFetching: false,
+  isLoading: false,
+  isPending: false,
+  isSuccess: false,
+});
+
 export function queryKey(...parts: unknown[]): QueryKey {
   return parts;
 }
@@ -163,6 +228,24 @@ function queryKeyStartsWith(queryKey: QueryKey, prefix: QueryKey): boolean {
 
 function isQueryKey(value: QueryFactory | QueryKey): value is QueryKey {
   return Array.isArray(value);
+}
+
+function normaliseQueryPrefix(input?: QueryKey | { queryKey?: QueryKey }): QueryKey | undefined {
+  if (!input) return undefined;
+  if (Array.isArray(input)) return input as QueryKey;
+  return (input as { queryKey?: QueryKey }).queryKey;
+}
+
+function shouldRetry(
+  retry: QueryOptions<unknown>["retry"],
+  failureCount: number,
+  error: unknown,
+): boolean {
+  if (typeof retry === "function") return retry(failureCount, error);
+  if (typeof retry === "number") return failureCount <= retry;
+  if (retry === false) return false;
+  if (retry === true) return failureCount <= 3;
+  return false;
 }
 
 function refreshableKey(key: QueryKey, refresh: number): QueryKey {
@@ -365,11 +448,18 @@ export const useInfiniteQuery = createInfiniteQuery;
 
 export class QueryClient {
   #cache = new Map<string, QueryCacheEntry<unknown>>();
+  #config: QueryClientConfig;
+  #listeners = new Set<(prefix?: QueryKey) => void>();
+
+  constructor(config: QueryClientConfig = {}) {
+    this.#config = config;
+  }
 
   fetchQuery<TData>(query: QueryOptions<TData>): Promise<TData> {
-    const key = stableQueryKey(query.queryKey);
+    const resolvedQuery = this.#withQueryDefaults(query);
+    const key = stableQueryKey(resolvedQuery.queryKey);
     const cached = this.#cache.get(key) as QueryCacheEntry<TData> | undefined;
-    const staleTime = query.staleTime ?? 0;
+    const staleTime = resolvedQuery.staleTime ?? 0;
     const now = Date.now();
 
     if (cached?.data !== undefined && now - cached.updatedAt <= staleTime) {
@@ -378,12 +468,12 @@ export class QueryClient {
 
     if (cached?.promise) return cached.promise;
 
-    const promise = query
-      .queryFn({ queryKey: query.queryKey })
+    const promise = resolvedQuery
+      .queryFn({ queryKey: resolvedQuery.queryKey })
       .then((data) => {
         this.#cache.set(key, {
           data,
-          key: query.queryKey,
+          key: resolvedQuery.queryKey,
           updatedAt: Date.now(),
         });
         return data;
@@ -391,7 +481,7 @@ export class QueryClient {
       .catch((error) => {
         this.#cache.set(key, {
           error,
-          key: query.queryKey,
+          key: resolvedQuery.queryKey,
           updatedAt: Date.now(),
         });
         throw error;
@@ -399,7 +489,7 @@ export class QueryClient {
 
     this.#cache.set(key, {
       ...cached,
-      key: query.queryKey,
+      key: resolvedQuery.queryKey,
       promise,
       updatedAt: cached?.updatedAt ?? 0,
     });
@@ -407,7 +497,30 @@ export class QueryClient {
     return promise;
   }
 
+  withQueryDefaults<TData>(query: QueryOptions<TData>): QueryOptions<TData> {
+    return this.#withQueryDefaults(query);
+  }
+
+  notifyMutationError(error: unknown): void {
+    this.#config.defaultOptions?.mutations?.onError?.(error);
+  }
+
+  #withQueryDefaults<TData>(query: QueryOptions<TData>): QueryOptions<TData> {
+    const defaults = this.#config.defaultOptions?.queries;
+    if (!defaults) return query;
+    return {
+      ...query,
+      gcTime: query.gcTime ?? defaults.gcTime,
+      retry: query.retry ?? defaults.retry,
+      staleTime: query.staleTime ?? defaults.staleTime,
+    };
+  }
+
   prefetchQuery<TData>(query: QueryOptions<TData>): Promise<TData> {
+    return this.fetchQuery(query);
+  }
+
+  ensureQueryData<TData>(query: QueryOptions<TData>): Promise<TData> {
     return this.fetchQuery(query);
   }
 
@@ -423,7 +536,8 @@ export class QueryClient {
     });
   }
 
-  invalidateQueries(prefix?: QueryKey): void {
+  removeQueries(input?: QueryKey | { queryKey?: QueryKey }): void {
+    const prefix = normaliseQueryPrefix(input);
     if (!prefix) {
       this.#cache.clear();
       return;
@@ -431,6 +545,24 @@ export class QueryClient {
 
     for (const [key, entry] of this.#cache) {
       if (queryKeyStartsWith(entry.key, prefix)) this.#cache.delete(key);
+    }
+  }
+
+  invalidateQueries(input?: QueryKey | { queryKey?: QueryKey }): Promise<void> {
+    const prefix = normaliseQueryPrefix(input);
+    this.removeQueries(prefix);
+    this.#notify(prefix);
+    return Promise.resolve();
+  }
+
+  subscribe(listener: (prefix?: QueryKey) => void): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+
+  #notify(prefix?: QueryKey): void {
+    for (const listener of this.#listeners) {
+      listener(prefix);
     }
   }
 
@@ -451,6 +583,161 @@ export function QueryClientProvider(props: { client?: QueryClient; children?: JS
 
 export function useQueryClient(queryClient?: QueryClient) {
   return queryClient ?? useContext(QueryClientContext) ?? defaultQueryClient;
+}
+
+export function useQuery<TData>(options: () => QueryOptions<TData>): UseQueryResult<TData> {
+  const client = useQueryClient();
+  const [state, setState] = createSignal<QueryState<TData>>(initialQueryState<TData>(), {
+    equals: false,
+  });
+  let activeKey: string | undefined;
+  let activeQueryKey: QueryKey | undefined;
+  let requestId = 0;
+
+  const fetch = async (
+    nextOptions = options(),
+    mode: "initial" | "refetch" = "initial",
+    previous = state(),
+  ) => {
+    const resolvedOptions = client.withQueryDefaults(nextOptions);
+    if (!isEnabled(resolvedOptions.enabled)) {
+      setState({
+        ...previous,
+        isFetching: false,
+        isLoading: false,
+        isPending: false,
+      });
+      return;
+    }
+
+    const currentRequestId = ++requestId;
+    const hasPreviousData = previous.data !== undefined;
+    let failureCount = 0;
+
+    setState({
+      ...previous,
+      error: undefined,
+      isError: false,
+      isFetching: true,
+      isLoading: mode === "initial" && !hasPreviousData,
+      isPending: mode === "initial" && !hasPreviousData,
+    });
+
+    while (true) {
+      try {
+        const data = await client.fetchQuery(resolvedOptions);
+        if (currentRequestId !== requestId) return;
+        setState({
+          data,
+          error: undefined,
+          isError: false,
+          isFetching: false,
+          isLoading: false,
+          isPending: false,
+          isSuccess: true,
+        });
+        return;
+      } catch (error) {
+        failureCount += 1;
+        if (!shouldRetry(resolvedOptions.retry, failureCount, error)) {
+          if (currentRequestId !== requestId) return;
+          setState({
+            ...state(),
+            error,
+            isError: true,
+            isFetching: false,
+            isLoading: false,
+            isPending: false,
+            isSuccess: false,
+          });
+          return;
+        }
+      }
+    }
+  };
+
+  const refetch = async () => {
+    const nextOptions = options();
+    activeKey = stableQueryKey(nextOptions.queryKey);
+    activeQueryKey = nextOptions.queryKey;
+    client.removeQueries(nextOptions.queryKey);
+    await fetch(nextOptions, "refetch");
+  };
+
+  createEffect(
+    () => {
+      const nextOptions = options();
+      return {
+        enabled: isEnabled(nextOptions.enabled),
+        key: stableQueryKey(nextOptions.queryKey),
+        options: nextOptions,
+      };
+    },
+    ({ enabled, key, options }) => {
+      if (!enabled) {
+        activeKey = key;
+        activeQueryKey = options.queryKey;
+        setState({
+          ...state(),
+          isFetching: false,
+          isLoading: false,
+          isPending: false,
+        });
+        return;
+      }
+      if (key === activeKey) return;
+
+      const previous = state();
+      activeKey = key;
+      activeQueryKey = options.queryKey;
+
+      const placeholder =
+        options.placeholderData === keepPreviousData
+          ? previous.data
+          : typeof options.placeholderData === "function"
+            ? (options.placeholderData as () => TData | undefined)()
+            : options.placeholderData;
+
+      const nextState =
+        placeholder !== undefined
+          ? {
+              ...initialQueryState<TData>(),
+              data: placeholder as TData,
+              isFetching: true,
+              isSuccess: true,
+            }
+          : initialQueryState<TData>();
+
+      setState(nextState);
+      void fetch(options, "initial", nextState);
+    },
+  );
+
+  const unsubscribe = client.subscribe((prefix) => {
+    if (
+      activeQueryKey &&
+      (!prefix || queryKeyStartsWith(activeQueryKey, prefix))
+    ) {
+      void fetch(options(), "refetch");
+    }
+  });
+  onCleanup(unsubscribe);
+
+  return resultProxy<UseQueryResult<TData>>(() => {
+    const current = state();
+    return {
+      data: current.data,
+      error: current.error,
+      isError: current.isError,
+      isFetching: current.isFetching,
+      isLoading: current.isLoading,
+      isPending: current.isPending,
+      isSuccess: current.isSuccess,
+      refetch,
+      peek: () => current.data,
+      latest: () => current.data,
+    };
+  });
 }
 
 export function createValueQuery<TData>(options: () => QueryOptions<TData>) {
@@ -503,50 +790,106 @@ export function createValueQuery<TData>(options: () => QueryOptions<TData>) {
 
 export function createMutation<TData, TVariables>(
   options: () => MutationOptions<TData, TVariables>,
-) {
+): UseMutationResult<TData, TVariables> {
   const client = useQueryClient();
-  const [pending, setPending] = createSignal(false);
-  const [error, setError] = createSignal<Error>();
+  const [state, setState] = createSignal<MutationState<TData>>(
+    {
+      data: undefined,
+      error: undefined,
+      isError: false,
+      isPending: false,
+      isSuccess: false,
+    },
+    { equals: false },
+  );
 
   const mutateAsync = async (variables: TVariables) => {
     const mutation = options();
-    setPending(true);
-    setError(undefined);
+    setState({
+      data: undefined,
+      error: undefined,
+      isError: false,
+      isPending: true,
+      isSuccess: false,
+    });
 
     try {
       const data = await mutation.mutationFn(variables);
       for (const invalidation of mutation.invalidates ?? []) {
         if (isQueryKey(invalidation)) {
-          client.invalidateQueries(invalidation);
+          void client.invalidateQueries(invalidation);
         } else {
           invalidation.invalidate?.();
-          if (invalidation.prefix) client.invalidateQueries(invalidation.prefix);
+          if (invalidation.prefix) void client.invalidateQueries(invalidation.prefix);
         }
       }
       mutation.onSuccess?.(data, variables);
+      mutation.onSettled?.(data, undefined, variables);
+      setState({
+        data,
+        error: undefined,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+      });
       return data;
     } catch (cause) {
       const nextError = cause instanceof Error ? cause : new Error(String(cause));
-      setError(nextError);
+      client.notifyMutationError(nextError);
+      mutation.onError?.(nextError, variables);
+      mutation.onSettled?.(undefined, nextError, variables);
+      setState({
+        data: undefined,
+        error: nextError,
+        isError: true,
+        isPending: false,
+        isSuccess: false,
+      });
       throw nextError;
-    } finally {
-      setPending(false);
     }
   };
 
-  return {
-    get error() {
-      return error();
-    },
-    get isPending() {
-      return pending();
-    },
-    mutateAsync,
-    reset() {
-      setError(undefined);
-      setPending(false);
-    },
-  };
+  return resultProxy<UseMutationResult<TData, TVariables>>(() => {
+    const current = state();
+    return {
+      data: current.data,
+      error: current.error,
+      isError: current.isError,
+      isPending: current.isPending,
+      isSuccess: current.isSuccess,
+      mutate: (variables: TVariables) => {
+        void mutateAsync(variables).catch(() => {});
+      },
+      mutateAsync,
+      reset() {
+        setState({
+          data: undefined,
+          error: undefined,
+          isError: false,
+          isPending: false,
+          isSuccess: false,
+        });
+      },
+    };
+  });
+}
+
+export const useMutation = createMutation;
+
+export function createQuery<TData>(
+  options: () => QueryOptions<TData>,
+): UseQueryResult<TData> {
+  return useQuery(options);
+}
+
+export function queryOptions<TData>(options: QueryOptions<TData>): QueryOptions<TData> {
+  return options;
+}
+
+export function mutationOptions<TData, TVariables>(
+  options: MutationOptions<TData, TVariables>,
+): MutationOptions<TData, TVariables> {
+  return options;
 }
 
 export interface IntersectionLoaderOptions {
