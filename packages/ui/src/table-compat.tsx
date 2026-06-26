@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
-import { useQuery } from "@tanstack/solid-query";
-import { createMemo, createRenderEffect, createSignal, For, Show } from "solid-js";
+import { createInfiniteQuery } from "../../query/src/index.tsx";
+import { createMemo, For, Show } from "solid-js";
 
 export type UseTableReturn<TData> = {
   data: () => TData[];
@@ -34,34 +34,52 @@ export function useTableInfinite<TData>(
   params: UseTableInfiniteParams<TData>,
 ): UseTableReturn<TData> {
   const limit = params.limit ?? 25;
-  const [page, setPage] = createSignal(0);
-  const [rows, setRows] = createSignal<TData[]>([]);
-  const [totalCount, setTotalCount] = createSignal(0);
-
-  const query = useQuery(() => ({
-    queryKey: [...params.queryKey(), page()],
-    queryFn: () => params.queryFn({ limit, page: page() }),
+  const query = createInfiniteQuery(() => ({
+    queryKey: params.queryKey(),
+    queryFn: ({ pageParam }) => params.queryFn({ limit, page: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages, lastPageParam) => {
+      const loadedCount = allPages.reduce(
+        (count, page) => count + (page.data?.length ?? 0),
+        0,
+      );
+      const totalCount = lastPage.totalCount ?? lastPage.count ?? loadedCount;
+      return loadedCount < totalCount ? lastPageParam + 1 : undefined;
+    },
   }));
 
-  createRenderEffect(
-    () => query.data,
-    (result) => {
-      if (!result) return;
-
-      const nextRows = result.data ?? [];
-      setRows((current) => (page() === 0 ? nextRows : [...current, ...nextRows]));
-      setTotalCount(result.totalCount ?? nextRows.length);
-    },
+  const rows = createMemo(
+    () => query.data?.pages.flatMap((page) => page.data ?? []) ?? [],
+  );
+  const totalCount = createMemo(
+    () =>
+      query.data?.pages.at(-1)?.totalCount ??
+      query.data?.pages.at(-1)?.count ??
+      rows().length,
   );
 
   return {
     data: rows,
-    hasMore: createMemo(() => rows().length < totalCount()),
-    isFetchingMore: createMemo(() => Boolean(query.isFetching) && page() > 0),
+    hasMore: createMemo(() => query.hasNextPage),
+    isFetchingMore: createMemo(() => query.isFetchingNextPage),
     loadMore: () => {
-      if (rows().length < totalCount()) setPage((value) => value + 1);
+      if (query.hasNextPage) void query.fetchNextPage();
     },
-    query,
+    query: {
+      get data() {
+        return {
+          count: rows().length,
+          data: rows(),
+          totalCount: totalCount(),
+        };
+      },
+      get isFetching() {
+        return query.isFetching;
+      },
+      get isLoading() {
+        return query.isLoading;
+      },
+    },
     totalCount,
   };
 }
@@ -89,6 +107,7 @@ type TableCompatProps<TData> = {
   statusBarLabel?: string;
   statusBarEmptyMessage?: string;
   statusBarEndMessage?: string;
+  enableColumnVisibility?: boolean;
 };
 
 function renderHeader<TData>(column: ColumnLike<TData>) {
@@ -157,6 +176,22 @@ export function TableInfinite<TData>(props: TableCompatProps<TData>) {
 
 export const Table = TableInfinite;
 
-export function TableColumnHeader(props: { children?: JSX.Element }) {
-  return <span>{props.children}</span>;
+export function TableColumnHeader(props: {
+  children?: JSX.Element;
+  onSort?: (event?: unknown) => void;
+  sortable?: boolean;
+  sorted?: false | "asc" | "desc";
+  title?: string;
+}) {
+  return (
+    <button
+      class="inline-flex items-center gap-1 text-left"
+      disabled={!props.sortable}
+      type="button"
+      onClick={() => props.onSort?.()}
+    >
+      {props.title ?? props.children}
+      <Show when={props.sorted}>{(direction) => <span>{direction()}</span>}</Show>
+    </button>
+  );
 }

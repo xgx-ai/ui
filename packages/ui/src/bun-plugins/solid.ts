@@ -34,7 +34,6 @@ function splitPropsImport(fromPath: string): string {
 function isSolidOneDependencyImport(importer: string): boolean {
   return (
     importer.includes("/node_modules/@tanstack/solid-") ||
-    importer.includes("/node_modules/@xgx-ai/support/") ||
     importer.includes("/node_modules/better-auth/dist/client/solid/")
   );
 }
