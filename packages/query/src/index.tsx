@@ -2,6 +2,7 @@ import type { JSX } from "@solidjs/web";
 import {
   createContext,
   createEffect,
+  createMemo,
   createSignal,
   Errored,
   Loading,
@@ -99,11 +100,6 @@ type QueryCacheEntry<TData> = {
   promise?: Promise<TData>;
   updatedAt: number;
 };
-
-type ValueQueryState<TData> =
-  | { status: "pending"; promise?: Promise<TData> }
-  | { status: "success"; data: TData }
-  | { status: "error"; error: unknown };
 
 type QueryState<TData> = {
   data: TData | undefined;
@@ -750,10 +746,7 @@ export function useQuery<TData>(options: () => QueryOptions<TData>): UseQueryRes
   );
 
   const unsubscribe = client.subscribe((prefix) => {
-    if (
-      activeQueryKey &&
-      (!prefix || queryKeyStartsWith(activeQueryKey, prefix))
-    ) {
+    if (activeQueryKey && (!prefix || queryKeyStartsWith(activeQueryKey, prefix))) {
       void fetch(options(), "refetch");
     }
   });
@@ -779,46 +772,20 @@ export function useQuery<TData>(options: () => QueryOptions<TData>): UseQueryRes
 
 export function createValueQuery<TData>(options: () => QueryOptions<TData>) {
   const client = useQueryClient();
-  const [state, setState] = createSignal<ValueQueryState<TData>>(
-    { status: "pending" },
-    internalSignalOptions,
-  );
-  let requestId = 0;
-
-  const load = (query: QueryOptions<TData>) => {
-    const currentRequestId = ++requestId;
-    const promise = client.fetchQuery(query);
-
-    setState({ status: "pending", promise });
-
-    promise
-      .then((data) => {
-        if (currentRequestId !== requestId) return;
-        setState({ status: "success", data });
-      })
-      .catch((error) => {
-        if (currentRequestId !== requestId) return;
-        setState({ status: "error", error });
-      });
-  };
-
-  createEffect(
-    () => options(),
-    (query) => load(query),
-  );
+  const [refresh, setRefresh] = createSignal(0, internalWritableOptions);
+  const data = createMemo<TData>(() => {
+    refresh();
+    return client.fetchQuery(options());
+  });
 
   return {
     get data() {
-      const current = state();
-      if (current.status === "success") return current.data;
-      if (current.status === "error") throw current.error;
-      if (current.promise) throw current.promise;
-      throw Promise.resolve();
+      return data();
     },
     refetch() {
       const query = options();
-      client.invalidateQueries(query.queryKey);
-      load(query);
+      void client.invalidateQueries(query.queryKey);
+      setRefresh((value) => value + 1);
     },
   };
 }
@@ -912,9 +879,7 @@ export function createMutation<TData, TVariables>(
 
 export const useMutation = createMutation;
 
-export function createQuery<TData>(
-  options: () => QueryOptions<TData>,
-): UseQueryResult<TData> {
+export function createQuery<TData>(options: () => QueryOptions<TData>): UseQueryResult<TData> {
   return useQuery(options);
 }
 
