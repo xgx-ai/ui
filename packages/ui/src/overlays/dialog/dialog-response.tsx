@@ -1,9 +1,8 @@
 import type { JSX } from "@solidjs/web";
-import { TriangleAlert } from "../../icons.index";
-import { createSignal, Match, Show, Switch } from "solid-js";
-import { createStore } from "solid-js";
+import { createSignal, createStore, flush, Match, Show, Switch } from "solid-js";
 import { cn } from "../../cn.ts";
 import { Button } from "../../forms/button.tsx";
+import { TriangleAlert } from "../../icons.index";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "../dialog.tsx";
 
 export type DialogContentProps<T> = {
@@ -69,7 +68,7 @@ export function useResponseDialog() {
     description: "",
     content: DialogContentPlaceholder,
   });
-  let resolver: (value: unknown) => void;
+  let settleDialog: ((value: unknown) => void) | undefined;
 
   const showResponseDialog = <T,>(props: DialogProps<T>): Promise<T | null> => {
     setDialogProps((state) => {
@@ -77,16 +76,23 @@ export function useResponseDialog() {
     });
     setIsOpen(true);
     return new Promise((resolve) => {
-      resolver = (value: unknown) => {
+      let settled = false;
+
+      settleDialog = (value: unknown) => {
+        if (settled) return;
+
+        settled = true;
         setIsOpen(false);
+        flush();
         resolve(value as T);
+        settleDialog = undefined;
       };
     });
   };
 
   const DialogResponse = () => {
     function handleClose() {
-      resolver(null);
+      settleDialog?.(null);
     }
     return (
       <Show when={isOpen()}>
@@ -118,10 +124,10 @@ export function useResponseDialog() {
                 </Show>
                 {dialogProps.content?.({
                   resolve: (value: unknown) => {
-                    resolver(value);
+                    settleDialog?.(value);
                   },
                   reject: () => {
-                    resolver(null);
+                    settleDialog?.(null);
                   },
                   setClass: (c: string) => {
                     setDialogProps((state) => {
@@ -156,9 +162,9 @@ export function useResponseDialog() {
                 <DialogAlertTemplate
                   {...dialogProps}
                   resolve={(value: unknown) => {
-                    resolver(value);
+                    settleDialog?.(value);
                   }}
-                  reject={() => resolver(null)}
+                  reject={() => settleDialog?.(null)}
                 />
               </DialogContent>
             </Match>
