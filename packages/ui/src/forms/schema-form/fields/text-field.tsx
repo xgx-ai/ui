@@ -1,4 +1,4 @@
-import { createEffect, createSignal, Show } from "solid-js";
+import { Show } from "solid-js";
 import {
   TextField,
   TextFieldErrorMessage,
@@ -8,24 +8,6 @@ import {
 import type { FieldBinding } from "../types.ts";
 
 export function SchemaTextField(props: { binding: FieldBinding<string> }) {
-  const [input, setInput] = createSignal<HTMLInputElement>();
-
-  createEffect(
-    () => input(),
-    (element) => {
-      if (!element) return;
-
-      const syncValue = () => props.binding.onInput(element.value);
-      element.addEventListener("input", syncValue);
-      element.addEventListener("change", syncValue);
-
-      return () => {
-        element.removeEventListener("input", syncValue);
-        element.removeEventListener("change", syncValue);
-      };
-    },
-  );
-
   return (
     <TextField
       class="grid w-full items-center gap-1.5"
@@ -39,7 +21,6 @@ export function SchemaTextField(props: { binding: FieldBinding<string> }) {
         </TextFieldLabel>
       </Show>
       <TextFieldInput
-        ref={setInput}
         name={props.binding.name}
         type={(props.binding.type as "text" | "email" | "url" | undefined) ?? "text"}
         inputmode={props.binding.inputMode}

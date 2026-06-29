@@ -1,6 +1,19 @@
 import type { JSX } from "@solidjs/web";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  createUniqueId,
+  isPending,
+  latest,
+  Show,
+  Loading as Suspense,
+} from "solid-js";
 import { cn } from "../cn";
+import { Skeleton } from "../feedback/skeleton";
+import { X } from "../icons.index";
 import { ComboboxTrigger } from "./combobox";
+import { Label } from "./label";
 import {
   Search,
   SearchContent,
@@ -12,10 +25,6 @@ import {
   SearchNoResult,
   SearchSection,
 } from "./search";
-import { Skeleton } from "../feedback/skeleton";
-import { createEffect, createSignal, createUniqueId, Show, Loading as Suspense } from "solid-js";
-import { Label } from "./label";
-import { X } from "../icons.index";
 
 type SearchProps<T> = {
   options: T[];
@@ -43,6 +52,13 @@ type SearchProps<T> = {
   infiniteScrollLimit?: number;
 };
 
+type InfiniteSearchState<T> = {
+  data: T[];
+  hasMore: boolean;
+  offset: number;
+  query: string;
+};
+
 function getDisplayValue<T>(item: T | undefined, optionTextValue: keyof T): string {
   if (optionTextValue && item) {
     return item[optionTextValue] as string;
@@ -55,16 +71,56 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
   let inputEl: HTMLInputElement | null = null;
   const id = props.id ?? createUniqueId();
 
-  const [infiniteData, setInfiniteData] = createSignal<T[]>([]);
-  const [infiniteLoading, setInfiniteLoading] = createSignal(false);
-  const [infiniteEnd, setInfiniteEnd] = createSignal(false);
-  const [currentSearchQuery, setCurrentSearchQuery] = createSignal("");
   const [searchQuery, setSearchQuery] = createSignal("");
+  const [infiniteOffset, setInfiniteOffset] = createSignal(0);
   let loadMoreEl: HTMLDivElement | undefined;
+
+  const emptyInfiniteState = (query = searchQuery()): InfiniteSearchState<T> => ({
+    data: [],
+    hasMore: false,
+    offset: 0,
+    query,
+  });
+
+  const infiniteState = createMemo<InfiniteSearchState<T>>((previous) => {
+    const query = searchQuery();
+    const offset = infiniteOffset();
+    const loadMore = props.onLoadMore;
+
+    if (!props.enableInfiniteScroll || !isOpen() || !loadMore) {
+      return emptyInfiniteState(query);
+    }
+
+    if (offset > 0 && previous?.query === query && !previous.hasMore) {
+      return previous;
+    }
+
+    return loadMore(query, offset)
+      .then((result) => {
+        const previousData = offset > 0 && previous?.query === query ? previous.data : [];
+        const data = offset > 0 ? [...previousData, ...result.data] : result.data;
+
+        return {
+          data,
+          hasMore: result.hasMore,
+          offset: data.length,
+          query,
+        };
+      })
+      .catch((error) => {
+        console.error("Failed to load more data:", error);
+        return previous?.query === query
+          ? { ...previous, hasMore: false }
+          : emptyInfiniteState(query);
+      });
+  });
+
+  const currentInfiniteState = () => latest(() => infiniteState());
+  const infiniteLoading = createMemo(() => isPending(() => infiniteState()));
 
   const filteredOptions = () => {
     if (props.enableInfiniteScroll) {
-      return infiniteData();
+      return currentInfiniteState().data;
     }
 
     const query = searchQuery().toLowerCase().trim();
@@ -105,34 +161,16 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
     }
   };
 
-  const loadMoreData = async (searchQuery: string = "", append: boolean = false) => {
-    if (!props.onLoadMore || infiniteLoading() || infiniteEnd()) {
-      return;
-    }
-
-    setInfiniteLoading(true);
-    try {
-      const offset = append ? infiniteData().length : 0;
-      const result = await props.onLoadMore(searchQuery, offset);
-
-      if (append) {
-        setInfiniteData((prev) => [...prev, ...result.data]);
-      } else {
-        setInfiniteData(result.data);
-      }
-
-      setInfiniteEnd(!result.hasMore);
-    } catch (error) {
-      console.error("Failed to load more data:", error);
-      setInfiniteEnd(true);
-    } finally {
-      setInfiniteLoading(false);
-    }
+  const resetInfiniteSearch = () => {
+    setSearchQuery("");
+    setInfiniteOffset(0);
   };
 
-  const resetInfiniteData = () => {
-    setInfiniteData([]);
-    setInfiniteEnd(false);
+  const requestNextPage = () => {
+    if (!props.enableInfiniteScroll || !props.onLoadMore || infiniteLoading()) return;
+    const state = currentInfiniteState();
+    if (!state.hasMore) return;
+    setInfiniteOffset(state.data.length);
   };
 
   let io: IntersectionObserver | undefined;
@@ -153,8 +191,8 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
 
     io = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && !infiniteLoading() && !infiniteEnd()) {
-          loadMoreData(currentSearchQuery(), true);
+        if (entries[0]?.isIntersecting) {
+          requestNextPage();
         }
       },
       {
@@ -179,13 +217,9 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
       if (inputEl) {
         inputEl.value = "";
       }
-      setCurrentSearchQuery("");
-      setSearchQuery("");
+      resetInfiniteSearch();
 
       if (props.enableInfiniteScroll) {
-        resetInfiniteData();
-        loadMoreData("", false);
-
         const checkAndSetup = () => {
           if (loadMoreEl) {
             setupIntersectionObserver();
@@ -203,11 +237,7 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
       if (inputEl) {
         inputEl.value = "";
       }
-      setCurrentSearchQuery("");
-      setSearchQuery("");
-      if (props.enableInfiniteScroll) {
-        resetInfiniteData();
-      }
+      resetInfiniteSearch();
       props.onInputChange?.("");
     }
   });
@@ -216,9 +246,7 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
     setSearchQuery(query);
 
     if (props.enableInfiniteScroll) {
-      setCurrentSearchQuery(query);
-      resetInfiniteData();
-      loadMoreData(query, false);
+      setInfiniteOffset(0);
     }
     props.onInputChange?.(query);
   };
@@ -336,6 +364,7 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
                       e.preventDefault();
                       e.stopPropagation();
                       props.onChange?.(null);
+                      resetInfiniteSearch();
                       if (inputEl) {
                         inputEl.value = "";
                         props.onInputChange?.("");
@@ -376,11 +405,11 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
                   <Show
                     when={infiniteLoading()}
                     fallback={
-                      <Show when={!infiniteEnd()}>
+                      <Show when={currentInfiniteState().hasMore}>
                         <div class="w-full text-center py-2">
                           Scroll for more results
                           <div class="text-xs opacity-50 mt-1">
-                            ({infiniteData().length} loaded)
+                            ({currentInfiniteState().data.length} loaded)
                           </div>
                         </div>
                       </Show>
