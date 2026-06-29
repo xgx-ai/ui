@@ -68,14 +68,18 @@ export function useResponseDialog() {
     description: "",
     content: DialogContentPlaceholder,
   });
+  let activePromise: Promise<unknown | null> | undefined;
   let settleDialog: ((value: unknown) => void) | undefined;
 
   const showResponseDialog = <T,>(props: DialogProps<T>): Promise<T | null> => {
+    if (activePromise) return activePromise as Promise<T | null>;
+
     setDialogProps((state) => {
       Object.assign(state, props);
     });
     setIsOpen(true);
-    return new Promise((resolve) => {
+
+    const promise = new Promise<T | null>((resolve) => {
       let settled = false;
 
       settleDialog = (value: unknown) => {
@@ -84,10 +88,14 @@ export function useResponseDialog() {
         settled = true;
         setIsOpen(false);
         flush();
-        resolve(value as T);
+        activePromise = undefined;
         settleDialog = undefined;
+        resolve(value as T | null);
       };
     });
+
+    activePromise = promise;
+    return promise;
   };
 
   const DialogResponse = () => {
