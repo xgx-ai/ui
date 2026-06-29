@@ -122,33 +122,27 @@ export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
     pages?.flatMap((page) => [...getRows(page)]) ?? [];
 
   const data = createMemo(() => {
-    query.hasNextPage;
-    query.isFetchingNextPage;
-    return flattenPages(query.peek()?.pages);
+    return flattenPages(query.data().pages);
   });
 
-  const latestData = createMemo(() => flattenPages(query.latest().pages));
+  const latestData = createMemo(() => flattenPages(query.latest()?.pages));
 
   const count = createMemo(() => {
-    query.hasNextPage;
-    query.isFetchingNextPage;
-    const pages = query.peek()?.pages;
+    const pages = query.latest()?.pages;
     if (!pages || pages.length === 0) return undefined;
     const lastPage = pages[pages.length - 1];
     return getCount(lastPage);
   });
 
   const totalCount = createMemo(() => {
-    query.hasNextPage;
-    query.isFetchingNextPage;
-    const pages = query.peek()?.pages;
+    const pages = query.latest()?.pages;
     if (!pages || pages.length === 0) return undefined;
     const lastPage = pages[pages.length - 1];
     return getTotalCount(lastPage);
   });
 
   const loadMore = () => {
-    if (query.hasNextPage && !query.isFetchingNextPage) {
+    if (query.hasNextPage() && !query.fetchingNextPage()) {
       void query.fetchNextPage();
     }
   };
@@ -157,13 +151,9 @@ export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
     void query.refetch();
   };
 
-  const isLoading = createMemo(() => {
-    query.hasNextPage;
-    query.isFetchingNextPage;
-    return !query.peek();
-  });
-  const isFetchingMore = createMemo(() => query.isFetchingNextPage);
-  const hasMore = createMemo(() => query.hasNextPage);
+  const isLoading = createMemo(() => query.pending() && latestData().length === 0);
+  const isFetchingMore = createMemo(() => query.fetchingNextPage());
+  const hasMore = createMemo(() => query.hasNextPage());
 
   const [selected, setSelected] = createSignal<TData[]>([]);
   const [allSelected, setAllSelected] = createSignal<boolean>(false);
@@ -222,7 +212,7 @@ export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
 
   const selectedCount = createMemo(() => {
     if (allSelected()) {
-      const base = data().length;
+      const base = latestData().length;
       const excluded = excludedIds().length;
       return Math.min(5000, Math.max(0, base - excluded));
     }

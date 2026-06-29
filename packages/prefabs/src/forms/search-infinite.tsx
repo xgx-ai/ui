@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { keepPreviousData, useInfiniteQuery } from "@xgx/query";
+import { useInfiniteQuery } from "@xgx/query";
 import {
   cn,
   ComboboxTrigger,
@@ -16,7 +16,14 @@ import {
   SearchSection,
   Spinner,
 } from "@xgx/ui";
-import { type Accessor, createEffect, createSignal, createUniqueId, onCleanup, Show } from "solid-js";
+import {
+  type Accessor,
+  createEffect,
+  createSignal,
+  createUniqueId,
+  onCleanup,
+  Show,
+} from "solid-js";
 import { Search as SearchIcon, X } from "@xgx/ui/icons";
 
 export interface SearchInfiniteQueryConfig<T> {
@@ -90,7 +97,7 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
   });
 
   // Infinite query for data loading
-  const infiniteQuery = useInfiniteQuery(() => ({
+  const infiniteQuery = useInfiniteQuery<SearchInfinitePage<T>, number>(() => ({
     queryKey: [...props.queryConfig.queryKey, "search-infinite", debouncedSearchTerm()],
 
     queryFn: ({ pageParam }: { pageParam: number }) =>
@@ -100,7 +107,6 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
         page: pageParam,
       }),
     initialPageParam: 0,
-    placeholderData: keepPreviousData,
     getNextPageParam: (
       lastPage: SearchInfinitePage<T>,
       _allPages: SearchInfinitePage<T>[],
@@ -118,28 +124,20 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
           : (props.queryConfig.enabled ?? true);
       return configEnabled && isOpen();
     },
-  })) as unknown as {
-    isSuccess: boolean;
-    data?: { pages: SearchInfinitePage<T>[] };
-    isLoading: boolean;
-    isFetchingNextPage: boolean;
-    hasNextPage?: boolean;
-    isFetching: boolean;
-    fetchNextPage: () => void;
-  };
+  }));
 
   const options = () => {
-    if (!infiniteQuery.isSuccess) {
-      return [];
-    }
-
-    return infiniteQuery.data?.pages.flatMap((page) => page.data) ?? [];
+    return infiniteQuery.latest()?.pages.flatMap((page) => page.data) ?? [];
   };
 
   // Load more function
   const loadMore = () => {
-    if (infiniteQuery.hasNextPage && !infiniteQuery.isFetching) {
-      infiniteQuery.fetchNextPage();
+    if (
+      infiniteQuery.hasNextPage() &&
+      !infiniteQuery.pending() &&
+      !infiniteQuery.fetchingNextPage()
+    ) {
+      void infiniteQuery.fetchNextPage();
     }
   };
 
@@ -160,7 +158,12 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
 
     io = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && !infiniteQuery.isFetching && infiniteQuery.hasNextPage) {
+        if (
+          entries[0]?.isIntersecting &&
+          !infiniteQuery.pending() &&
+          !infiniteQuery.fetchingNextPage() &&
+          infiniteQuery.hasNextPage()
+        ) {
           loadMore();
         }
       },
@@ -370,12 +373,12 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
             class="max-h-64 overflow-y-auto"
             style="scroll-behavior: smooth; position: relative;"
           >
-            <Show when={infiniteQuery.isLoading}>
+            <Show when={infiniteQuery.pending() && options().length === 0}>
               <div class="flex justify-center items-center p-4">
                 <div class="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-foreground" />
               </div>
             </Show>
-            <Show when={!infiniteQuery.isLoading}>
+            <Show when={!infiniteQuery.pending() || options().length > 0}>
               <SearchListbox />
               <SearchNoResult>
                 <p class="text-xs pb-2">
@@ -395,10 +398,10 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
               }}
               class="w-full opacity-0"
             />
-            <Show when={Boolean(infiniteQuery.hasNextPage) || infiniteQuery.isFetchingNextPage}>
+            <Show when={infiniteQuery.hasNextPage() || infiniteQuery.fetchingNextPage()}>
               <div class="flex items-center justify-center border-t border-border-subtle bg-surface-muted p-2 text-xs text-surface-muted-foreground">
                 <Show
-                  when={infiniteQuery.isFetchingNextPage}
+                  when={infiniteQuery.fetchingNextPage()}
                   fallback={
                     <div class="w-full text-center py-2">
                       Scroll for more results

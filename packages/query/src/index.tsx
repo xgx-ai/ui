@@ -5,8 +5,10 @@ import {
   createMemo,
   createSignal,
   Errored,
+  flush,
   Loading,
   onCleanup,
+  resolve,
   untrack,
   useContext,
 } from "solid-js";
@@ -23,7 +25,6 @@ export type QueryOptions<TData> = {
   queryFn: (context: QueryContext) => Promise<TData>;
   enabled?: boolean | (() => boolean);
   gcTime?: number;
-  placeholderData?: typeof keepPreviousData | TData | (() => TData | undefined);
   retry?: boolean | number | ((failureCount: number, error: unknown) => boolean);
   staleTime?: number;
   timeoutMs?: number;
@@ -74,8 +75,6 @@ export type DefineInfiniteQueryOptions<TPage, TPageParam, TArgs extends unknown[
     lastPageParam: TPageParam,
   ) => TPageParam | undefined;
   enabled?: boolean | (() => boolean);
-  placeholderData?: unknown;
-  reconcileKey?: string;
 };
 
 export type DefineQueryOptions<TData, TArgs extends unknown[]> = {
@@ -101,22 +100,14 @@ type QueryCacheEntry<TData> = {
   updatedAt: number;
 };
 
-type QueryState<TData> = {
-  data: TData | undefined;
-  error: Error | undefined;
-  isError: boolean;
-  isFetching: boolean;
-  isLoading: boolean;
-  isPending: boolean;
-  isPlaceholderData: boolean;
-  isSuccess: boolean;
-};
-
-export interface UseQueryResult<TData> extends QueryState<TData> {
-  refetch: () => Promise<void>;
-  peek: () => TData | undefined;
+export interface QueryResult<TData> {
+  data: () => TData;
   latest: () => TData | undefined;
+  pending: () => boolean;
+  refetch: () => Promise<TData>;
 }
+
+export type UseQueryResult<TData> = QueryResult<TData>;
 
 type MutationState<TData> = {
   data: TData | undefined;
@@ -147,63 +138,17 @@ export interface InfiniteQueryOptions<TPage, TPageParam = unknown> {
     lastPageParam: TPageParam,
   ) => TPageParam | undefined;
   enabled?: boolean | (() => boolean);
-  placeholderData?: unknown;
 }
 
 export interface InfiniteQueryResult<TPage, TPageParam = unknown> {
-  data: InfiniteData<TPage, TPageParam> | undefined;
-  error: unknown;
-  isError: boolean;
-  isFetching: boolean;
-  isFetchingNextPage: boolean;
-  isLoading: boolean;
-  isPending: boolean;
-  isSuccess: boolean;
-  hasNextPage: boolean;
+  data: () => InfiniteData<TPage, TPageParam>;
+  latest: () => InfiniteData<TPage, TPageParam> | undefined;
+  pending: () => boolean;
+  fetchingNextPage: () => boolean;
+  hasNextPage: () => boolean;
   fetchNextPage: () => Promise<void>;
-  refetch: () => Promise<void>;
-  peek: () => InfiniteData<TPage, TPageParam> | undefined;
-  latest: () => InfiniteData<TPage, TPageParam>;
+  refetch: () => Promise<InfiniteData<TPage, TPageParam>>;
 }
-
-type InfiniteQueryState<TPage, TPageParam> = {
-  data: InfiniteData<TPage, TPageParam> | undefined;
-  error: unknown;
-  isError: boolean;
-  isFetching: boolean;
-  isFetchingNextPage: boolean;
-  isLoading: boolean;
-  isPending: boolean;
-  isSuccess: boolean;
-  hasNextPage: boolean;
-  nextPageParam: TPageParam | undefined;
-};
-
-const initialInfiniteState = <TPage, TPageParam>(): InfiniteQueryState<TPage, TPageParam> => ({
-  data: undefined,
-  error: undefined,
-  isError: false,
-  isFetching: false,
-  isFetchingNextPage: false,
-  isLoading: false,
-  isPending: false,
-  isSuccess: false,
-  hasNextPage: false,
-  nextPageParam: undefined,
-});
-
-export const keepPreviousData = Symbol("keepPreviousData");
-
-const initialQueryState = <TData,>(): QueryState<TData> => ({
-  data: undefined,
-  error: undefined,
-  isError: false,
-  isFetching: false,
-  isLoading: false,
-  isPending: false,
-  isPlaceholderData: false,
-  isSuccess: false,
-});
 
 const internalSignalOptions = { equals: false, ownedWrite: true } as const;
 const internalWritableOptions = { ownedWrite: true } as const;
@@ -305,7 +250,6 @@ export function defineInfiniteQuery<TPage, TPageParam = unknown, TArgs extends u
     initialPageParam: config.initialPageParam,
     getNextPageParam: config.getNextPageParam,
     enabled: config.enabled,
-    placeholderData: config.placeholderData,
   })) as InfiniteQueryFactory<TPage, TPageParam, TArgs>;
 
   factory.prefix = config.prefix;
@@ -328,15 +272,38 @@ export function defineQuery<TData, TArgs extends unknown[] = []>(
   return factory;
 }
 
+const disabledQueryPromise = <TData,>() => new Promise<TData>(() => {});
+
+async function fetchQueryWithRetry<TData>(
+  client: QueryClient,
+  query: QueryOptions<TData>,
+): Promise<TData> {
+  const resolvedQuery = client.withQueryDefaults(query);
+  let failureCount = 0;
+
+  while (true) {
+    try {
+      return await client.fetchQuery(resolvedQuery);
+    } catch (error) {
+      failureCount += 1;
+      if (!shouldRetry(resolvedQuery.retry, failureCount, error)) throw error;
+    }
+  }
+}
+
 export function createInfiniteQuery<TPage, TPageParam = unknown>(
   options: () => InfiniteQueryOptions<TPage, TPageParam>,
 ): InfiniteQueryResult<TPage, TPageParam> {
-  const [state, setState] = createSignal(
-    initialInfiniteState<TPage, TPageParam>(),
-    internalSignalOptions,
-  );
+  const [refresh, setRefresh] = createSignal(0, internalWritableOptions);
+  const [latestData, setLatestData] = createSignal<InfiniteData<TPage, TPageParam>>();
+  const [pending, setPending] = createSignal(false, internalWritableOptions);
+  const [fetchingNextPage, setFetchingNextPage] = createSignal(false, internalWritableOptions);
+  const [hasNextPage, setHasNextPage] = createSignal(false, internalWritableOptions);
+  const [nextPageParam, setNextPageParam] = createSignal<TPageParam>();
   let activeKey: string | undefined;
-  let requestId = 0;
+  let initialPromise: Promise<InfiniteData<TPage, TPageParam>> | undefined;
+  let initialRequestId = 0;
+  let nextPageRequestId = 0;
 
   const computeNextPageParam = (
     nextOptions: InfiniteQueryOptions<TPage, TPageParam>,
@@ -352,120 +319,127 @@ export function createInfiniteQuery<TPage, TPageParam = unknown>(
     return nextOptions.getNextPageParam(lastPage, data.pages, lastPageParam);
   };
 
-  const fetchPage = async (
-    mode: "initial" | "next",
+  const loadInitialPage = (
     pageParam: TPageParam,
-    nextOptions = options(),
-    previous = state(),
-  ) => {
-    if (!isEnabled(nextOptions.enabled)) return;
+    nextOptions: InfiniteQueryOptions<TPage, TPageParam>,
+  ): Promise<InfiniteData<TPage, TPageParam>> => {
+    const currentRequestId = ++initialRequestId;
+    const requestKey = stableQueryKey(nextOptions.queryKey);
+    setPending(true);
+    setFetchingNextPage(false);
 
-    const currentRequestId = ++requestId;
-    const previousData = mode === "next" ? previous.data : undefined;
+    const promise = Promise.resolve()
+      .then(() =>
+        nextOptions.queryFn({
+          pageParam,
+          queryKey: nextOptions.queryKey,
+        }),
+      )
+      .then((page) => {
+        if (currentRequestId !== initialRequestId || requestKey !== activeKey) {
+          return latestData() ?? { pages: [], pageParams: [] };
+        }
 
-    setState({
-      ...previous,
-      data: previousData,
-      error: undefined,
-      isError: false,
-      isFetching: true,
-      isFetchingNextPage: mode === "next",
-      isLoading: mode === "initial" && !previousData,
-      isPending: true,
-    });
+        const data = { pages: [page], pageParams: [pageParam] };
+        const nextParam = computeNextPageParam(nextOptions, data);
+        setLatestData(data);
+        setHasNextPage(nextParam !== undefined);
+        setNextPageParam(() => nextParam);
+        return data;
+      })
+      .finally(() => {
+        if (currentRequestId === initialRequestId && requestKey === activeKey) {
+          setPending(false);
+        }
+      });
+
+    initialPromise = promise;
+    return promise;
+  };
+
+  const sourceData = createMemo<InfiniteData<TPage, TPageParam>>(() => {
+    refresh();
+    const nextOptions = options();
+    activeKey = stableQueryKey(nextOptions.queryKey);
+
+    if (!isEnabled(nextOptions.enabled)) {
+      setPending(false);
+      const current = latestData();
+      if (current) {
+        initialPromise = Promise.resolve(current);
+        return current;
+      }
+
+      const promise = disabledQueryPromise<InfiniteData<TPage, TPageParam>>();
+      initialPromise = promise;
+      return promise;
+    }
+
+    return loadInitialPage(nextOptions.initialPageParam, nextOptions);
+  });
+
+  const data = () => {
+    const source = sourceData();
+    return latestData() ?? source;
+  };
+
+  const fetchNextPage = async () => {
+    const current = latestData();
+    const pageParam = nextPageParam();
+    if (!current || !hasNextPage() || pageParam === undefined || pending() || fetchingNextPage())
+      return;
+
+    const nextOptions = options();
+    const requestKey = stableQueryKey(nextOptions.queryKey);
+    if (requestKey !== activeKey || !isEnabled(nextOptions.enabled)) return;
+
+    const currentRequestId = ++nextPageRequestId;
+    setFetchingNextPage(true);
 
     try {
       const page = await nextOptions.queryFn({
         pageParam,
         queryKey: nextOptions.queryKey,
       });
-      if (currentRequestId !== requestId) return;
+      if (currentRequestId !== nextPageRequestId || requestKey !== activeKey) return;
 
-      const pages = mode === "next" && previousData ? [...previousData.pages, page] : [page];
-      const pageParams =
-        mode === "next" && previousData ? [...previousData.pageParams, pageParam] : [pageParam];
+      const currentData = latestData();
+      if (!currentData) return;
+
+      const pages = [...currentData.pages, page];
+      const pageParams = [...currentData.pageParams, pageParam];
       const data = { pages, pageParams };
       const nextPageParam = computeNextPageParam(nextOptions, data);
-
-      setState({
-        data,
-        error: undefined,
-        isError: false,
-        isFetching: false,
-        isFetchingNextPage: false,
-        isLoading: false,
-        isPending: false,
-        isSuccess: true,
-        hasNextPage: nextPageParam !== undefined,
-        nextPageParam,
-      });
-    } catch (error) {
-      if (currentRequestId !== requestId) return;
-      setState({
-        ...state(),
-        error,
-        isError: true,
-        isFetching: false,
-        isFetchingNextPage: false,
-        isLoading: false,
-        isPending: false,
-        isSuccess: false,
-        hasNextPage: false,
-        nextPageParam: undefined,
-      });
+      setLatestData(data);
+      setHasNextPage(nextPageParam !== undefined);
+      setNextPageParam(() => nextPageParam);
+    } finally {
+      if (currentRequestId === nextPageRequestId && requestKey === activeKey) {
+        setFetchingNextPage(false);
+      }
     }
   };
 
   const refetch = async () => {
-    const nextOptions = options();
-    activeKey = stableQueryKey(nextOptions.queryKey);
-    await fetchPage("initial", nextOptions.initialPageParam, nextOptions);
+    setRefresh((value) => value + 1);
+    flush();
+    try {
+      sourceData();
+    } catch {
+      // Initial reads suspend; the active promise is awaited below.
+    }
+    return initialPromise ?? resolve(data);
   };
 
-  const fetchNextPage = async () => {
-    const current = state();
-    if (!current.hasNextPage || current.nextPageParam === undefined || current.isFetching) return;
-    await fetchPage("next", current.nextPageParam);
+  return {
+    data,
+    latest: latestData,
+    pending,
+    fetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
   };
-
-  createEffect(
-    () => {
-      const nextOptions = options();
-      return {
-        enabled: isEnabled(nextOptions.enabled),
-        key: stableQueryKey(nextOptions.queryKey),
-        options: nextOptions,
-      };
-    },
-    ({ enabled, key, options }) => {
-      if (!enabled) return;
-      if (key === activeKey) return;
-
-      activeKey = key;
-      const previous = initialInfiniteState<TPage, TPageParam>();
-      setState(previous);
-      void fetchPage("initial", options.initialPageParam, options, previous);
-    },
-  );
-
-  return resultProxy<InfiniteQueryResult<TPage, TPageParam>>(() => {
-    const current = state();
-    return {
-      data: current.data,
-      error: current.error,
-      isError: current.isError,
-      isFetching: current.isFetching,
-      isFetchingNextPage: current.isFetchingNextPage,
-      isLoading: current.isLoading,
-      isPending: current.isPending,
-      isSuccess: current.isSuccess,
-      hasNextPage: current.hasNextPage,
-      fetchNextPage,
-      refetch,
-      peek: () => current.data,
-      latest: () => current.data ?? { pages: [], pageParams: [] },
-    };
-  });
 }
 
 export const useInfiniteQuery = createInfiniteQuery;
@@ -614,178 +588,132 @@ export function useQueryClient(queryClient?: QueryClient) {
 
 export function useQuery<TData>(options: () => QueryOptions<TData>): UseQueryResult<TData> {
   const client = useQueryClient();
-  const [state, setState] = createSignal<QueryState<TData>>(
-    initialQueryState<TData>(),
+  const [refresh, setRefresh] = createSignal(0, internalWritableOptions);
+  const [latestData, setLatestData] = createSignal<TData | undefined>(
+    undefined,
     internalSignalOptions,
   );
-  let activeKey: string | undefined;
+  const [pending, setPending] = createSignal(false, internalWritableOptions);
   let activeQueryKey: QueryKey | undefined;
   let requestId = 0;
+  let activePromise: Promise<TData> | undefined;
 
-  const fetch = async (
-    nextOptions = options(),
-    mode: "initial" | "refetch" = "initial",
-    previous = state(),
-  ) => {
-    const resolvedOptions = client.withQueryDefaults(nextOptions);
-    if (!isEnabled(resolvedOptions.enabled)) {
-      setState({
-        ...previous,
-        isFetching: false,
-        isLoading: false,
-        isPending: false,
-      });
-      return;
+  const data = createMemo<TData>(() => {
+    refresh();
+    const nextOptions = options();
+    activeQueryKey = nextOptions.queryKey;
+
+    if (!isEnabled(nextOptions.enabled)) {
+      setPending(false);
+      const current = latestData();
+      if (current !== undefined) {
+        activePromise = Promise.resolve(current);
+        return current;
+      }
+
+      const promise = disabledQueryPromise<TData>();
+      activePromise = promise;
+      return promise;
     }
 
     const currentRequestId = ++requestId;
-    const hasPreviousData = previous.data !== undefined;
-    let failureCount = 0;
-
-    setState({
-      ...previous,
-      error: undefined,
-      isError: false,
-      isFetching: true,
-      isLoading: mode === "initial" && !hasPreviousData,
-      isPending: mode === "initial" && !hasPreviousData,
-    });
-
-    while (true) {
-      try {
-        const data = await client.fetchQuery(resolvedOptions);
-        if (currentRequestId !== requestId) return;
-        setState({
-          data,
-          error: undefined,
-          isError: false,
-          isFetching: false,
-          isLoading: false,
-          isPending: false,
-          isPlaceholderData: false,
-          isSuccess: true,
-        });
-        return;
-      } catch (error) {
-        failureCount += 1;
-        if (!shouldRetry(resolvedOptions.retry, failureCount, error)) {
-          if (currentRequestId !== requestId) return;
-          const nextError = error instanceof Error ? error : new Error(String(error));
-          setState({
-            ...state(),
-            error: nextError,
-            isError: true,
-            isFetching: false,
-            isLoading: false,
-            isPending: false,
-            isPlaceholderData: false,
-            isSuccess: false,
-          });
-          return;
+    setPending(true);
+    const promise = fetchQueryWithRetry(client, nextOptions)
+      .then((nextData) => {
+        if (currentRequestId === requestId) {
+          setLatestData(() => nextData);
         }
-      }
-    }
-  };
+        return nextData;
+      })
+      .finally(() => {
+        if (currentRequestId === requestId) setPending(false);
+      });
+
+    activePromise = promise;
+    return promise;
+  });
 
   const refetch = async () => {
     const nextOptions = options();
-    activeKey = stableQueryKey(nextOptions.queryKey);
     activeQueryKey = nextOptions.queryKey;
     client.removeQueries(nextOptions.queryKey);
-    await fetch(nextOptions, "refetch");
+    setRefresh((value) => value + 1);
+    flush();
+    try {
+      data();
+    } catch {
+      // Initial reads suspend; the active promise is awaited below.
+    }
+    return activePromise ?? resolve(data);
   };
-
-  createEffect(
-    () => {
-      const nextOptions = options();
-      return {
-        enabled: isEnabled(nextOptions.enabled),
-        key: stableQueryKey(nextOptions.queryKey),
-        options: nextOptions,
-      };
-    },
-    ({ enabled, key, options }) => {
-      if (!enabled) {
-        activeKey = key;
-        activeQueryKey = options.queryKey;
-        setState({
-          ...state(),
-          isFetching: false,
-          isLoading: false,
-          isPending: false,
-        });
-        return;
-      }
-      if (key === activeKey) return;
-
-      const previous = state();
-      activeKey = key;
-      activeQueryKey = options.queryKey;
-
-      const placeholder =
-        options.placeholderData === keepPreviousData
-          ? previous.data
-          : typeof options.placeholderData === "function"
-            ? (options.placeholderData as () => TData | undefined)()
-            : options.placeholderData;
-
-      const nextState =
-        placeholder !== undefined
-          ? {
-              ...initialQueryState<TData>(),
-              data: placeholder as TData,
-              isFetching: true,
-              isPlaceholderData: true,
-              isSuccess: true,
-            }
-          : initialQueryState<TData>();
-
-      setState(nextState);
-      void fetch(options, "initial", nextState);
-    },
-  );
 
   const unsubscribe = client.subscribe((prefix) => {
     if (activeQueryKey && (!prefix || queryKeyStartsWith(activeQueryKey, prefix))) {
-      void fetch(options(), "refetch");
+      setRefresh((value) => value + 1);
     }
   });
   onCleanup(unsubscribe);
 
-  return resultProxy<UseQueryResult<TData>>(() => {
-    const current = state();
-    return {
-      data: current.data,
-      error: current.error,
-      isError: current.isError,
-      isFetching: current.isFetching,
-      isLoading: current.isLoading,
-      isPending: current.isPending,
-      isPlaceholderData: current.isPlaceholderData,
-      isSuccess: current.isSuccess,
-      refetch,
-      peek: () => current.data,
-      latest: () => current.data,
-    };
-  });
+  return {
+    data,
+    latest: latestData,
+    pending,
+    refetch,
+  };
 }
 
-export function createValueQuery<TData>(options: () => QueryOptions<TData>) {
+export function createValueQuery<TData>(options: () => QueryOptions<TData>): QueryResult<TData> {
   const client = useQueryClient();
   const [refresh, setRefresh] = createSignal(0, internalWritableOptions);
+  const [latestData, setLatestData] = createSignal<TData | undefined>(
+    undefined,
+    internalSignalOptions,
+  );
+  const [pending, setPending] = createSignal(false, internalWritableOptions);
+  let activePromise: Promise<TData> | undefined;
   const data = createMemo<TData>(() => {
     refresh();
-    return client.fetchQuery(options());
+    const nextOptions = options();
+
+    if (!isEnabled(nextOptions.enabled)) {
+      setPending(false);
+      const current = latestData();
+      if (current !== undefined) {
+        activePromise = Promise.resolve(current);
+        return current;
+      }
+
+      const promise = disabledQueryPromise<TData>();
+      activePromise = promise;
+      return promise;
+    }
+
+    setPending(true);
+    const promise = fetchQueryWithRetry(client, nextOptions)
+      .then((nextData) => {
+        setLatestData(() => nextData);
+        return nextData;
+      })
+      .finally(() => setPending(false));
+    activePromise = promise;
+    return promise;
   });
 
   return {
-    get data() {
-      return data();
-    },
-    refetch() {
+    data,
+    latest: latestData,
+    pending,
+    refetch: async () => {
       const query = options();
       void client.invalidateQueries(query.queryKey);
       setRefresh((value) => value + 1);
+      flush();
+      try {
+        data();
+      } catch {
+        // Initial reads suspend; the active promise is awaited below.
+      }
+      return activePromise ?? resolve(data);
     },
   };
 }

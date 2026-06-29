@@ -29,16 +29,16 @@ export interface QueryBoundaryProps<T> {
 /**
  * # QueryBoundary
  *
- * Handles loading, error, and empty states for query results.
- * Provides a clean way to compose data fetching UI without nested Show/Suspense.
+ * Handles loading, error, and empty states for already-resolved data.
+ *
+ * For suspending queries, prefer `Loading`/`Errored` around `query.data()`.
+ * Use this only with `query.latest()` or other non-suspending controller state.
  *
  * @example
  * ```tsx
  * <QueryBoundary
- *   data={query.data}
- *   isLoading={query.isLoading}
- *   isError={query.isError}
- *   error={query.error}
+ *   data={query.latest()}
+ *   isLoading={query.pending() && !query.latest()}
  *   emptyFallback={
  *     <EmptyState>
  *       <EmptyStateIcon><FileText /></EmptyStateIcon>

@@ -49,6 +49,7 @@ export interface ColumnDef<TData, TValue = unknown> {
 
 export interface TableController<TData> {
   data: Accessor<TData[]>;
+  latestData?: Accessor<TData[]>;
   isLoading: Accessor<boolean>;
   isFetchingMore: Accessor<boolean>;
   hasMore: Accessor<boolean>;

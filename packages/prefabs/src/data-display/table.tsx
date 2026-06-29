@@ -21,7 +21,7 @@ import type {
   TableController,
   TableRowContext,
 } from "@xgx/ui";
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { createMemo, createSignal, For, Loading, Show } from "solid-js";
 import type { UseTableReturn } from "./use-table.ts";
 
 export interface TableProps<TData> {
@@ -120,6 +120,7 @@ const Table = <TData,>(props: TableProps<TData>) => {
     props.getRowId?.(row) ?? (row as { id?: string }).id ?? String(index);
   const enableRowSelection = () => props.enableRowSelection ?? false;
   const enableSorting = () => props.enableSorting ?? false;
+  const latestData = () => props.table.latestData?.() ?? [];
 
   const loader = createIntersectionLoader({
     canLoad: () =>
@@ -138,7 +139,7 @@ const Table = <TData,>(props: TableProps<TData>) => {
         size: 40,
         enableSorting: false,
         header: () => {
-          const data = props.table.data();
+          const data = latestData();
           const allSelected =
             data.length > 0 && data.every((row) => props.table.isRowSelected(row));
           const someSelected = data.some((row) => props.table.isRowSelected(row));
@@ -217,9 +218,9 @@ const Table = <TData,>(props: TableProps<TData>) => {
     });
   });
 
-  const totalCount = () => props.table.totalCount?.() ?? props.table.data().length;
+  const totalCount = () => props.table.totalCount?.() ?? latestData().length;
   const showEndOfResults = () =>
-    !props.table.hasMore() && props.table.data().length > 0 && !props.table.isLoading();
+    !props.table.hasMore() && latestData().length > 0 && !props.table.isLoading();
 
   return (
     <div class={cn("flex min-h-0 w-full flex-1 flex-col", props.class)}>
@@ -247,48 +248,62 @@ const Table = <TData,>(props: TableProps<TData>) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <Show
-              when={!props.table.isLoading() && rows().length > 0}
+            <Loading
               fallback={
                 <TableRow class="border-none bg-transparent hover:bg-transparent">
                   <TableCell
                     colspan={Math.max(columns().length, 1)}
                     class="h-24 text-center text-xs text-muted-foreground"
                   >
-                    {props.table.isLoading() ? "Loading..." : "No results."}
+                    Loading...
                   </TableCell>
                 </TableRow>
               }
             >
-              <For each={rows()}>
-                {(row) => (
-                  <TableRow
-                    data-state={row.getIsSelected() ? "selected" : undefined}
-                    onClick={() => props.onRowClick?.(row.original)}
-                    class={props.onRowClick ? "cursor-pointer" : undefined}
-                  >
-                    <For each={columns()}>
-                      {(column) => {
-                        const context: CellContext<TData, unknown> = {
-                          row,
-                          column,
-                          getValue: () => getColumnValue(row.original, row.index, column.columnDef),
-                        };
-
-                        return (
-                          <TableCell
-                            class="whitespace-nowrap"
-                            style={getColumnStyles(column, columns())}
-                          >
-                            {renderCell(context)}
-                          </TableCell>
-                        );
-                      }}
-                    </For>
+              <Show
+                when={rows().length > 0}
+                fallback={
+                  <TableRow class="border-none bg-transparent hover:bg-transparent">
+                    <TableCell
+                      colspan={Math.max(columns().length, 1)}
+                      class="h-24 text-center text-xs text-muted-foreground"
+                    >
+                      No results.
+                    </TableCell>
                   </TableRow>
-                )}
-              </For>
-            </Show>
+                }
+              >
+                <For each={rows()}>
+                  {(row) => (
+                    <TableRow
+                      data-state={row.getIsSelected() ? "selected" : undefined}
+                      onClick={() => props.onRowClick?.(row.original)}
+                      class={props.onRowClick ? "cursor-pointer" : undefined}
+                    >
+                      <For each={columns()}>
+                        {(column) => {
+                          const context: CellContext<TData, unknown> = {
+                            row,
+                            column,
+                            getValue: () =>
+                              getColumnValue(row.original, row.index, column.columnDef),
+                          };
+
+                          return (
+                            <TableCell
+                              class="whitespace-nowrap"
+                              style={getColumnStyles(column, columns())}
+                            >
+                              {renderCell(context)}
+                            </TableCell>
+                          );
+                        }}
+                      </For>
+                    </TableRow>
+                  )}
+                </For>
+              </Show>
+            </Loading>
           </TableBody>
           <TableFooter class="bg-transparent">
             <TableRow class="border-none hover:bg-transparent">

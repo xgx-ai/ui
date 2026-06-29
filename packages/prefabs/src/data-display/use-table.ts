@@ -28,6 +28,7 @@ export interface UseTableParams<TData extends TableRowData, TParams = Record<str
 
 export interface UseTableReturn<TData> {
   data: Accessor<TData[]>;
+  latestData: Accessor<TData[]>;
   query: InfiniteQueryResult<
     {
       data: TData[];
@@ -104,31 +105,29 @@ export function useTable<
   );
 
   const data = createMemo(() => {
-    query.isFetchingNextPage;
-    query.hasNextPage;
-    return query.peek()?.pages.flatMap((page) => page.data) ?? [];
+    return query.data().pages.flatMap((page) => page.data);
+  });
+
+  const latestData = createMemo(() => {
+    return query.latest()?.pages.flatMap((page) => page.data) ?? [];
   });
 
   const count = createMemo(() => {
-    query.isFetchingNextPage;
-    query.hasNextPage;
-    const pages = query.peek()?.pages;
+    const pages = query.latest()?.pages;
     if (!pages || pages.length === 0) return undefined;
     const lastPage = pages[pages.length - 1];
     return lastPage.count;
   });
 
   const totalCount = createMemo(() => {
-    query.isFetchingNextPage;
-    query.hasNextPage;
-    const pages = query.peek()?.pages;
+    const pages = query.latest()?.pages;
     if (!pages || pages.length === 0) return undefined;
     const lastPage = pages[pages.length - 1];
     return lastPage.totalCount;
   });
 
   const loadMore = () => {
-    if (query.hasNextPage && !query.isFetchingNextPage) {
+    if (query.hasNextPage() && !query.fetchingNextPage()) {
       void query.fetchNextPage();
     }
   };
@@ -137,13 +136,9 @@ export function useTable<
     void query.refetch();
   };
 
-  const isLoading = createMemo(() => {
-    query.isFetchingNextPage;
-    query.hasNextPage;
-    return !query.peek();
-  });
-  const isFetchingMore = createMemo(() => query.isFetchingNextPage);
-  const hasMore = createMemo(() => query.hasNextPage);
+  const isLoading = createMemo(() => query.pending() && latestData().length === 0);
+  const isFetchingMore = createMemo(() => query.fetchingNextPage());
+  const hasMore = createMemo(() => query.hasNextPage());
 
   const [selected, setSelected] = createSignal<TData[]>([]);
   const [allSelected, setAllSelected] = createSignal<boolean>(false);
@@ -188,7 +183,7 @@ export function useTable<
 
   const selectedCount = createMemo(() => {
     if (allSelected()) {
-      const base = data().length;
+      const base = latestData().length;
       const excluded = excludedIds().length;
       return Math.min(5000, Math.max(0, base - excluded));
     }
@@ -197,6 +192,7 @@ export function useTable<
 
   return {
     data,
+    latestData,
     query,
     isLoading,
     isFetchingMore,

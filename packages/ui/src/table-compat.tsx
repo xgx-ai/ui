@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { createInfiniteQuery } from "../../query/src/index.tsx";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For, Loading, Show } from "solid-js";
 import type {
   CellContext,
   ColumnDef,
@@ -11,6 +11,7 @@ import type {
 
 export type UseTableReturn<TData> = {
   data: () => TData[];
+  latestData: () => TData[];
   hasMore: () => boolean;
   isFetchingMore: () => boolean;
   loadMore: () => void;
@@ -22,6 +23,7 @@ export type UseTableReturn<TData> = {
     };
     isFetching: boolean;
     isLoading: boolean;
+    pending: () => boolean;
   };
   totalCount: () => number;
 };
@@ -46,46 +48,46 @@ export function useTableInfinite<TData>(
     queryFn: ({ pageParam }) => params.queryFn({ limit, page: pageParam }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages, lastPageParam) => {
-      const loadedCount = allPages.reduce(
-        (count, page) => count + (page.data?.length ?? 0),
-        0,
-      );
+      const loadedCount = allPages.reduce((count, page) => count + (page.data?.length ?? 0), 0);
       const totalCount = lastPage.totalCount ?? lastPage.count ?? loadedCount;
       return loadedCount < totalCount ? lastPageParam + 1 : undefined;
     },
   }));
 
-  const rows = createMemo(
-    () => query.data?.pages.flatMap((page) => page.data ?? []) ?? [],
+  const rows = createMemo(() => query.data().pages.flatMap((page) => page.data ?? []));
+  const latestRows = createMemo(
+    () => query.latest()?.pages.flatMap((page) => page.data ?? []) ?? [],
   );
   const totalCount = createMemo(
     () =>
-      query.data?.pages.at(-1)?.totalCount ??
-      query.data?.pages.at(-1)?.count ??
-      rows().length,
+      query.latest()?.pages.at(-1)?.totalCount ??
+      query.latest()?.pages.at(-1)?.count ??
+      latestRows().length,
   );
 
   return {
     data: rows,
-    hasMore: createMemo(() => query.hasNextPage),
-    isFetchingMore: createMemo(() => query.isFetchingNextPage),
+    latestData: latestRows,
+    hasMore: createMemo(() => query.hasNextPage()),
+    isFetchingMore: createMemo(() => query.fetchingNextPage()),
     loadMore: () => {
-      if (query.hasNextPage) void query.fetchNextPage();
+      if (query.hasNextPage()) void query.fetchNextPage();
     },
     query: {
       get data() {
         return {
-          count: rows().length,
-          data: rows(),
+          count: latestRows().length,
+          data: latestRows(),
           totalCount: totalCount(),
         };
       },
       get isFetching() {
-        return query.isFetching;
+        return query.pending() || query.fetchingNextPage();
       },
       get isLoading() {
-        return query.isLoading;
+        return query.pending() && latestRows().length === 0;
       },
+      pending: query.pending,
     },
     totalCount,
   };
@@ -109,10 +111,7 @@ function getColumnId<TData>(column: ColumnDef<TData>, index: number) {
   return column.id ?? String(column.accessorKey ?? index);
 }
 
-function getColumn<TData>(
-  column: ColumnDef<TData>,
-  index: number,
-): TableColumn<TData> {
+function getColumn<TData>(column: ColumnDef<TData>, index: number): TableColumn<TData> {
   return {
     id: getColumnId(column, index),
     index,
@@ -146,11 +145,7 @@ function renderHeader<TData>(column: ColumnDef<TData>, index: number) {
   return column.header ?? column.id ?? String(column.accessorKey ?? "");
 }
 
-function getCellValue<TData>(
-  row: TData,
-  rowIndex: number,
-  column: ColumnDef<TData>,
-) {
+function getCellValue<TData>(row: TData, rowIndex: number, column: ColumnDef<TData>) {
   if (column.accessorFn) return column.accessorFn(row, rowIndex);
   if (!column.accessorKey) return undefined;
   return (row as Record<string, unknown>)[String(column.accessorKey)];
@@ -179,51 +174,51 @@ function renderCell<TData>(
 }
 
 export function TableInfinite<TData>(props: TableCompatProps<TData>) {
+  const rows = createMemo(() => props.table.data());
+  const latestRows = () => props.table.latestData();
+  const columnCount = () => Math.max(props.columns.length, 1);
+
   return (
     <div class="min-h-0 overflow-auto">
       <table class="w-full text-sm">
         <thead class="border-b bg-muted/40 text-left">
           <tr>
             <For each={props.columns}>
-              {(column, index) => (
-                <th class="px-4 py-2">{renderHeader(column, index())}</th>
-              )}
+              {(column, index) => <th class="px-4 py-2">{renderHeader(column, index())}</th>}
             </For>
           </tr>
         </thead>
         <tbody>
-          <For each={props.table.data()}>
-            {(row, rowIndex) => (
-              <tr
-                class="border-b hover:bg-muted/40"
-                onClick={() => props.onRowClick?.(row)}
-              >
-                <For each={props.columns}>
-                  {(column, columnIndex) => (
-                    <td class="px-4 py-3 align-middle">
-                      {renderCell(
-                        row,
-                        rowIndex(),
-                        column,
-                        columnIndex(),
-                        props.getRowId,
-                      )}
-                    </td>
-                  )}
-                </For>
+          <Loading
+            fallback={
+              <tr>
+                <td class="px-4 py-6 text-center text-muted-foreground" colspan={columnCount()}>
+                  Loading...
+                </td>
               </tr>
-            )}
-          </For>
-          <Show when={props.table.data().length === 0 && !props.table.query.isLoading}>
-            <tr>
-              <td
-                class="px-4 py-6 text-center text-muted-foreground"
-                colspan={props.columns.length}
-              >
-                No results
-              </td>
-            </tr>
-          </Show>
+            }
+          >
+            <For each={rows()}>
+              {(row, rowIndex) => (
+                <tr class="border-b hover:bg-muted/40" onClick={() => props.onRowClick?.(row)}>
+                  <For each={props.columns}>
+                    {(column, columnIndex) => (
+                      <td class="px-4 py-3 align-middle">
+                        {renderCell(row, rowIndex(), column, columnIndex(), props.getRowId)}
+                      </td>
+                    )}
+                  </For>
+                </tr>
+              )}
+            </For>
+            <Show when={latestRows().length === 0 && !props.table.query.isLoading}>
+              <tr>
+                <td class="px-4 py-6 text-center text-muted-foreground" colspan={columnCount()}>
+                  No results
+                </td>
+              </tr>
+            </Show>
+          </Loading>
         </tbody>
       </table>
     </div>

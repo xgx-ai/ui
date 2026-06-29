@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@xgx/ui";
 import { Settings } from "@xgx/ui/icons";
-import { createEffect, createMemo, createSignal, For, Show, snapshot } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Loading, Show, snapshot } from "solid-js";
 import { createStore } from "solid-js";
 import { createIntersectionLoader } from "@xgx/query";
 import type {
@@ -88,7 +88,7 @@ const TABLE_LOADING_BAR_STYLES = `
 
 type PendingQuerySource = {
   query?: {
-    readonly isPending?: boolean;
+    readonly pending?: () => boolean;
   };
 };
 
@@ -313,14 +313,14 @@ function getColumnStyles<TData>(
   };
 }
 
-function hasInfiniteQuery<TData>(
+function getLatestTableData<TData>(
   table: UseTableInfiniteReturn<TData, any, any> | TableController<TData>,
-): table is UseTableInfiniteReturn<TData, any, any> {
-  return "latestData" in table && typeof table.latestData === "function";
+): TData[] {
+  return table.latestData?.() ?? [];
 }
 
 function getQueryIsPending(table: object): boolean {
-  return (table as PendingQuerySource).query?.isPending ?? false;
+  return (table as PendingQuerySource).query?.pending?.() ?? false;
 }
 
 export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
@@ -364,7 +364,7 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
         size: 40,
         enableSorting: false,
         header: () => {
-          const currentData = props.table.data();
+          const currentData = getLatestTableData(props.table);
           const allSelected =
             currentData.length > 0 && currentData.every((row) => props.table.isRowSelected(row));
           const someSelected = currentData.some((row) => props.table.isRowSelected(row));
@@ -454,10 +454,7 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
 
   const rows = createMemo<TableRowContext<TData>[]>(() => {
     const sort = sorting();
-    const sourceData =
-      hasInfiniteQuery(props.table) && !props.table.query.peek()
-        ? props.table.latestData()
-        : props.table.data();
+    const sourceData = props.table.data();
     const data = sourceData.map((row, index) => ({
       id: rowId(row, index),
       index,
@@ -479,13 +476,15 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
     });
   });
 
-  const totalCount = () => props.table.totalCount?.() ?? props.table.data().length;
+  const totalCount = () => props.table.totalCount?.() ?? getLatestTableData(props.table).length;
   const selectedCount = () =>
     enableRowSelection()
-      ? props.table.data().filter((row) => props.table.isRowSelected(row)).length
+      ? getLatestTableData(props.table).filter((row) => props.table.isRowSelected(row)).length
       : 0;
   const showEndOfResults = () =>
-    !props.table.hasMore() && props.table.data().length > 0 && !props.table.isLoading();
+    !props.table.hasMore() &&
+    getLatestTableData(props.table).length > 0 &&
+    !props.table.isLoading();
   const showLoadingBar = () =>
     props.table.isLoading() || props.table.isFetchingMore() || getQueryIsPending(props.table);
 
@@ -569,8 +568,7 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
             </Show>
           </TableHeader>
           <TableBody>
-            <Show
-              when={!props.table.isLoading()}
+            <Loading
               fallback={
                 <TableInfiniteSkeletonRows
                   columnCount={visibleColumns().length}
@@ -624,7 +622,7 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
                   )}
                 </For>
               </Show>
-            </Show>
+            </Loading>
           </TableBody>
           <TableFooter class="bg-transparent">
             <TableRow class="border-none cursor-default hover:bg-transparent">
