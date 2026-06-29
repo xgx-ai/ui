@@ -209,6 +209,9 @@ const initialQueryState = <TData,>(): QueryState<TData> => ({
   isSuccess: false,
 });
 
+const internalSignalOptions = { equals: false, ownedWrite: true } as const;
+const internalWritableOptions = { ownedWrite: true } as const;
+
 export function queryKey(...parts: unknown[]): QueryKey {
   return parts;
 }
@@ -298,7 +301,7 @@ function resultProxy<TResult extends object>(read: () => TResult): TResult {
 export function defineInfiniteQuery<TPage, TPageParam = unknown, TArgs extends unknown[] = []>(
   config: DefineInfiniteQueryOptions<TPage, TPageParam, TArgs>,
 ): InfiniteQueryFactory<TPage, TPageParam, TArgs> {
-  const [refresh, setRefresh] = createSignal(0);
+  const [refresh, setRefresh] = createSignal(0, internalWritableOptions);
   const factory = ((...args: TArgs) => ({
     queryKey: refreshableKey(config.key(...args), refresh()),
     queryFn: (context: { pageParam: TPageParam; queryKey: QueryKey }) =>
@@ -317,7 +320,7 @@ export function defineInfiniteQuery<TPage, TPageParam = unknown, TArgs extends u
 export function defineQuery<TData, TArgs extends unknown[] = []>(
   config: DefineQueryOptions<TData, TArgs>,
 ): ValueQueryFactory<TData, TArgs> {
-  const [refresh, setRefresh] = createSignal(0);
+  const [refresh, setRefresh] = createSignal(0, internalWritableOptions);
   const factory = ((...args: TArgs) => ({
     queryKey: refreshableKey(config.key(...args), refresh()),
     queryFn: (context: QueryContext) => config.queryFn(context, ...args),
@@ -332,9 +335,10 @@ export function defineQuery<TData, TArgs extends unknown[] = []>(
 export function createInfiniteQuery<TPage, TPageParam = unknown>(
   options: () => InfiniteQueryOptions<TPage, TPageParam>,
 ): InfiniteQueryResult<TPage, TPageParam> {
-  const [state, setState] = createSignal(initialInfiniteState<TPage, TPageParam>(), {
-    equals: false,
-  });
+  const [state, setState] = createSignal(
+    initialInfiniteState<TPage, TPageParam>(),
+    internalSignalOptions,
+  );
   let activeKey: string | undefined;
   let requestId = 0;
 
@@ -614,9 +618,10 @@ export function useQueryClient(queryClient?: QueryClient) {
 
 export function useQuery<TData>(options: () => QueryOptions<TData>): UseQueryResult<TData> {
   const client = useQueryClient();
-  const [state, setState] = createSignal<QueryState<TData>>(initialQueryState<TData>(), {
-    equals: false,
-  });
+  const [state, setState] = createSignal<QueryState<TData>>(
+    initialQueryState<TData>(),
+    internalSignalOptions,
+  );
   let activeKey: string | undefined;
   let activeQueryKey: QueryKey | undefined;
   let requestId = 0;
@@ -776,9 +781,7 @@ export function createValueQuery<TData>(options: () => QueryOptions<TData>) {
   const client = useQueryClient();
   const [state, setState] = createSignal<ValueQueryState<TData>>(
     { status: "pending" },
-    {
-      equals: false,
-    },
+    internalSignalOptions,
   );
   let requestId = 0;
 
@@ -832,7 +835,7 @@ export function createMutation<TData, TVariables>(
       isPending: false,
       isSuccess: false,
     },
-    { equals: false },
+    internalSignalOptions,
   );
 
   const mutateAsync = async (variables?: TVariables) => {
@@ -935,7 +938,7 @@ export interface IntersectionLoaderOptions {
 }
 
 export function createIntersectionLoader(options: IntersectionLoaderOptions) {
-  const [element, setElement] = createSignal<HTMLElement>();
+  const [element, setElement] = createSignal<HTMLElement | null>(null, internalWritableOptions);
   let timeout: ReturnType<typeof setTimeout> | undefined;
 
   createEffect(
