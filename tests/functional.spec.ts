@@ -47,6 +47,11 @@ test("deferred select shows fallback, loads options, and commits selection", asy
   ).toBeVisible();
   await page.getByRole("option", { name: /Risk review/ }).click();
   await expect(page.getByTestId("async-select-trigger")).toContainText("Risk review");
+
+  await page.getByTestId("async-select-trigger").click();
+  await expect(page.getByRole("option", { name: /Operations review/ })).toBeVisible();
+  await expect(page.getByRole("option", { name: /Risk review/ })).toBeVisible();
+  await expect(page.getByRole("option", { name: /Legal review/ })).toBeVisible();
 });
 
 test("schema form validates generated fields and uses real controls", async ({ page }) => {

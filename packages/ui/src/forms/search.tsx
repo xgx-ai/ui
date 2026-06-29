@@ -156,6 +156,7 @@ const Search = <T,>(props: SearchRootProps<T>) => {
     "value",
   ]);
   const [inputValue, setInputValueSignal] = createSignal("");
+  const [filterValue, setFilterValueSignal] = createSignal("");
   const [highlightedIndex, setHighlightedIndex] = createSignal(-1);
   const [uncontrolledOpen, setOpenSignal] = createSignal(false);
   const [rootRef, setRootRef] = createSignal<HTMLDivElement>();
@@ -172,11 +173,11 @@ const Search = <T,>(props: SearchRootProps<T>) => {
       id: `${listboxId}-${index}`,
     }));
   const filteredOptions = () => {
-    const query = inputValue().trim().toLowerCase();
+    const query = filterValue().trim().toLowerCase();
     if (!query) return options();
     return options().filter((option) =>
       props.defaultFilter
-        ? props.defaultFilter(option.rawValue as T, inputValue())
+        ? props.defaultFilter(option.rawValue as T, filterValue())
         : option.textValue.toLowerCase().includes(query),
     );
   };
@@ -213,6 +214,7 @@ const Search = <T,>(props: SearchRootProps<T>) => {
   const highlightedOptionId = () => highlightedOption()?.id;
   const setInputValue = (next: string) => {
     setInputValueSignal(next);
+    setFilterValueSignal(next);
     local.onInputChange?.(next);
     setOpen(true);
   };
@@ -229,7 +231,11 @@ const Search = <T,>(props: SearchRootProps<T>) => {
     }
     local.onChange?.(next);
   };
-  const clear = () => commitValue(local.multiple ? [] : null);
+  const clear = () => {
+    commitValue(local.multiple ? [] : null);
+    setInputValueSignal("");
+    setFilterValueSignal("");
+  };
   const remove = (item: unknown) => {
     const current = selectedValue();
     if (!Array.isArray(current)) {
@@ -252,6 +258,7 @@ const Search = <T,>(props: SearchRootProps<T>) => {
     }
     commitValue(item.rawValue as T);
     setInputValueSignal(item.textValue);
+    setFilterValueSignal("");
     setOpen(false);
   };
   const selectHighlighted = () => {
@@ -301,44 +308,57 @@ const Search = <T,>(props: SearchRootProps<T>) => {
   const floatingAnchor = () => anchorRef() ?? rootRef();
   const disabled = () => Boolean(local.disabled);
 
-  createEffect(open, (isOpen) => {
-    if (!isOpen) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (!containsNode(rootRef(), target) && !containsNode(contentRef(), target)) {
-        setOpen(false);
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  });
-
   createEffect(
     () => ({
-      length: filteredOptions().length,
-      open: open(),
+      content: contentRef(),
+      isOpen: open(),
+      root: rootRef(),
     }),
+    (state) => {
+      if (!state.isOpen) return;
+
+      const onPointerDown = (event: PointerEvent) => {
+        const target = event.target as Node;
+        if (!containsNode(state.root, target) && !containsNode(state.content, target)) {
+          setOpen(false);
+        }
+      };
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") setOpen(false);
+      };
+      document.addEventListener("pointerdown", onPointerDown);
+      document.addEventListener("keydown", onKeyDown);
+      return () => {
+        document.removeEventListener("pointerdown", onPointerDown);
+        document.removeEventListener("keydown", onKeyDown);
+      };
+    },
+  );
+
+  createEffect(
+    () => {
+      const items = filteredOptions();
+      return {
+        firstEnabledIndex: items.findIndex((option) => !option.disabled),
+        highlightedIndex: highlightedIndex(),
+        items,
+        open: open(),
+      };
+    },
     (state) => {
       if (!state.open) {
         setHighlightedIndex(-1);
         return;
       }
 
-      if (state.length === 0) {
+      if (state.items.length === 0) {
         setHighlightedIndex(-1);
         return;
       }
 
-      const current = highlightedIndex();
-      if (current < 0 || current >= state.length || filteredOptions()[current]?.disabled) {
-        setHighlightedIndex(firstEnabledIndex());
+      const current = state.highlightedIndex;
+      if (current < 0 || current >= state.items.length || state.items[current]?.disabled) {
+        setHighlightedIndex(state.firstEnabledIndex);
       }
     },
   );
@@ -610,6 +630,7 @@ const SearchNoResult = (props: SearchNoResultProps) => {
   );
 };
 
+export type { SearchIndicatorProps, SearchItemProps, SearchNoResultProps, SearchRootProps };
 export {
   Search,
   SearchContent,
@@ -625,4 +646,3 @@ export {
   SearchPortal,
   SearchSection,
 };
-export type { SearchIndicatorProps, SearchItemProps, SearchNoResultProps, SearchRootProps };
