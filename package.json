@@ -17,6 +17,7 @@
     "./icons": "./packages/ui/src/icons.index.ts",
     "./query": "./packages/query/src/index.tsx",
     "./schema-form": "./packages/ui/src/forms/schema-form/index.ts",
+    "./sortablejs": "./packages/ui/src/dnd/sortablejs/index.ts",
     "./bun-plugin-solid": "./packages/ui/src/bun-plugins/solid.ts",
     "./bun-plugin-tanstack-router": "./packages/ui/src/bun-plugins/tanstack-router.ts"
   },
@@ -77,6 +78,7 @@
     "date-fns": "^4.1.0",
     "lucide-solid": "^0.563.0",
     "markdown-it": "^14.1.0",
+    "sortablejs": "^1.15",
     "tailwind-merge": "^3.4.0",
     "vega": "^6.2.0",
     "vega-embed": "^7.1.0",
@@ -129,6 +131,7 @@
     "@solidjs/web": "2.0.0-beta.14",
     "@types/bun": "latest",
     "@types/markdown-it": "^14.1.2",
+    "@types/sortablejs": "^1.15",
     "better-auth": "^1.5.5",
     "bun-plugin-tailwind": "^0.1.2",
     "solid-js": "2.0.0-beta.14",

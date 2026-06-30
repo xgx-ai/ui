@@ -42,6 +42,7 @@ import {
   ControlsPanel,
   CoveragePanel,
   DataPanel,
+  DragDropPanel,
   FeedbackPanel,
   FormsPanel,
   FoundationsPanel,
@@ -351,6 +352,8 @@ export default function App() {
             setDroppedFiles={setDroppedFiles}
           />
         );
+      case "dnd":
+        return <DragDropPanel />;
       case "coverage":
         return <CoveragePanel />;
       case "profile":

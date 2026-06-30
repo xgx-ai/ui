@@ -24,6 +24,7 @@
     "./icons": "./src/icons.index.ts",
     "./query": "../query/src/index.tsx",
     "./schema-form": "./src/forms/schema-form/index.ts",
+    "./sortablejs": "./src/dnd/sortablejs/index.ts",
     "./bun-plugin-solid": "./src/bun-plugins/solid.ts",
     "./bun-plugin-tanstack-router": "./src/bun-plugins/tanstack-router.ts"
   },
@@ -58,6 +59,7 @@
     "date-fns": "^4.1.0",
     "lucide-solid": "^0.563.0",
     "markdown-it": "^14.1.0",
+    "sortablejs": "^1.15",
     "tailwind-merge": "^3.4.0",
     "vega": "^6.2.0",
     "vega-embed": "^7.1.0",
@@ -75,5 +77,8 @@
     "better-auth": {
       "optional": true
     }
+  },
+  "devDependencies": {
+    "@types/sortablejs": "^1.15"
   }
 }

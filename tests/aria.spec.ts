@@ -20,6 +20,7 @@ test("sidebar navigation exposes stable names and current page", async ({ page }
         - button "Feedback"
         - button "Async Runtime"
         - button "Advanced"
+        - button "Drag And Drop"
         - button "Coverage"
     `);
 

@@ -110,6 +110,7 @@ import {
   toast,
   useResponseDialog,
 } from "@xgx/ui";
+import { Sortable, SortableHandle } from "@xgx/ui/sortablejs";
 import {
   Activity,
   AlertTriangle,
@@ -131,6 +132,7 @@ import {
   FileText,
   Filter,
   FolderOpen,
+  GripVertical,
   Info,
   KeyRound,
   Layers,
@@ -164,10 +166,13 @@ import {
   createMemo,
   createOptimistic,
   createSignal,
+  createStore,
   flush,
   For,
   onSettled,
+  reconcile,
   Show,
+  snapshot,
 } from "solid-js";
 import { z } from "zod";
 
@@ -3079,6 +3084,46 @@ export function FeedbackPanel(props: { progress: number; setProgress: (value: nu
   );
 }
 
+type SortableDemoField = {
+  id: string;
+  label: string;
+  detail: string;
+};
+
+const reviewStepItems: SortableDemoField[] = [
+  { id: "intake", label: "Intake", detail: "Capture request context" },
+  { id: "evidence", label: "Evidence", detail: "Attach supporting files" },
+  { id: "risk", label: "Risk review", detail: "Check control impact" },
+  { id: "approval", label: "Approval", detail: "Record final decision" },
+];
+
+const storeFieldItems: SortableDemoField[] = [
+  { id: "title", label: "Title", detail: "Short text" },
+  { id: "owner", label: "Owner", detail: "People selector" },
+  { id: "due-date", label: "Due date", detail: "Date field" },
+];
+
+const availableFieldItems: SortableDemoField[] = [
+  { id: "priority", label: "Priority", detail: "Single select" },
+  { id: "attachments", label: "Attachments", detail: "File upload" },
+  { id: "notes", label: "Notes", detail: "Long text" },
+];
+
+const selectedFieldItems: SortableDemoField[] = [
+  { id: "summary", label: "Summary", detail: "Required text" },
+  { id: "assignee", label: "Assignee", detail: "People selector" },
+];
+
+function sortableDemoRowClass(isDragging: boolean, isGhost: boolean) {
+  return [
+    "flex min-h-12 items-center gap-3 rounded-md border border-border-subtle bg-surface px-3 py-2 text-sm shadow-xs transition",
+    isDragging ? "opacity-55" : "",
+    isGhost ? "border-primary bg-selected/10" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function AdvancedPanel(props: {
   richText: string;
   setRichText: (value: string) => void;
@@ -3101,7 +3146,6 @@ export function AdvancedPanel(props: {
       isCompleted: true,
     },
   ];
-
   return (
     <div class="grid gap-4 xl:grid-cols-2">
       <Card>
@@ -3122,7 +3166,7 @@ export function AdvancedPanel(props: {
 
       <Card>
         <CardHeader>
-          <CardTitle>Rich Text And Drag/Drop</CardTitle>
+          <CardTitle>Rich Text And Upload</CardTitle>
           <CardDescription>Editing and upload surfaces for review workflows.</CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
@@ -3179,6 +3223,157 @@ export function AdvancedPanel(props: {
                 </DocumentPreviewParty>
               </div>
             </DocumentPreviewShell>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export function DragDropPanel() {
+  const [reviewSteps, setReviewSteps] = createSignal([...reviewStepItems]);
+  const [storeFields, setStoreFields] = createStore([...storeFieldItems]);
+  const [availableFields, setAvailableFields] = createSignal([...availableFieldItems]);
+  const [selectedFields, setSelectedFields] = createSignal([...selectedFieldItems]);
+  const [lastMove, setLastMove] = createSignal("No cross-list move yet");
+  const onCrossListMove = (event: {
+    item: SortableDemoField;
+    fromGroup?: string;
+    toGroup?: string;
+  }) =>
+    setLastMove(
+      `${event.item.label}: ${event.fromGroup ?? "source"} to ${event.toGroup ?? "target"}`,
+    );
+
+  return (
+    <div class="grid gap-4">
+      <Card data-testid="dnd-demo">
+        <CardHeader>
+          <CardTitle>Sortable Lists</CardTitle>
+          <CardDescription>Handle reorder, store-backed order, and shared groups.</CardDescription>
+        </CardHeader>
+        <CardContent class="grid gap-4 xl:grid-cols-[1fr_1fr_1.4fr]">
+          <div class="space-y-3">
+            <div>
+              <div class="text-sm font-medium text-foreground">Review steps</div>
+              <div class="text-xs text-muted-foreground">Handle-only drag</div>
+            </div>
+            <Sortable
+              items={reviewSteps()}
+              onChange={setReviewSteps}
+              getId={(item) => item.id}
+              as="ul"
+              itemAs="li"
+              class="space-y-2"
+              data-testid="dnd-review-list"
+            >
+              {(item, state) => (
+                <div class={sortableDemoRowClass(state.isDragging, state.isGhost)}>
+                  <SortableHandle class="inline-flex size-8 cursor-grab items-center justify-center rounded-md border border-border-subtle bg-background text-muted-foreground active:cursor-grabbing">
+                    <GripVertical class="size-4" />
+                  </SortableHandle>
+                  <div class="min-w-0">
+                    <div class="truncate font-medium text-foreground">{item.label}</div>
+                    <div class="truncate text-xs text-muted-foreground">{item.detail}</div>
+                  </div>
+                  <Badge class="ml-auto">{state.index + 1}</Badge>
+                </div>
+              )}
+            </Sortable>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <div class="text-sm font-medium text-foreground">Store fields</div>
+              <div class="text-xs text-muted-foreground">Whole-row drag</div>
+            </div>
+            <Sortable
+              items={storeFields}
+              onChange={(next) => setStoreFields(reconcile(snapshot(next), "id"))}
+              getId={(item) => item.id}
+              as="ul"
+              itemAs="li"
+              class="space-y-2"
+              data-testid="dnd-store-list"
+            >
+              {(item, state) => (
+                <div
+                  class={`${sortableDemoRowClass(
+                    state.isDragging,
+                    state.isGhost,
+                  )} cursor-grab active:cursor-grabbing`}
+                >
+                  <div class="flex size-8 items-center justify-center rounded-md bg-control-muted text-xs font-semibold text-control-muted-foreground">
+                    {state.index + 1}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="truncate font-medium text-foreground">{item.label}</div>
+                    <div class="truncate text-xs text-muted-foreground">{item.detail}</div>
+                  </div>
+                </div>
+              )}
+            </Sortable>
+          </div>
+
+          <div class="space-y-3">
+            <div class="flex items-end justify-between gap-3">
+              <div>
+                <div class="text-sm font-medium text-foreground">Builder groups</div>
+                <div class="text-xs text-muted-foreground" data-testid="dnd-last-move">
+                  {lastMove()}
+                </div>
+              </div>
+              <Badge variant="info">field-builder</Badge>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2">
+              <Sortable
+                items={availableFields()}
+                onChange={setAvailableFields}
+                onMove={onCrossListMove}
+                getId={(item) => item.id}
+                group="field-builder"
+                as="ul"
+                itemAs="li"
+                class="min-h-44 space-y-2 rounded-md border border-dashed border-border-subtle p-2"
+                data-testid="dnd-available-list"
+              >
+                {(item, state) => (
+                  <div class={sortableDemoRowClass(state.isDragging, state.isGhost)}>
+                    <SortableHandle class="inline-flex size-7 cursor-grab items-center justify-center rounded-md text-muted-foreground active:cursor-grabbing">
+                      <GripVertical class="size-4" />
+                    </SortableHandle>
+                    <div class="min-w-0">
+                      <div class="truncate font-medium text-foreground">{item.label}</div>
+                      <div class="truncate text-xs text-muted-foreground">{item.detail}</div>
+                    </div>
+                  </div>
+                )}
+              </Sortable>
+
+              <Sortable
+                items={selectedFields()}
+                onChange={setSelectedFields}
+                onMove={onCrossListMove}
+                getId={(item) => item.id}
+                group="field-builder"
+                as="ul"
+                itemAs="li"
+                class="min-h-44 space-y-2 rounded-md border border-dashed border-border-subtle p-2"
+                data-testid="dnd-selected-list"
+              >
+                {(item, state) => (
+                  <div class={sortableDemoRowClass(state.isDragging, state.isGhost)}>
+                    <SortableHandle class="inline-flex size-7 cursor-grab items-center justify-center rounded-md text-muted-foreground active:cursor-grabbing">
+                      <GripVertical class="size-4" />
+                    </SortableHandle>
+                    <div class="min-w-0">
+                      <div class="truncate font-medium text-foreground">{item.label}</div>
+                      <div class="truncate text-xs text-muted-foreground">{item.detail}</div>
+                    </div>
+                  </div>
+                )}
+              </Sortable>
+            </div>
           </div>
         </CardContent>
       </Card>

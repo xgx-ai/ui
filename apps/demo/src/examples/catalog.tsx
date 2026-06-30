@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   Columns3,
   Database,
+  GripVertical,
   Layers,
   LayoutDashboard,
   ListChecks,
@@ -36,6 +37,7 @@ export const primarySections = [
   { id: "feedback", label: "Feedback", icon: Bell },
   { id: "async", label: "Async Runtime", icon: RefreshCw },
   { id: "advanced", label: "Advanced", icon: Wand2 },
+  { id: "dnd", label: "Drag And Drop", icon: GripVertical },
   { id: "coverage", label: "Coverage", icon: Database },
 ] as const;
 
@@ -64,7 +66,8 @@ export const sectionDescriptions: Record<SectionId, string> = {
   overlays: "Dialogs, dropdown menus, toast actions, and elevated surfaces.",
   feedback: "Status, callouts, loading, empty states, and progress.",
   async: "Async portals, deferred options, optimistic actions, and fallbacks.",
-  advanced: "Calendar, document preview, rich text, file drop, and drag/drop.",
+  advanced: "Calendar, document preview, rich text, and file drop.",
+  dnd: "Sortable lists, handles, grouped movement, and store-backed order.",
   coverage: "Component coverage, workflow coverage, and remaining gaps.",
   profile: "Account presence, session activity, access scope, and personal settings.",
   settings: "Workspace preferences, notification routing, security, and data controls.",
