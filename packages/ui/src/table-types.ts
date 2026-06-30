@@ -1,4 +1,3 @@
-import type { JSX } from "@solidjs/web";
 import type { Accessor } from "solid-js";
 
 export type SortDirection = false | "asc" | "desc";
@@ -44,7 +43,7 @@ export interface ColumnDef<TData, TValue = unknown> {
   size?: number;
   enableSorting?: boolean;
   enableHiding?: boolean;
-  meta?: TableColumnMeta;
+  meta?: unknown;
 }
 
 export interface TableController<TData> {
