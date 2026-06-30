@@ -1,1 +1,1 @@
-export * from "lucide-solid";
+export * from "./icons/lucide.tsx";

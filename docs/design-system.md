@@ -45,9 +45,9 @@ Control tokens are independent from brand tokens:
 
 ## Icons
 
-- Use `lucide-solid` for shared UI and demo iconography.
+- Use `@xgx/ui/icons` for shared UI and demo iconography.
 - Do not use text placeholders inside icon buttons.
-- Do not hand-write inline SVG when a `lucide-solid` icon exists.
+- Do not hand-write inline SVG when an exported Lucide icon exists.
 - Icon-only controls must have an accessible name through `aria-label` or equivalent text.
 
 ## Layout And Density

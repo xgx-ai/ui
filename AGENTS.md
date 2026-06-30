@@ -1,8 +1,8 @@
 # Repository Instructions
 
 - Always give extremely concise responses.
-- Use `lucide-solid` for shared UI and demo iconography.
-- Do not use letter placeholders or hand-written inline SVG icons when a `lucide-solid` icon exists.
+- Use `@xgx/ui/icons` for shared UI and demo iconography.
+- Do not use letter placeholders or hand-written inline SVG icons when an exported Lucide icon exists.
 - Keep the demo Bun-native. Do not add Vite config or static mock previews.
 
 ## SolidJS v2 Rules

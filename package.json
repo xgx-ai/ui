@@ -76,7 +76,6 @@
     "chart.js": "^4.5.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "lucide-solid": "^0.563.0",
     "markdown-it": "^14.1.0",
     "sortablejs": "^1.15",
     "tailwind-merge": "^3.4.0",
@@ -134,6 +133,7 @@
     "@types/sortablejs": "^1.15",
     "better-auth": "^1.5.5",
     "bun-plugin-tailwind": "^0.1.2",
+    "lucide-solid": "^0.563.0",
     "solid-js": "2.0.0-beta.14",
     "tailwindcss": "^4.1.18",
     "zod": "^4.4.3"
