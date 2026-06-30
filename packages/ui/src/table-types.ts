@@ -39,8 +39,8 @@ export interface ColumnDef<TData, TValue = unknown> {
   id?: string;
   accessorKey?: Extract<keyof TData, string> | string;
   accessorFn?: (row: TData, index: number) => TValue;
-  header?: JSX.Element | ((context: HeaderContext<TData, TValue>) => JSX.Element);
-  cell?: JSX.Element | ((context: CellContext<TData, TValue>) => JSX.Element);
+  header?: unknown;
+  cell?: unknown;
   size?: number;
   enableSorting?: boolean;
   enableHiding?: boolean;

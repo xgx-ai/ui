@@ -129,6 +129,7 @@ const TextField = <T extends ValidComponent = "div">(props: TextFieldRootProps<T
 export type TextFieldInputProps<T extends ValidComponent = "input"> = ComponentProps<"input"> & {
   as?: T;
   class?: string | undefined;
+  maxLength?: number | string;
   readOnly?: boolean;
 };
 
@@ -139,6 +140,7 @@ const TextFieldInput = <T extends ValidComponent = "input">(props: TextFieldInpu
     "class",
     "disabled",
     "id",
+    "maxLength",
     "name",
     "onInput",
     "readOnly",
@@ -161,6 +163,7 @@ const TextFieldInput = <T extends ValidComponent = "input">(props: TextFieldInpu
       id={local.id ?? context?.inputId()}
       type={local.type ?? "text"}
       disabled={local.disabled ?? context?.disabled()}
+      maxlength={local.maxLength}
       name={local.name ?? context?.name()}
       readOnly={local.readOnly ?? context?.readOnly()}
       required={local.required ?? context?.required()}
