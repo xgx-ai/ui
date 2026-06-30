@@ -1,5 +1,5 @@
 .xy-flow {
-  --xy-resize-background-color-default: #3367d9;
+  --xy-resize-background-color-default: var(--color-focus, Highlight);
 }
 
 .xy-flow__resize-control {
@@ -30,7 +30,7 @@
 .xy-flow__resize-control.handle {
   width: 5px;
   height: 5px;
-  border: 1px solid #fff;
+  border: 1px solid var(--color-background, Canvas);
   border-radius: 1px;
   background-color: var(--xy-resize-background-color, var(--xy-resize-background-color-default));
   translate: -50% -50%;

@@ -53,16 +53,55 @@ export interface MoveEvent<T> {
 export type SortableChangeEvent<T> = ReorderEvent<T> | MoveEvent<T>;
 
 export type SortableProps<T> = Omit<ComponentProps<"div">, "children" | "onChange"> & {
+  /**
+   * Controlled item order.
+   *
+   * Signal arrays are supported when `onChange` preserves the existing item
+   * objects. `Sortable` renders with Solid's keyed `<For>`, so pure moves keep
+   * row instances attached to their item identities.
+   *
+   * For form builders, editors, and other nested mutable data, prefer a Solid
+   * store array and reconcile by id:
+   *
+   * ```tsx
+   * const [fields, setFields] = createStore(initialFields);
+   *
+   * <Sortable
+   *   items={fields}
+   *   getId={(field) => field.id}
+   *   onChange={(next) => setFields(reconcile(snapshot(next), "id"))}
+   * />
+   * ```
+   *
+   * `snapshot(next)` is intentional for store arrays: Sortable returns the
+   * current item objects, which may be store proxies, and reconciling proxies
+   * back into the same store can recurse.
+   */
   items: readonly T[];
+  /**
+   * Receives the next controlled order after a reorder or cross-list move.
+   *
+   * Keep item object identity stable where possible. For stores, use
+   * `reconcile(snapshot(next), key)` as shown on `items`.
+   */
   onChange?: (items: T[], event?: SortableChangeEvent<T>) => void;
+  /** Called for a move within the same Sortable list. */
   onReorder?: (event: ReorderEvent<T>) => void;
+  /** Called for a move between grouped Sortable lists. */
   onMove?: (event: MoveEvent<T>) => void;
+  /** Returns the stable key used for keyed Solid rendering and SortableJS ids. */
   getId?: (item: T) => string;
+  /** Shared group name or SortableJS group policy for cross-list movement. */
   group?: SortableGroup;
+  /** Disables SortableJS interactions while leaving the rendered list intact. */
   disabled?: boolean;
+  /** Container element. Defaults to `div`. */
   as?: ValidComponent;
+  /** Item wrapper element. Defaults to `div`. */
   itemAs?: ValidComponent;
+  /** Advanced SortableJS escape hatch. Merged last and not deeply reactive. */
   options?: Partial<SortableOptions>;
+  /** Render prop for each item and its drag state. */
   children: (item: T, state: SortableItemState) => JSX.Element;
 };
 
@@ -309,6 +348,10 @@ function SortableRenderedItem<T>(props: RenderedItemProps<T>) {
 
 /**
  * SortableJS-backed controlled sortable list.
+ *
+ * The primitive is state-agnostic: signals and stores both work. Use signal
+ * arrays for simple lists, and store arrays plus `reconcile(snapshot(next),
+ * key)` for field builders where nested object identity matters.
  *
  * Callback props are captured when SortableJS is initialised; keep callback identity stable.
  */

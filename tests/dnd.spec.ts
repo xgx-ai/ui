@@ -6,6 +6,19 @@ async function sortableIds(list: Locator) {
     .evaluateAll((items) => items.map((item) => item.getAttribute("data-sortable-id")));
 }
 
+async function renderTokensById(list: Locator) {
+  return list
+    .locator("[data-sortable-id]")
+    .evaluateAll((items) =>
+      Object.fromEntries(
+        items.map((item) => [
+          item.getAttribute("data-sortable-id"),
+          item.firstElementChild?.getAttribute("data-render-token"),
+        ]),
+      ),
+    );
+}
+
 function collectPageErrors(page: Page) {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -82,6 +95,36 @@ test("whole-row drag works when no handle ref is registered", async ({ page }) =
 
   await expect.poll(() => sortableIds(list)).toEqual(["owner", "title", "due-date"]);
   expect(pageErrors).toEqual([]);
+});
+
+test("signal and store lists preserve keyed For row instances when reordered", async ({ page }) => {
+  await page.goto("/#dnd");
+
+  const signalList = page.getByTestId("dnd-review-list");
+  const storeList = page.getByTestId("dnd-store-list");
+  await expect(signalList).toBeVisible();
+  await expect(storeList).toBeVisible();
+
+  const signalTokensBefore = await renderTokensById(signalList);
+  const storeTokensBefore = await renderTokensById(storeList);
+
+  await dragItem(
+    page,
+    signalList.locator('[data-sortable-id="intake"] [data-sortable-handle]'),
+    signalList.locator('[data-sortable-id="risk"]'),
+  );
+  await dragItem(
+    page,
+    storeList.locator('[data-sortable-id="title"]'),
+    storeList.locator('[data-sortable-id="due-date"]'),
+  );
+
+  await expect
+    .poll(() => sortableIds(signalList))
+    .toEqual(["evidence", "intake", "risk", "approval"]);
+  await expect.poll(() => sortableIds(storeList)).toEqual(["owner", "title", "due-date"]);
+  await expect.poll(() => renderTokensById(signalList)).toEqual(signalTokensBefore);
+  await expect.poll(() => renderTokensById(storeList)).toEqual(storeTokensBefore);
 });
 
 test("grouped lists move items across lists and emit move state", async ({ page }) => {

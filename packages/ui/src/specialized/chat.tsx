@@ -157,13 +157,146 @@ function renderInlineTokens(tokens: NonNullable<ReturnType<typeof md.parseInline
   return renderRange(0)[0];
 }
 
+const blockedHtmlTags = new Set([
+  "script",
+  "style",
+  "iframe",
+  "object",
+  "embed",
+  "link",
+  "meta",
+  "base",
+  "template",
+  "svg",
+  "math",
+]);
+
+function safeHref(href: string | null) {
+  if (!href) return undefined;
+  if (
+    href.startsWith("#") ||
+    href.startsWith("/") ||
+    href.startsWith("./") ||
+    href.startsWith("../")
+  ) {
+    return href;
+  }
+
+  try {
+    const url = new URL(href, globalThis.location?.href ?? "https://example.com");
+    return ["http:", "https:", "mailto:", "tel:"].includes(url.protocol) ? href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function safeClass(element: Element) {
+  return element.getAttribute("class") ?? undefined;
+}
+
+function renderHtmlChildren(nodes: Iterable<ChildNode>): JSX.Element[] {
+  return Array.from(nodes, renderHtmlNode).filter((node) => node != null);
+}
+
+function renderHtmlNode(node: ChildNode): JSX.Element {
+  if (node.nodeType === Node.TEXT_NODE) return renderTextWithColors(node.textContent ?? "");
+  if (node.nodeType !== Node.ELEMENT_NODE || !(node instanceof Element)) return null;
+
+  const tag = node.tagName.toLowerCase();
+  if (blockedHtmlTags.has(tag)) return null;
+
+  const children = renderHtmlChildren(node.childNodes);
+  const className = safeClass(node);
+
+  switch (tag) {
+    case "a":
+      return (
+        <a
+          class={className}
+          href={safeHref(node.getAttribute("href"))}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {children}
+        </a>
+      );
+    case "blockquote":
+      return <blockquote class={className}>{children}</blockquote>;
+    case "br":
+      return <br />;
+    case "code":
+      return <code class={className}>{children}</code>;
+    case "del":
+    case "s":
+      return <s class={className}>{children}</s>;
+    case "em":
+    case "i":
+      return <em class={className}>{children}</em>;
+    case "h1":
+      return <h1 class={className}>{children}</h1>;
+    case "h2":
+      return <h2 class={className}>{children}</h2>;
+    case "h3":
+      return <h3 class={className}>{children}</h3>;
+    case "h4":
+      return <h4 class={className}>{children}</h4>;
+    case "h5":
+      return <h5 class={className}>{children}</h5>;
+    case "h6":
+      return <h6 class={className}>{children}</h6>;
+    case "hr":
+      return <hr class={className} />;
+    case "li":
+      return <li class={className}>{children}</li>;
+    case "ol":
+      return <ol class={className}>{children}</ol>;
+    case "p":
+      return <p class={className}>{children}</p>;
+    case "pre":
+      return <pre class={className}>{children}</pre>;
+    case "span":
+      return <span class={className}>{children}</span>;
+    case "strong":
+    case "b":
+      return <strong class={className}>{children}</strong>;
+    case "table":
+      return <table class={className}>{children}</table>;
+    case "tbody":
+      return <tbody class={className}>{children}</tbody>;
+    case "td":
+      return <td class={className}>{children}</td>;
+    case "th":
+      return <th class={className}>{children}</th>;
+    case "thead":
+      return <thead class={className}>{children}</thead>;
+    case "tr":
+      return <tr class={className}>{children}</tr>;
+    case "ul":
+      return <ul class={className}>{children}</ul>;
+    default:
+      return <>{children}</>;
+  }
+}
+
+function renderProcessedHtml(html: string) {
+  if (typeof DOMParser === "undefined") return null;
+  return renderHtmlChildren(new DOMParser().parseFromString(html, "text/html").body.childNodes);
+}
+
 function MarkdownContent(props: {
   content: string;
   class?: string;
   postProcessHtml?: (html: string) => string;
 }) {
-  const processedHtml = () => props.postProcessHtml?.(md.render(props.content)) ?? "";
   const tokens = () => md.parse(props.content, {});
+  const renderedContent = () => {
+    if (props.postProcessHtml) {
+      return (
+        renderProcessedHtml(props.postProcessHtml(md.render(props.content))) ?? renderBlocks(0)[0]
+      );
+    }
+    return renderBlocks(0)[0];
+  };
 
   const renderBlocks = (start: number, endType?: string): [JSX.Element[], number] => {
     const nodes: JSX.Element[] = [];
@@ -238,14 +371,7 @@ function MarkdownContent(props: {
     return [nodes, i];
   };
 
-  return (
-    <Show
-      when={props.postProcessHtml}
-      fallback={<div class={props.class}>{renderBlocks(0)[0]}</div>}
-    >
-      <div class={props.class} innerHTML={processedHtml()} />
-    </Show>
-  );
+  return <div class={props.class}>{renderedContent()}</div>;
 }
 
 // Message bubble component
@@ -513,10 +639,7 @@ export const Chat: Component<ChatProps> = (props) => {
                 <Show
                   when={!local.noBubbles}
                   fallback={
-                    <ChatMessagePlain
-                      message={message}
-                      postProcessHtml={local.postProcessHtml}
-                    />
+                    <ChatMessagePlain message={message} postProcessHtml={local.postProcessHtml} />
                   }
                 >
                   <ChatMessageBubble message={message} postProcessHtml={local.postProcessHtml} />

@@ -110,7 +110,7 @@ import {
   toast,
   useResponseDialog,
 } from "@xgx/ui";
-import { Sortable, SortableHandle } from "@xgx/ui/sortablejs";
+import { Sortable, SortableHandle, type SortableItemState } from "@xgx/ui/sortablejs";
 import {
   Activity,
   AlertTriangle,
@@ -3124,6 +3124,62 @@ function sortableDemoRowClass(isDragging: boolean, isGhost: boolean) {
     .join(" ");
 }
 
+let sortableDemoRenderTokenCounter = 0;
+
+function sortableDemoRenderToken(kind: string, id: string) {
+  sortableDemoRenderTokenCounter += 1;
+  return `${kind}-${id}-${sortableDemoRenderTokenCounter}`;
+}
+
+function SortableDemoHandleRow(props: {
+  kind: string;
+  item: SortableDemoField;
+  state: SortableItemState;
+  showIndex?: boolean;
+}) {
+  const renderToken = sortableDemoRenderToken(props.kind, props.item.id);
+
+  return (
+    <div
+      class={sortableDemoRowClass(props.state.isDragging, props.state.isGhost)}
+      data-render-token={renderToken}
+    >
+      <SortableHandle class="inline-flex size-8 cursor-grab items-center justify-center rounded-md border border-border-subtle bg-background text-muted-foreground active:cursor-grabbing">
+        <GripVertical class="size-4" />
+      </SortableHandle>
+      <div class="min-w-0">
+        <div class="truncate font-medium text-foreground">{props.item.label}</div>
+        <div class="truncate text-xs text-muted-foreground">{props.item.detail}</div>
+      </div>
+      <Show when={props.showIndex}>
+        <Badge class="ml-auto">{props.state.index + 1}</Badge>
+      </Show>
+    </div>
+  );
+}
+
+function SortableDemoWholeRow(props: { item: SortableDemoField; state: SortableItemState }) {
+  const renderToken = sortableDemoRenderToken("store", props.item.id);
+
+  return (
+    <div
+      class={`${sortableDemoRowClass(
+        props.state.isDragging,
+        props.state.isGhost,
+      )} cursor-grab active:cursor-grabbing`}
+      data-render-token={renderToken}
+    >
+      <div class="flex size-8 items-center justify-center rounded-md bg-control-muted text-xs font-semibold text-control-muted-foreground">
+        {props.state.index + 1}
+      </div>
+      <div class="min-w-0">
+        <div class="truncate font-medium text-foreground">{props.item.label}</div>
+        <div class="truncate text-xs text-muted-foreground">{props.item.detail}</div>
+      </div>
+    </div>
+  );
+}
+
 export function AdvancedPanel(props: {
   richText: string;
   setRichText: (value: string) => void;
@@ -3268,16 +3324,7 @@ export function DragDropPanel() {
               data-testid="dnd-review-list"
             >
               {(item, state) => (
-                <div class={sortableDemoRowClass(state.isDragging, state.isGhost)}>
-                  <SortableHandle class="inline-flex size-8 cursor-grab items-center justify-center rounded-md border border-border-subtle bg-background text-muted-foreground active:cursor-grabbing">
-                    <GripVertical class="size-4" />
-                  </SortableHandle>
-                  <div class="min-w-0">
-                    <div class="truncate font-medium text-foreground">{item.label}</div>
-                    <div class="truncate text-xs text-muted-foreground">{item.detail}</div>
-                  </div>
-                  <Badge class="ml-auto">{state.index + 1}</Badge>
-                </div>
+                <SortableDemoHandleRow kind="signal" item={item} state={state} showIndex />
               )}
             </Sortable>
           </div>
@@ -3296,22 +3343,7 @@ export function DragDropPanel() {
               class="space-y-2"
               data-testid="dnd-store-list"
             >
-              {(item, state) => (
-                <div
-                  class={`${sortableDemoRowClass(
-                    state.isDragging,
-                    state.isGhost,
-                  )} cursor-grab active:cursor-grabbing`}
-                >
-                  <div class="flex size-8 items-center justify-center rounded-md bg-control-muted text-xs font-semibold text-control-muted-foreground">
-                    {state.index + 1}
-                  </div>
-                  <div class="min-w-0">
-                    <div class="truncate font-medium text-foreground">{item.label}</div>
-                    <div class="truncate text-xs text-muted-foreground">{item.detail}</div>
-                  </div>
-                </div>
-              )}
+              {(item, state) => <SortableDemoWholeRow item={item} state={state} />}
             </Sortable>
           </div>
 
