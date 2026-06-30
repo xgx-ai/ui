@@ -99,6 +99,8 @@ export type SortableProps<T> = Omit<ComponentProps<"div">, "children" | "onChang
   as?: ValidComponent;
   /** Item wrapper element. Defaults to `div`. */
   itemAs?: ValidComponent;
+  /** Class applied to each item wrapper. */
+  itemClass?: string | ((item: T, state: SortableItemState) => string);
   /** Advanced SortableJS escape hatch. Merged last and not deeply reactive. */
   options?: Partial<SortableOptions>;
   /** Render prop for each item and its drag state. */
@@ -129,6 +131,7 @@ interface RenderedItemProps<T> {
   id: string;
   index: number;
   itemAs?: ValidComponent;
+  itemClass?: string | ((item: T, state: SortableItemState) => string);
   children: (item: T, state: SortableItemState) => JSX.Element;
   activeId: () => string | null;
   stateVersion: () => number;
@@ -332,10 +335,13 @@ function SortableRenderedItem<T>(props: RenderedItemProps<T>) {
     },
     setHandleRef,
   };
+  const resolvedItemClass = () =>
+    typeof props.itemClass === "function" ? props.itemClass(props.item, state) : props.itemClass;
 
   return (
     <Dynamic
       component={props.itemAs ?? "div"}
+      class={resolvedItemClass()}
       ref={setWrapperRef}
       data-sortable-item=""
       data-sortable-id={props.id}
@@ -366,6 +372,7 @@ export function Sortable<T>(props: SortableProps<T>) {
     "disabled",
     "as",
     "itemAs",
+    "itemClass",
     "options",
     "children",
     "ref",
@@ -519,6 +526,7 @@ export function Sortable<T>(props: SortableProps<T>) {
             id={getId(item)}
             index={index()}
             itemAs={local.itemAs}
+            itemClass={local.itemClass}
             activeId={activeId}
             stateVersion={stateVersion}
           >
