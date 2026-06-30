@@ -81,10 +81,14 @@ export function useTableFilters<TFilters extends Record<string, unknown>>(
 
   // Set a single filter value
   const setFilter = <K extends keyof TFilters>(key: K, value: TFilters[K] | undefined) => {
+    if (Object.is(filters()[key], value)) return;
+
     navigate({
       search: (prev) => {
         const currentFilters = (prev.filters as Record<string, Record<string, unknown>>) ?? {};
         const tableFilters = { ...currentFilters[tableId] };
+
+        if (Object.is(tableFilters[key as string], value)) return prev;
 
         if (value === undefined) {
           delete tableFilters[key as string];
@@ -117,9 +121,13 @@ export function useTableFilters<TFilters extends Record<string, unknown>>(
 
   // Reset all filters for this table
   const resetFilters = () => {
+    if (Object.keys(filters()).length === 0) return;
+
     navigate({
       search: (prev) => {
         const currentFilters = (prev.filters as Record<string, Record<string, unknown>>) ?? {};
+        if (currentFilters[tableId] === undefined) return prev;
+
         const { [tableId]: _, ...remainingFilters } = currentFilters;
 
         // Clean up empty filters object entirely
