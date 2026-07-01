@@ -431,6 +431,7 @@ export function SolidPlugin(options: SolidPluginOptions = {}): Bun.BunPlugin {
         babel ??= await import("@babel/core");
 
         const result = await babel.transformFileAsync(path, {
+          compact: false,
           filename: path,
           plugins: shouldApplyHmr(path, hmr && generate === "dom")
             ? [createSolidHmrPlugin(refreshRuntimeImport(path), path)]
