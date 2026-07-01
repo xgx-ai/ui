@@ -1,0 +1,29 @@
+/**
+ * @license lucide-solid v0.563.0 - ISC
+ *
+ * Solid v2-compatible Lucide icon generated from lucide-solid's official iconNode data.
+ */
+
+import { createLucideIcon, type IconNode } from "../create-lucide-icon.tsx";
+
+const iconNode = [['path', {
+  d: 'M15.033 9.44a.647.647 0 0 1 0 1.12l-4.065 2.352a.645.645 0 0 1-.968-.56V7.648a.645.645 0 0 1 .967-.56z',
+  key: 'vbtd3f'
+}], ['path', {
+  d: 'M12 17v4',
+  key: '1riwvh'
+}], ['path', {
+  d: 'M8 21h8',
+  key: '1ev6f3'
+}], ['rect', {
+  x: '2',
+  y: '3',
+  width: '20',
+  height: '14',
+  rx: '2',
+  key: 'x3v2xh'
+}]] as const satisfies IconNode;
+
+const MonitorPlay = createLucideIcon("monitor-play", iconNode);
+
+export default MonitorPlay;

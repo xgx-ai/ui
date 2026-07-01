@@ -1,0 +1,24 @@
+/**
+ * @license lucide-solid v0.563.0 - ISC
+ *
+ * Solid v2-compatible Lucide icon generated from lucide-solid's official iconNode data.
+ */
+
+import { createLucideIcon, type IconNode } from "../create-lucide-icon.tsx";
+
+const iconNode = [['circle', {
+  cx: '12',
+  cy: '12',
+  r: '10',
+  key: '1mglay'
+}], ['path', {
+  d: 'M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3',
+  key: '1u773s'
+}], ['path', {
+  d: 'M12 17h.01',
+  key: 'p32p05'
+}]] as const satisfies IconNode;
+
+const CircleQuestionMark = createLucideIcon("circle-question-mark", iconNode);
+
+export default CircleQuestionMark;

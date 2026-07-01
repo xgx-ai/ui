@@ -1,0 +1,22 @@
+/**
+ * @license lucide-solid v0.563.0 - ISC
+ *
+ * Solid v2-compatible Lucide icon generated from lucide-solid's official iconNode data.
+ */
+
+import { createLucideIcon, type IconNode } from "../create-lucide-icon.tsx";
+
+const iconNode = [['path', {
+  d: 'M12 12v4',
+  key: 'tww15h'
+}], ['path', {
+  d: 'M12 20h.01',
+  key: 'zekei9'
+}], ['path', {
+  d: 'M17 18h.5a1 1 0 0 0 0-9h-1.79A7 7 0 1 0 7 17.708',
+  key: 'xsb5ju'
+}]] as const satisfies IconNode;
+
+const CloudAlert = createLucideIcon("cloud-alert", iconNode);
+
+export default CloudAlert;

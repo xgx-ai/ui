@@ -1,0 +1,38 @@
+/**
+ * @license lucide-solid v0.563.0 - ISC
+ *
+ * Solid v2-compatible Lucide icon generated from lucide-solid's official iconNode data.
+ */
+
+import { createLucideIcon, type IconNode } from "../create-lucide-icon.tsx";
+
+const iconNode = [['path', {
+  d: 'M5.42 9.42 8 12',
+  key: '12pkuq'
+}], ['circle', {
+  cx: '4',
+  cy: '8',
+  r: '2',
+  key: '107mxr'
+}], ['path', {
+  d: 'm14 6-8.58 8.58',
+  key: 'gvzu5l'
+}], ['circle', {
+  cx: '4',
+  cy: '16',
+  r: '2',
+  key: '1ehqvc'
+}], ['path', {
+  d: 'M10.8 14.8 14 18',
+  key: 'ax7m9r'
+}], ['path', {
+  d: 'M16 12h-2',
+  key: '10asgb'
+}], ['path', {
+  d: 'M22 12h-2',
+  key: '14jgyd'
+}]] as const satisfies IconNode;
+
+const ScissorsLineDashed = createLucideIcon("scissors-line-dashed", iconNode);
+
+export default ScissorsLineDashed;

@@ -1,0 +1,25 @@
+/**
+ * @license lucide-solid v0.563.0 - ISC
+ *
+ * Solid v2-compatible Lucide icon generated from lucide-solid's official iconNode data.
+ */
+
+import { createLucideIcon, type IconNode } from "../create-lucide-icon.tsx";
+
+const iconNode = [['path', {
+  d: 'm16 3 4 4-4 4',
+  key: '1x1c3m'
+}], ['path', {
+  d: 'M20 7H4',
+  key: 'zbl0bi'
+}], ['path', {
+  d: 'm8 21-4-4 4-4',
+  key: 'h9nckh'
+}], ['path', {
+  d: 'M4 17h16',
+  key: 'g4d7ey'
+}]] as const satisfies IconNode;
+
+const ArrowRightLeft = createLucideIcon("arrow-right-left", iconNode);
+
+export default ArrowRightLeft;

@@ -1,0 +1,29 @@
+/**
+ * @license lucide-solid v0.563.0 - ISC
+ *
+ * Solid v2-compatible Lucide icon generated from lucide-solid's official iconNode data.
+ */
+
+import { createLucideIcon, type IconNode } from "../create-lucide-icon.tsx";
+
+const iconNode = [['rect', {
+  width: '18',
+  height: '18',
+  x: '3',
+  y: '3',
+  rx: '2',
+  key: 'afitv7'
+}], ['path', {
+  d: 'M8 7v7',
+  key: '1x2jlm'
+}], ['path', {
+  d: 'M12 7v4',
+  key: 'xawao1'
+}], ['path', {
+  d: 'M16 7v9',
+  key: '1hp2iy'
+}]] as const satisfies IconNode;
+
+const SquareKanban = createLucideIcon("square-kanban", iconNode);
+
+export default SquareKanban;

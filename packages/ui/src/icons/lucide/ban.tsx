@@ -1,0 +1,21 @@
+/**
+ * @license lucide-solid v0.563.0 - ISC
+ *
+ * Solid v2-compatible Lucide icon generated from lucide-solid's official iconNode data.
+ */
+
+import { createLucideIcon, type IconNode } from "../create-lucide-icon.tsx";
+
+const iconNode = [['path', {
+  d: 'M4.929 4.929 19.07 19.071',
+  key: '196cmz'
+}], ['circle', {
+  cx: '12',
+  cy: '12',
+  r: '10',
+  key: '1mglay'
+}]] as const satisfies IconNode;
+
+const Ban = createLucideIcon("ban", iconNode);
+
+export default Ban;

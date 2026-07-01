@@ -1,0 +1,30 @@
+/**
+ * @license lucide-solid v0.563.0 - ISC
+ *
+ * Solid v2-compatible Lucide icon generated from lucide-solid's official iconNode data.
+ */
+
+import { createLucideIcon, type IconNode } from "../create-lucide-icon.tsx";
+
+const iconNode = [['path', {
+  d: 'M5 20a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z',
+  key: 'b89hwq'
+}], ['path', {
+  d: 'm14.5 10 1.5 8',
+  key: 'cim3qy'
+}], ['path', {
+  d: 'M7 10h10',
+  key: '1101jm'
+}], ['path', {
+  d: 'm8 18 1.5-8',
+  key: 'ja3yjd'
+}], ['circle', {
+  cx: '12',
+  cy: '6',
+  r: '4',
+  key: '1frrej'
+}]] as const satisfies IconNode;
+
+const ChessPawn = createLucideIcon("chess-pawn", iconNode);
+
+export default ChessPawn;

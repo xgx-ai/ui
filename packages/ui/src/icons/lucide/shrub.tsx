@@ -1,0 +1,22 @@
+/**
+ * @license lucide-solid v0.563.0 - ISC
+ *
+ * Solid v2-compatible Lucide icon generated from lucide-solid's official iconNode data.
+ */
+
+import { createLucideIcon, type IconNode } from "../create-lucide-icon.tsx";
+
+const iconNode = [['path', {
+  d: 'M12 22v-5.172a2 2 0 0 0-.586-1.414L9.5 13.5',
+  key: '1p17fm'
+}], ['path', {
+  d: 'M14.5 14.5 12 17',
+  key: 'dy5w4y'
+}], ['path', {
+  d: 'M17 8.8A6 6 0 0 1 13.8 20H10A6.5 6.5 0 0 1 7 8a5 5 0 0 1 10 0z',
+  key: '6z7b3o'
+}]] as const satisfies IconNode;
+
+const Shrub = createLucideIcon("shrub", iconNode);
+
+export default Shrub;

@@ -1,0 +1,24 @@
+/**
+ * @license lucide-solid v0.563.0 - ISC
+ *
+ * Solid v2-compatible Lucide icon generated from lucide-solid's official iconNode data.
+ */
+
+import { createLucideIcon, type IconNode } from "../create-lucide-icon.tsx";
+
+const iconNode = [['path', {
+  d: 'M2 21a8 8 0 0 1 13.292-6',
+  key: 'bjp14o'
+}], ['circle', {
+  cx: '10',
+  cy: '8',
+  r: '5',
+  key: 'o932ke'
+}], ['path', {
+  d: 'm16 19 2 2 4-4',
+  key: '1b14m6'
+}]] as const satisfies IconNode;
+
+const UserRoundCheck = createLucideIcon("user-round-check", iconNode);
+
+export default UserRoundCheck;

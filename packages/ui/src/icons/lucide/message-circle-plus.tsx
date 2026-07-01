@@ -1,0 +1,22 @@
+/**
+ * @license lucide-solid v0.563.0 - ISC
+ *
+ * Solid v2-compatible Lucide icon generated from lucide-solid's official iconNode data.
+ */
+
+import { createLucideIcon, type IconNode } from "../create-lucide-icon.tsx";
+
+const iconNode = [['path', {
+  d: 'M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719',
+  key: '1sd12s'
+}], ['path', {
+  d: 'M8 12h8',
+  key: '1wcyev'
+}], ['path', {
+  d: 'M12 8v8',
+  key: 'napkw2'
+}]] as const satisfies IconNode;
+
+const MessageCirclePlus = createLucideIcon("message-circle-plus", iconNode);
+
+export default MessageCirclePlus;

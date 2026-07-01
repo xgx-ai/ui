@@ -1,0 +1,21 @@
+/**
+ * @license lucide-solid v0.563.0 - ISC
+ *
+ * Solid v2-compatible Lucide icon generated from lucide-solid's official iconNode data.
+ */
+
+import { createLucideIcon, type IconNode } from "../create-lucide-icon.tsx";
+
+const iconNode = [['path', {
+  d: 'M12.7 3H4a2 2 0 0 0-2 2v16.286a.71.71 0 0 0 1.212.502l2.202-2.202A2 2 0 0 1 6.828 19H20a2 2 0 0 0 2-2v-4.7',
+  key: 'wjb7ig'
+}], ['circle', {
+  cx: '19',
+  cy: '6',
+  r: '3',
+  key: '108a5v'
+}]] as const satisfies IconNode;
+
+const MessageSquareDot = createLucideIcon("message-square-dot", iconNode);
+
+export default MessageSquareDot;

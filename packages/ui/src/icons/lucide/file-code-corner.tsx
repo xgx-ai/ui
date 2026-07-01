@@ -1,0 +1,25 @@
+/**
+ * @license lucide-solid v0.563.0 - ISC
+ *
+ * Solid v2-compatible Lucide icon generated from lucide-solid's official iconNode data.
+ */
+
+import { createLucideIcon, type IconNode } from "../create-lucide-icon.tsx";
+
+const iconNode = [['path', {
+  d: 'M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35',
+  key: '1wthlu'
+}], ['path', {
+  d: 'M14 2v5a1 1 0 0 0 1 1h5',
+  key: 'wfsgrz'
+}], ['path', {
+  d: 'm5 16-3 3 3 3',
+  key: '331omg'
+}], ['path', {
+  d: 'm9 22 3-3-3-3',
+  key: 'lsp7cz'
+}]] as const satisfies IconNode;
+
+const FileCodeCorner = createLucideIcon("file-code-corner", iconNode);
+
+export default FileCodeCorner;
