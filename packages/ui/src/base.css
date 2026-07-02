@@ -138,6 +138,21 @@
   }
 }
 
+.xgx-table-row[data-interactive="true"] {
+  cursor: pointer;
+}
+
+.xgx-table-row[data-interactive="true"]:not([data-state="selected"]):hover {
+  background-color: var(--hover, var(--accent));
+  color: var(--hover-foreground, var(--accent-foreground));
+}
+
+.xgx-table-row[data-interactive="true"]:has([data-table-row-action]:hover),
+.xgx-table-row[data-interactive="true"]:has([data-table-row-action]:focus-within) {
+  background-color: transparent;
+  color: inherit;
+}
+
 /* Runtime token bridge.
  * Tailwind generates utilities against --color-* variables, while apps own the
  * raw theme values. Keep this mapping in normal CSS so app-scoped variables

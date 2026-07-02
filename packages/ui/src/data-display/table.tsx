@@ -32,12 +32,17 @@ const TableFooter = (props: ComponentProps<"tfoot">) => {
   );
 };
 
-const TableRow = (props: ComponentProps<"tr">) => {
-  const [local, others] = splitProps(props, ["class"]);
+export type TableRowProps = ComponentProps<"tr"> & {
+  interactive?: boolean;
+};
+
+const TableRow = (props: TableRowProps) => {
+  const [local, others] = splitProps(props, ["class", "interactive"]);
   return (
     <tr
+      data-interactive={local.interactive ? "true" : undefined}
       class={cn(
-        "group border-b border-border-subtle transition-colors hover:bg-hover hover:text-hover-foreground data-[state=selected]:bg-selected data-[state=selected]:text-selected-foreground",
+        "xgx-table-row group border-b border-border-subtle transition-colors data-[state=selected]:bg-selected data-[state=selected]:text-selected-foreground",
         local.class,
       )}
       {...others}

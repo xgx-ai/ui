@@ -1,4 +1,14 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
+import { createIntersectionLoader } from "@xgx/query";
+import type {
+  CellContext,
+  ColumnDef,
+  HeaderContext,
+  SortDirection,
+  TableColumn,
+  TableController,
+  TableRowContext,
+} from "@xgx/ui";
 import {
   Checkbox,
   cn,
@@ -15,18 +25,16 @@ import {
   TableRow,
 } from "@xgx/ui";
 import { Settings } from "@xgx/ui/icons";
-import { createEffect, createMemo, createSignal, For, Loading, Show, snapshot } from "solid-js";
-import { createStore } from "solid-js";
-import { createIntersectionLoader } from "@xgx/query";
-import type {
-  CellContext,
-  ColumnDef,
-  HeaderContext,
-  SortDirection,
-  TableColumn,
-  TableController,
-  TableRowContext,
-} from "@xgx/ui";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  createStore,
+  For,
+  Loading,
+  Show,
+  snapshot,
+} from "solid-js";
 import type { UseTableInfiniteReturn } from "./use-table-infinite";
 
 type VisibilityState = Record<string, boolean>;
@@ -593,11 +601,11 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
                   {(row) => (
                     <TableRow
                       data-state={row.getIsSelected() ? "selected" : undefined}
+                      interactive={Boolean(props.onRowClick)}
                       onClick={() => props.onRowClick?.(row.original)}
                       onMouseEnter={
                         props.onRowHover ? () => props.onRowHover?.(row.original) : undefined
                       }
-                      class={props.onRowClick ? "cursor-pointer" : undefined}
                     >
                       <For each={visibleColumns()}>
                         {(column) => {

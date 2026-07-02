@@ -1,5 +1,14 @@
 import type { JSX } from "@solidjs/web";
 import { createIntersectionLoader } from "@xgx/query";
+import type {
+  CellContext,
+  ColumnDef,
+  HeaderContext,
+  SortDirection,
+  TableColumn,
+  TableController,
+  TableRowContext,
+} from "@xgx/ui";
 import {
   Checkbox,
   cn,
@@ -11,15 +20,6 @@ import {
   TableRoot,
   TableRow,
   TableStatusBar,
-} from "@xgx/ui";
-import type {
-  CellContext,
-  ColumnDef,
-  HeaderContext,
-  SortDirection,
-  TableColumn,
-  TableController,
-  TableRowContext,
 } from "@xgx/ui";
 import { createMemo, createSignal, For, Loading, Show } from "solid-js";
 import type { UseTableReturn } from "./use-table.ts";
@@ -277,8 +277,8 @@ const Table = <TData,>(props: TableProps<TData>) => {
                   {(row) => (
                     <TableRow
                       data-state={row.getIsSelected() ? "selected" : undefined}
+                      interactive={Boolean(props.onRowClick)}
                       onClick={() => props.onRowClick?.(row.original)}
-                      class={props.onRowClick ? "cursor-pointer" : undefined}
                     >
                       <For each={columns()}>
                         {(column) => {
