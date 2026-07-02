@@ -1,33 +1,26 @@
-import type { ComponentProps } from "@solidjs/web";
-import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
+import type { ComponentProps, JSX } from "@solidjs/web";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import type { Component } from "solid-js";
-import { children } from "solid-js";
-import { Show } from "solid-js";
-
+import { children, Show } from "solid-js";
 import { cn } from "../cn";
+import { splitProps } from "../utils/split-props";
 
 const badgeVariants = cva(
   "inline-flex items-center gap-1.5 whitespace-nowrap rounded border font-medium transition-colors focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
-        default:
-          "bg-surface-muted hover:bg-hover border-border-subtle text-surface-muted-foreground hover:text-hover-foreground",
-        outline:
-          "bg-transparent hover:bg-hover border-border-subtle text-muted-foreground hover:text-hover-foreground",
-        primary: "bg-primary hover:bg-primary/90 border-primary text-primary-foreground",
-        secondary: "bg-secondary hover:bg-secondary/90 border-secondary text-secondary-foreground",
-        success:
-          "bg-success hover:bg-success/80 border-success-foreground/30 text-success-foreground",
-        warning:
-          "bg-warning hover:bg-warning/80 border-warning-foreground/30 text-warning-foreground",
-        error: "bg-error hover:bg-error/80 border-error-foreground/30 text-error-foreground",
-        danger: "bg-danger hover:bg-danger/80 border-danger text-danger-foreground",
-        info: "bg-info hover:bg-info/80 border-info-foreground/30 text-info-foreground",
-        destructive: "bg-danger hover:bg-danger/80 border-danger text-danger-foreground",
+        default: "bg-surface-muted border-border-subtle text-surface-muted-foreground",
+        outline: "bg-transparent border-border-subtle text-muted-foreground",
+        primary: "bg-primary border-primary text-primary-foreground",
+        secondary: "bg-secondary border-secondary text-secondary-foreground",
+        success: "bg-success border-success-foreground/30 text-success-foreground",
+        warning: "bg-warning border-warning-foreground/30 text-warning-foreground",
+        error: "bg-error border-error-foreground/30 text-error-foreground",
+        danger: "bg-danger border-danger text-danger-foreground",
+        info: "bg-info border-info-foreground/30 text-info-foreground",
+        destructive: "bg-danger border-danger text-danger-foreground",
       },
       size: {
         default: "px-2 py-0.5 text-xs",
@@ -141,6 +134,7 @@ const StatusBadge: Component<StatusBadgeProps> = (props) => {
   );
 };
 
+export type { BadgeProps, StatusBadgeProps };
 /**
  * # Badge
  *
@@ -166,4 +160,3 @@ const StatusBadge: Component<StatusBadgeProps> = (props) => {
  * ```
  */
 export { Badge, badgeVariants, StatusBadge };
-export type { BadgeProps, StatusBadgeProps };
