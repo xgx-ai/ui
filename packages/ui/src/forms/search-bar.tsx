@@ -6,7 +6,7 @@ import { cn } from "../cn.ts";
 import { splitProps } from "../utils/split-props";
 
 const searchBarVariants = cva(
-  "xgx-control-text-md flex items-center rounded-full border border-border-subtle bg-surface-muted ring-offset-background focus-within:ring-1 focus-within:ring-ring/30 focus-within:ring-offset-1",
+  "xgx-control-text-md flex items-center rounded-full border border-border-subtle bg-surface-muted ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
   {
     variants: {
       size: {
