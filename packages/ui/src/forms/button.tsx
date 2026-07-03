@@ -29,7 +29,8 @@ const buttonVariants = cva(
         destructive: "bg-danger text-danger-foreground hover:bg-danger/90",
         outline:
           "border border-input bg-transparent text-foreground hover:bg-hover hover:text-hover-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        secondary:
+          "border border-input bg-transparent text-foreground hover:bg-hover hover:text-hover-foreground",
         black: "bg-foreground text-background hover:bg-foreground/90",
         blackSecondary: "bg-foreground text-background hover:bg-foreground/90",
         gradient:
