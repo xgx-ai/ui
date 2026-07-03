@@ -246,7 +246,7 @@ const SheetContent = <T extends ValidComponent = "div">(props: SheetContentProps
           {...others}
         >
           {local.children}
-          <SheetClose class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+          <SheetClose class="absolute right-4 top-4 flex size-8 items-center justify-center rounded-full text-muted-foreground ring-offset-background transition-colors hover:bg-hover hover:text-hover-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
             <X aria-hidden="true" class="size-4" />
             <span class="sr-only">Close</span>
           </SheetClose>
