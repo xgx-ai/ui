@@ -93,7 +93,7 @@ export function BreadcrumbNav(props: BreadcrumbNavProps): JSX.Element {
       >
         {local.homeIcon}
       </Button>
-      <div class="flex items-center gap-1 text-xs flex-1 min-w-0 bg-background border rounded-md px-2 py-1 min-h-[28px]">
+      <div class="flex items-center gap-1 text-xs flex-1 min-w-0 border border-transparent bg-transparent px-2 py-1 min-h-[28px]">
         <Show
           when={local.items.length > 0}
           fallback={<span class="text-muted-foreground">{local.fallbackLabel ?? "Home"}</span>}
