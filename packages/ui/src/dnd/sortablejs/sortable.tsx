@@ -1,6 +1,6 @@
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
-import { createEffect, createSignal, For, onCleanup, onSettled } from "solid-js";
+import { createEffect, createMemo, createSignal, For, onCleanup, untrack } from "solid-js";
 import SortableEngine from "sortablejs";
 import type SortableEngineType from "sortablejs";
 import { splitProps } from "../../utils/split-props";
@@ -135,6 +135,12 @@ interface RenderedItemProps<T> {
   children: (item: T, state: SortableItemState) => JSX.Element;
   activeId: () => string | null;
   stateVersion: () => number;
+}
+
+interface RenderedItemContentProps<T> {
+  item: T;
+  state: SortableItemState;
+  render: (item: T, state: SortableItemState) => JSX.Element;
 }
 
 const controllers = new Set<SortableController<unknown>>();
@@ -281,6 +287,12 @@ function dispatchMove<T, U>(
   target.callbacks.onMove?.(targetEvent);
 }
 
+function SortableRenderedItemContent<T>(props: RenderedItemContentProps<T>) {
+  const content = createMemo(() => props.render(props.item, props.state));
+
+  return <>{content()}</>;
+}
+
 function SortableRenderedItem<T>(props: RenderedItemProps<T>) {
   let wrapperElement: HTMLElement | undefined;
   let handleElement: HTMLElement | undefined;
@@ -335,8 +347,9 @@ function SortableRenderedItem<T>(props: RenderedItemProps<T>) {
     },
     setHandleRef,
   };
-  const resolvedItemClass = () =>
-    typeof props.itemClass === "function" ? props.itemClass(props.item, state) : props.itemClass;
+  const resolvedItemClass = createMemo(() =>
+    typeof props.itemClass === "function" ? props.itemClass(props.item, state) : props.itemClass,
+  );
 
   return (
     <Dynamic
@@ -347,7 +360,9 @@ function SortableRenderedItem<T>(props: RenderedItemProps<T>) {
       data-sortable-id={props.id}
       data-sortable-index={props.index}
     >
-      <SortableItemProvider value={state}>{props.children(props.item, state)}</SortableItemProvider>
+      <SortableItemProvider value={state}>
+        <SortableRenderedItemContent item={props.item} state={state} render={props.children} />
+      </SortableItemProvider>
     </Dynamic>
   );
 }
@@ -385,9 +400,15 @@ export function Sortable<T>(props: SortableProps<T>) {
   const bumpStateVersion = () => setStateVersion((value) => value + 1);
   const getId = (item: T) => (local.getId ? local.getId(item) : defaultGetId(item));
   const callbacks: SortableCallbacks<T> = {
-    onChange: local.onChange,
-    onReorder: local.onReorder,
-    onMove: local.onMove,
+    get onChange() {
+      return local.onChange;
+    },
+    get onReorder() {
+      return local.onReorder;
+    },
+    get onMove() {
+      return local.onMove;
+    },
   };
   const controller: SortableController<T> = {
     element: containerRef,
@@ -463,7 +484,7 @@ export function Sortable<T>(props: SortableProps<T>) {
 
   const handleClassStateChange = () => bumpStateVersion();
 
-  const buildOptions = (): Partial<SortableOptions> => ({
+  const sortableOptions = createMemo<Partial<SortableOptions>>(() => ({
     animation: 150,
     dataIdAttr: DATA_ID_ATTRIBUTE,
     draggable: `[${DATA_ITEM_ATTRIBUTE}]`,
@@ -481,37 +502,40 @@ export function Sortable<T>(props: SortableProps<T>) {
     onRemove: handleClassStateChange,
     onUpdate: handleClassStateChange,
     ...local.options,
-  });
+  }));
 
-  onSettled(() => {
-    const element = containerRef();
-    if (!element) return;
+  createEffect(
+    () => containerRef(),
+    (element) => {
+      if (!element) return;
 
-    const instance = SortableEngine.create(element, buildOptions());
-    controllerByElement.set(element, controller as SortableController<unknown>);
-    controllers.add(controller as SortableController<unknown>);
-    setSortableInstance(instance);
+      const instance = SortableEngine.create(element, untrack(sortableOptions));
+      controllerByElement.set(element, controller as SortableController<unknown>);
+      controllers.add(controller as SortableController<unknown>);
+      setSortableInstance(instance);
 
-    return () => {
-      controllerByElement.delete(element);
-      controllers.delete(controller as SortableController<unknown>);
-      instance.destroy();
-    };
-  });
+      return () => {
+        controllerByElement.delete(element);
+        controllers.delete(controller as SortableController<unknown>);
+        instance.destroy();
+      };
+    },
+  );
 
   createEffect(
     () => {
       const instance = sortableInstance();
       if (!instance) return undefined;
-      return buildOptions();
+      return { instance, options: sortableOptions() };
     },
-    (options, previous) => {
-      const instance = sortableInstance();
-      if (!instance || !options || !previous) return;
+    (state, previous) => {
+      if (!state || !previous) return;
 
-      const keys = new Set([...Object.keys(previous), ...Object.keys(options)]);
+      const { instance, options } = state;
+      const previousOptions = previous.options;
+      const keys = new Set([...Object.keys(previousOptions), ...Object.keys(options)]);
       for (const key of keys as Set<keyof SortableOptions>) {
-        if (options[key] === previous[key]) continue;
+        if (options[key] === previousOptions[key]) continue;
         instance.option(key, options[key] as never);
       }
     },
