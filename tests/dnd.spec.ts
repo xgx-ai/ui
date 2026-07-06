@@ -36,7 +36,16 @@ async function itemCentre(page: Page, item: Locator) {
 
 async function dragItem(page: Page, item: Locator, target: Locator) {
   const start = await itemCentre(page, item);
-  const end = await itemCentre(page, target);
+  const targetBox = await target.boundingBox();
+  if (!targetBox) throw new Error("Sortable target has no bounding box");
+  const targetCentreY = targetBox.y + targetBox.height / 2;
+  const end = {
+    x: targetBox.x + targetBox.width / 2,
+    y:
+      start.y < targetCentreY
+        ? targetBox.y + targetBox.height * 0.25
+        : targetBox.y + targetBox.height * 0.75,
+  };
 
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();

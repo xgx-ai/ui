@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 const routes = [
   "foundations",
@@ -13,9 +13,23 @@ const routes = [
   "ai",
 ] as const;
 
+async function disableTransitions(page: Page) {
+  await page.addStyleTag({
+    content: `
+      *, *::before, *::after {
+        animation-delay: 0s !important;
+        animation-duration: 0s !important;
+        transition-delay: 0s !important;
+        transition-duration: 0s !important;
+      }
+    `,
+  });
+}
+
 for (const route of routes) {
   test(`axe scan: ${route}`, async ({ page }) => {
     await page.goto(`/#${route}`);
+    await disableTransitions(page);
     await expect(page.locator("main, [role='main']").first()).toBeVisible();
 
     const results = await new AxeBuilder({ page })
@@ -32,6 +46,7 @@ test.describe("mobile dark axe smoke", () => {
   for (const route of ["shell", "forms", "async"] as const) {
     test(`mobile dark axe scan: ${route}`, async ({ page }) => {
       await page.goto(`/#${route}`);
+      await disableTransitions(page);
       await page.getByRole("button", { name: "Dark theme" }).click();
       await expect(page.locator("main, [role='main']").first()).toBeVisible();
 

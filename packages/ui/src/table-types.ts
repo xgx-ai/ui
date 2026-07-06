@@ -1,4 +1,5 @@
 import type { Accessor } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 export type SortDirection = false | "asc" | "desc";
 
@@ -34,16 +35,24 @@ export interface CellContext<TData, TValue = unknown> {
   getValue: () => TValue;
 }
 
+export type TableHeaderRenderer<TData, TValue = unknown> =
+  | JSX.Element
+  | ((context: HeaderContext<TData, TValue>) => JSX.Element);
+
+export type TableCellRenderer<TData, TValue = unknown> =
+  | JSX.Element
+  | ((context: CellContext<TData, TValue>) => JSX.Element);
+
 export interface ColumnDef<TData, TValue = unknown> {
   id?: string;
   accessorKey?: Extract<keyof TData, string> | string;
   accessorFn?: (row: TData, index: number) => TValue;
-  header?: unknown;
-  cell?: unknown;
+  header?: TableHeaderRenderer<TData, TValue>;
+  cell?: TableCellRenderer<TData, TValue>;
   size?: number;
   enableSorting?: boolean;
   enableHiding?: boolean;
-  meta?: unknown;
+  meta?: TableColumnMeta;
 }
 
 export interface TableController<TData> {

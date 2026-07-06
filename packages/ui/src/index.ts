@@ -138,9 +138,11 @@ export type {
   ColumnDef,
   HeaderContext,
   SortDirection,
+  TableCellRenderer,
   TableColumn,
   TableColumnMeta,
   TableController,
+  TableHeaderRenderer,
   TableRowContext,
 } from "./table-types.ts";
 export {

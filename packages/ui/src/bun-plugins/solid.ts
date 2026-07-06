@@ -2,7 +2,7 @@
 
 import tsPreset from "@babel/preset-typescript";
 import solidPreset from "babel-preset-solid";
-import { dirname, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 type SolidPluginOptions = {
@@ -33,6 +33,22 @@ function splitPropsImport(fromPath: string): string {
 
 function isSolidOneDependencyImport(importer: string): boolean {
   return importer.includes("/node_modules/@tanstack/solid-");
+}
+
+function packageRoot(specifier: string): string {
+  return dirname(Bun.resolveSync(`${specifier}/package.json`, process.cwd()));
+}
+
+function solidRuntimeEntrypoints(development: boolean): Record<string, string> {
+  const solidRoot = packageRoot("solid-js");
+  const solidWebRoot = packageRoot("@solidjs/web");
+  const signalsRoot = dirname(Bun.resolveSync("@solidjs/signals/package.json", solidRoot));
+
+  return {
+    "@solidjs/signals": join(signalsRoot, development ? "dist/dev.js" : "dist/prod.js"),
+    "@solidjs/web": join(solidWebRoot, development ? "dist/dev.js" : "dist/web.js"),
+    "solid-js": join(solidRoot, development ? "dist/dev.js" : "dist/solid.js"),
+  };
 }
 
 function upgradeRendererImports(code: string): string {
@@ -416,11 +432,17 @@ export function SolidPlugin(options: SolidPluginOptions = {}): Bun.BunPlugin {
     setup(build) {
       let babel: typeof import("@babel/core") | undefined;
       const dependencyRuntimePath = `${pluginDir}/solid-dependency-runtime.ts`;
+      const solidEntrypoints = solidRuntimeEntrypoints(hmr && generate === "dom");
 
       build.onResolve({ filter: /^solid-js(?:\/store)?$/ }, (args) => {
-        if (!isSolidOneDependencyImport(args.importer)) return;
+        if (!isSolidOneDependencyImport(args.importer))
+          return { path: solidEntrypoints["solid-js"] };
         return { path: dependencyRuntimePath };
       });
+
+      build.onResolve({ filter: /^@solidjs\/(?:signals|web)$/ }, (args) => ({
+        path: solidEntrypoints[args.path],
+      }));
 
       build.onLoad({ filter: /node_modules\/lucide-solid\/.*\.js$/ }, async ({ path }) => ({
         contents: upgradeLucideImports(await Bun.file(path).text(), path),

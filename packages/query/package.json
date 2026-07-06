@@ -11,7 +11,7 @@
     "@tanstack/query-core": "^5.90.20"
   },
   "peerDependencies": {
-    "@solidjs/web": "^2.0.0-beta.14",
-    "solid-js": "^2.0.0-beta.14"
+    "@solidjs/web": "^2.0.0-beta.15",
+    "solid-js": "^2.0.0-beta.15"
   }
 }
