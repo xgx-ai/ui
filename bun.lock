@@ -18,12 +18,14 @@
         "@tiptap/extension-collaboration-caret": "3.20.4",
         "@tiptap/extension-color": "3.20.4",
         "@tiptap/extension-highlight": "3.20.4",
+        "@tiptap/extension-image": "3.20.4",
         "@tiptap/extension-link": "3.20.4",
         "@tiptap/extension-placeholder": "3.20.4",
         "@tiptap/extension-table": "3.20.4",
         "@tiptap/extension-table-cell": "3.20.4",
         "@tiptap/extension-table-header": "3.20.4",
         "@tiptap/extension-table-row": "3.20.4",
+        "@tiptap/extension-text-align": "3.20.4",
         "@tiptap/extension-text-style": "3.20.4",
         "@tiptap/extension-underline": "3.20.4",
         "@tiptap/pm": "3.20.4",
@@ -113,12 +115,14 @@
         "@tiptap/extension-collaboration-caret": "3.20.4",
         "@tiptap/extension-color": "3.20.4",
         "@tiptap/extension-highlight": "3.20.4",
+        "@tiptap/extension-image": "3.20.4",
         "@tiptap/extension-link": "3.20.4",
         "@tiptap/extension-placeholder": "3.20.4",
         "@tiptap/extension-table": "3.20.4",
         "@tiptap/extension-table-cell": "3.20.4",
         "@tiptap/extension-table-header": "3.20.4",
         "@tiptap/extension-table-row": "3.20.4",
+        "@tiptap/extension-text-align": "3.20.4",
         "@tiptap/extension-text-style": "3.20.4",
         "@tiptap/extension-underline": "3.20.4",
         "@tiptap/pm": "3.20.4",
@@ -170,6 +174,7 @@
     "@tiptap/extension-heading": "3.20.4",
     "@tiptap/extension-highlight": "3.20.4",
     "@tiptap/extension-horizontal-rule": "3.20.4",
+    "@tiptap/extension-image": "3.20.4",
     "@tiptap/extension-italic": "3.20.4",
     "@tiptap/extension-link": "3.20.4",
     "@tiptap/extension-list": "3.20.4",
@@ -184,6 +189,7 @@
     "@tiptap/extension-table-header": "3.20.4",
     "@tiptap/extension-table-row": "3.20.4",
     "@tiptap/extension-text": "3.20.4",
+    "@tiptap/extension-text-align": "3.20.4",
     "@tiptap/extension-text-style": "3.20.4",
     "@tiptap/extension-underline": "3.20.4",
     "@tiptap/extensions": "3.20.4",
@@ -403,6 +409,8 @@
 
     "@tiptap/extension-horizontal-rule": ["@tiptap/extension-horizontal-rule@3.20.4", "", { "peerDependencies": { "@tiptap/core": "^3.20.4", "@tiptap/pm": "^3.20.4" } }, "sha512-y6joCi49haAA0bo3EGUY+dWUMHH1GPUc84hxrBY/0pMs+Bn+kQ1+DQJErZDTWGJrlHPWU/yekBZT72SNdp0DNA=="],
 
+    "@tiptap/extension-image": ["@tiptap/extension-image@3.20.4", "", { "peerDependencies": { "@tiptap/core": "^3.20.4" } }, "sha512-57w2TevHQljTh6Xiry9duIm7NNOQAUSTwtwRn4GGLoKwHR8qXTxzp513ASrFOgR2kgs2TP471Au6RHf947P+jg=="],
+
     "@tiptap/extension-italic": ["@tiptap/extension-italic@3.20.4", "", { "peerDependencies": { "@tiptap/core": "^3.20.4" } }, "sha512-4ZqiWr7cmqPFux8tj1ZLiYytyWf343IvQemNX6AvVWvscrJcrfj3YX4Le2BA0RW3A3M6RpLQXXozuF8vxYFDeQ=="],
 
     "@tiptap/extension-link": ["@tiptap/extension-link@3.20.4", "", { "dependencies": { "linkifyjs": "^4.3.2" }, "peerDependencies": { "@tiptap/core": "^3.20.4", "@tiptap/pm": "^3.20.4" } }, "sha512-JNDSkWrVdb8NSvbQXwHWvK5tCMbTWwOHFOweknQZ1JPK4dei9FJVofYQaHyW4bJBdcCjds3NZSnXE8DM9iAWmg=="],
@@ -430,6 +438,8 @@
     "@tiptap/extension-table-row": ["@tiptap/extension-table-row@3.20.4", "", { "peerDependencies": { "@tiptap/extension-table": "^3.20.4" } }, "sha512-bW9pXTMpNmDoZrLVPYylkfhiSwPxTYpubFduW3cjsiSJK046kSw5zOlvlv4+9vZI1TSlA+BFykPeW34YqLbr6Q=="],
 
     "@tiptap/extension-text": ["@tiptap/extension-text@3.20.4", "", { "peerDependencies": { "@tiptap/core": "^3.20.4" } }, "sha512-jchJcBZixDEO2J66Zx5dchsI2mA6IYsROqF8P1poxL4ienH7RVQRCTsBNnSfIeOtREKKWeOU/tEs5fcpvvGwIQ=="],
+
+    "@tiptap/extension-text-align": ["@tiptap/extension-text-align@3.20.4", "", { "peerDependencies": { "@tiptap/core": "^3.20.4" } }, "sha512-6ZuRyClIyCimXu+S5LQ54DueEsYg5VOVOmubOVbG+WAjM9svn9Z8gv2sNDah2yEqXrX06B02zYcSyMiD7CHbfA=="],
 
     "@tiptap/extension-text-style": ["@tiptap/extension-text-style@3.20.4", "", { "peerDependencies": { "@tiptap/core": "^3.20.4" } }, "sha512-PvW0Ja7ahWpo4bRuR8YCCVv4PH8lXjzhzlBAa4bMbsumOg+GbhX8Su7fwqd+IIPrHqfPXz9HTBMApSfzP6/08A=="],
 

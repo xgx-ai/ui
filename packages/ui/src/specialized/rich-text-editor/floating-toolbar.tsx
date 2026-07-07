@@ -1,4 +1,8 @@
+import { createSignal, For, Show } from "solid-js";
+import { cn } from "../../cn.ts";
+import { Button } from "../../forms/button.tsx";
 import {
+  ALargeSmall,
   Bold,
   Code,
   Heading1,
@@ -14,10 +18,8 @@ import {
   Strikethrough,
   Underline,
 } from "../../icons.index";
-import { createSignal, For, Show } from "solid-js";
-import { cn } from "../../cn.ts";
-import { Button } from "../../forms/button.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "../../overlays/popover.tsx";
+import { createMountEffect } from "../../utils/lifecycle";
 import type { FloatingToolbarProps, ToolbarConfig } from "./types";
 
 interface ToolbarButtonProps {
@@ -45,11 +47,55 @@ function ToolbarButton(props: ToolbarButtonProps) {
 
 export function FloatingToolbar(props: FloatingToolbarProps) {
   const [colorPickerOpen, setColorPickerOpen] = createSignal(false);
+  const [currentFontSize, setCurrentFontSize] = createSignal("");
   const [highlightPickerOpen, setHighlightPickerOpen] = createSignal(false);
 
   const config = (): ToolbarConfig => props.config ?? {};
+  const fontSizes = () => config().fontSizes ?? [];
   const textColors = () => config().textColors ?? [];
   const highlightColors = () => config().highlightColors ?? [];
+  const syncFontSize = () => {
+    if (!props.editor || props.editor.isDestroyed) {
+      setCurrentFontSize("");
+      return;
+    }
+
+    const fontSize = props.editor.getAttributes("textStyle").fontSize;
+    setCurrentFontSize(typeof fontSize === "string" ? fontSize : "");
+  };
+
+  createMountEffect(() => {
+    const editor = props.editor;
+    if (!editor || editor.isDestroyed) return;
+
+    syncFontSize();
+    editor.on("selectionUpdate", syncFontSize);
+    editor.on("transaction", syncFontSize);
+    editor.on("update", syncFontSize);
+
+    return () => {
+      try {
+        editor.off("selectionUpdate", syncFontSize);
+        editor.off("transaction", syncFontSize);
+        editor.off("update", syncFontSize);
+      } catch {
+        // Ignore cleanup errors
+      }
+    };
+  });
+
+  const setFontSize = (event: Event & { currentTarget: HTMLSelectElement }) => {
+    const fontSize = event.currentTarget.value;
+
+    if (fontSize) {
+      props.editor.chain().focus().setFontSize(fontSize).run();
+      setCurrentFontSize(fontSize);
+      return;
+    }
+
+    props.editor.chain().focus().unsetFontSize().run();
+    setCurrentFontSize("");
+  };
 
   return (
     <div class="flex items-center gap-0.5 rounded-lg border border-border-subtle bg-surface-raised p-1 text-surface-raised-foreground shadow-elevation-medium">
@@ -183,6 +229,25 @@ export function FloatingToolbar(props: FloatingToolbarProps) {
           icon={ListOrdered}
           title="Numbered List"
         />
+        <div class="w-px h-4 bg-border mx-1" />
+      </Show>
+
+      {/* Font size picker */}
+      <Show when={fontSizes().length > 0}>
+        <div class="flex items-center gap-1 rounded px-1 text-muted-foreground">
+          <ALargeSmall aria-hidden="true" class="size-4" />
+          <select
+            class="h-7 max-w-20 rounded border border-border bg-background px-1 text-xs text-foreground shadow-xs focus:outline-hidden focus:ring-1 focus:ring-ring"
+            onChange={setFontSize}
+            title="Font size"
+            value={currentFontSize()}
+          >
+            <option value="">Size</option>
+            <For each={fontSizes()}>
+              {(fontSize) => <option value={fontSize}>{fontSize}</option>}
+            </For>
+          </select>
+        </div>
         <div class="w-px h-4 bg-border mx-1" />
       </Show>
 

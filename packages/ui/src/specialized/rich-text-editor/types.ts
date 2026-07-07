@@ -15,6 +15,8 @@ export interface ToolbarConfig {
   color?: boolean;
   /** Enable code/code block */
   code?: boolean;
+  /** App-supplied font size options for the toolbar */
+  fontSizes?: string[];
   /** App-supplied text colour options for the toolbar */
   textColors?: string[];
   /** App-supplied highlight colour options for the toolbar */
