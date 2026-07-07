@@ -188,6 +188,13 @@ export function documentEditorExtensions(): AnyExtension[] {
     Image.configure({
       allowBase64: true,
       inline: false,
+      resize: {
+        enabled: true,
+        directions: ["top-left", "top-right", "bottom-left", "bottom-right"],
+        minWidth: 40,
+        minHeight: 40,
+        alwaysPreserveAspectRatio: true,
+      },
     }),
     TextAlign.configure({
       types: ["heading", "paragraph", "tableCell", "tableHeader"],
