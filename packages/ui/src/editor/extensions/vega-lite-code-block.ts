@@ -1,10 +1,10 @@
+import { render } from "@solidjs/web";
 import { mergeAttributes, Node } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { NodeSelection } from "@tiptap/pm/state";
 import type { EditorView, NodeView } from "@tiptap/pm/view";
-import { render } from "@solidjs/web";
-import { containsNode } from "../../overlays/floating";
 import { GripVertical } from "../../icons.index";
+import { containsNode } from "../../overlays/floating";
 
 const AMA_CHART_PALETTE = ["#7AF17A", "#48C96D", "#BDF7C1", "#141313", "#6F7D6F", "#A3ACA3"];
 const AMA_CHART_CHARCOAL = "#141313";
@@ -252,10 +252,7 @@ export const VegaLiteChart = Node.create({
       dragHandle.title = "Drag chart";
       dragHandle.className =
         "flex cursor-grab active:cursor-grabbing items-center justify-center size-7 rounded border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-sm";
-      const disposeDragHandleIcon = render(
-        () => GripVertical({ class: "size-3.5" }),
-        dragHandle,
-      );
+      const disposeDragHandleIcon = render(() => GripVertical({ class: "size-3.5" }), dragHandle);
       dragHandle.contentEditable = "false";
       dragHandle.draggable = false;
       dragHandle.setAttribute("data-drag-handle", "true");
