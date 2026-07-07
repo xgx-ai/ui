@@ -108,7 +108,13 @@ function getColumnStyles<TData>(
     "min-width": widthValue,
     "max-width": widthValue,
     "z-index": pinning ? 1 : 0,
-    background: "transparent",
+    background: pinning ? "var(--xgx-table-row-background, var(--card))" : "transparent",
+    "box-shadow":
+      pinning === "right"
+        ? "-1px 0 0 var(--border-subtle)"
+        : pinning === "left"
+          ? "1px 0 0 var(--border-subtle)"
+          : undefined,
   };
 }
 
@@ -231,6 +237,7 @@ const Table = <TData,>(props: TableProps<TData>) => {
               <For each={columns()}>
                 {(column) => (
                   <TableHead
+                    data-table-pinned={column.columnDef.meta?.pinned || undefined}
                     class={cn(
                       "whitespace-nowrap",
                       column.getCanSort() && "cursor-pointer select-none",
@@ -291,6 +298,7 @@ const Table = <TData,>(props: TableProps<TData>) => {
 
                           return (
                             <TableCell
+                              data-table-pinned={column.columnDef.meta?.pinned || undefined}
                               class="whitespace-nowrap"
                               style={getColumnStyles(column, columns())}
                             >
