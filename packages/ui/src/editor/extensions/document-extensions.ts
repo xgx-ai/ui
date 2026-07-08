@@ -87,6 +87,35 @@ const FontSize = Extension.create({
 
 const LIST_MARKER_COLOR_PROPERTY = "--list-marker-color";
 
+const tableCellBackgroundColorAttribute = {
+  backgroundColor: {
+    default: null,
+    parseHTML: (element: HTMLElement) => element.style.backgroundColor || null,
+    renderHTML: (attributes: Record<string, unknown>) =>
+      typeof attributes.backgroundColor === "string" && attributes.backgroundColor
+        ? { style: `background-color: ${attributes.backgroundColor}` }
+        : {},
+  },
+};
+
+const TableCellWithBackgroundColor = TableCell.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      ...tableCellBackgroundColorAttribute,
+    };
+  },
+});
+
+const TableHeaderWithBackgroundColor = TableHeader.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      ...tableCellBackgroundColorAttribute,
+    };
+  },
+});
+
 function firstTextColour(node: ProseMirrorNode): string | null {
   for (let index = 0; index < node.childCount; index += 1) {
     const child = node.child(index);
@@ -183,8 +212,8 @@ export function documentEditorExtensions(): AnyExtension[] {
   return [
     Table.configure({ resizable: false }),
     TableRow,
-    TableHeader,
-    TableCell,
+    TableHeaderWithBackgroundColor,
+    TableCellWithBackgroundColor,
     Image.configure({
       allowBase64: true,
       inline: false,
