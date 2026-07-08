@@ -212,6 +212,25 @@ const Search = <T,>(props: SearchRootProps<T>) => {
   };
   const highlightedOption = () => filteredOptions()[highlightedIndex()];
   const highlightedOptionId = () => highlightedOption()?.id;
+  let selectedDuringOpen = false;
+  const selectedTextValue = () => {
+    const current = selectedValue();
+    if (current == null || Array.isArray(current)) return "";
+
+    const key = valueKey(current as T, props);
+    const matchingOption = options().find((option) => option.value === key);
+    if (matchingOption) return matchingOption.textValue;
+
+    const text =
+      getOptionValue(current as T, props.optionTextValue) ??
+      getOptionValue(current as T, props.optionValue);
+    return String(text ?? "");
+  };
+  const resetInputToSelection = () => {
+    setInputValueSignal(selectedTextValue());
+    setFilterValueSignal("");
+    local.onInputChange?.("");
+  };
   const setInputValue = (next: string) => {
     setInputValueSignal(next);
     setFilterValueSignal(next);
@@ -253,9 +272,11 @@ const Search = <T,>(props: SearchRootProps<T>) => {
       const exists = selected.findIndex((option) => valueKey(option as T, props) === item.value);
       if (exists >= 0) selected.splice(exists, 1);
       else selected.push(item.rawValue as T);
+      selectedDuringOpen = true;
       commitValue(selected);
       return;
     }
+    selectedDuringOpen = true;
     commitValue(item.rawValue as T);
     setInputValueSignal(item.textValue);
     setFilterValueSignal("");
@@ -308,6 +329,16 @@ const Search = <T,>(props: SearchRootProps<T>) => {
   const floatingAnchor = () => anchorRef() ?? rootRef();
   const disabled = () => Boolean(local.disabled);
 
+  createEffect(open, (isOpen) => {
+    if (isOpen) {
+      selectedDuringOpen = false;
+      return;
+    }
+
+    if (!selectedDuringOpen) resetInputToSelection();
+    selectedDuringOpen = false;
+  });
+
   createEffect(
     () => ({
       content: contentRef(),
@@ -323,12 +354,20 @@ const Search = <T,>(props: SearchRootProps<T>) => {
           setOpen(false);
         }
       };
+      const onFocusIn = (event: FocusEvent) => {
+        const target = event.target as Node;
+        if (!containsNode(state.root, target) && !containsNode(state.content, target)) {
+          setOpen(false);
+        }
+      };
       const onKeyDown = (event: KeyboardEvent) => {
         if (event.key === "Escape") setOpen(false);
       };
+      document.addEventListener("focusin", onFocusIn);
       document.addEventListener("pointerdown", onPointerDown);
       document.addEventListener("keydown", onKeyDown);
       return () => {
+        document.removeEventListener("focusin", onFocusIn);
         document.removeEventListener("pointerdown", onPointerDown);
         document.removeEventListener("keydown", onKeyDown);
       };
@@ -416,10 +455,13 @@ const SearchItem = (props: SearchItemProps) => {
   const context = useSearchContext();
   const [local, others] = splitProps(props, ["class", "children", "item"]);
   const selected = () => context.isSelected(local.item);
-  const onMouseDown: JSX.EventHandler<HTMLLIElement, MouseEvent> = (event) => {
+  const onPointerDown: JSX.EventHandler<HTMLLIElement, PointerEvent> = (event) => {
+    if (event.button !== 0) return;
     event.preventDefault();
+    context.select(local.item);
   };
-  const onClick: JSX.EventHandler<HTMLLIElement, MouseEvent> = () => {
+  const onClick: JSX.EventHandler<HTMLLIElement, MouseEvent> = (event) => {
+    if (event.detail > 0) return;
     context.select(local.item);
   };
 
@@ -436,7 +478,7 @@ const SearchItem = (props: SearchItemProps) => {
           "relative flex cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-xs outline-hidden hover:bg-accent hover:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[selected]:bg-accent data-[selected]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
           local.class,
         )}
-        onMouseDown={onMouseDown}
+        onPointerDown={onPointerDown}
         onClick={onClick}
         {...others}
       >
