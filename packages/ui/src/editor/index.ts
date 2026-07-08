@@ -22,6 +22,11 @@ export {
   syncParameters,
   updateParameterValue,
 } from "./extensions/parameter-store.ts";
+export type {
+  ParameterSuggestionItem,
+  ParameterSuggestionOptions,
+} from "./extensions/parameter-suggestion.ts";
+export { ParameterSuggestion } from "./extensions/parameter-suggestion.ts";
 export { VegaLiteChart } from "./extensions/vega-lite-code-block.ts";
 export type { TipTapEditorProps, TipTapEditorUser } from "./tip-tap-editor.tsx";
 export { TipTapEditor } from "./tip-tap-editor.tsx";
