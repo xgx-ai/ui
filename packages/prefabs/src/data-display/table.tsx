@@ -108,7 +108,7 @@ function getColumnStyles<TData>(
     "min-width": widthValue,
     "max-width": widthValue,
     "z-index": pinning ? 1 : 0,
-    background: pinning ? "var(--xgx-table-row-background, var(--card))" : "transparent",
+    "background-color": pinning ? "var(--xgx-table-row-background, var(--card))" : "transparent",
     "box-shadow":
       pinning === "right"
         ? "-1px 0 0 var(--border-subtle)"

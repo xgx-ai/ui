@@ -143,6 +143,12 @@
   cursor: pointer;
 }
 
+[data-table-pinned] {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .xgx-table-row[data-interactive="true"]:not([data-state="selected"]):hover {
   --xgx-table-row-background: var(--hover, var(--accent));
   background-color: var(--hover, var(--accent));
