@@ -289,7 +289,9 @@ type DialogTemplateProps = Omit<DialogContentProps, "title"> & {
   description?: JSX.Element;
   footer?: JSX.Element;
   footerClass?: string;
+  header?: JSX.Element;
   headerClass?: string;
+  layoutClass?: string;
   title?: JSX.Element;
 };
 
@@ -301,28 +303,37 @@ const DialogTemplate: Component<DialogTemplateProps> = (props) => {
     "description",
     "footer",
     "footerClass",
+    "header",
     "headerClass",
+    "layoutClass",
     "title",
   ]);
 
   return (
     <DialogContent class={local.class} {...rest}>
-      <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <Show when={local.title || local.description}>
-          <DialogHeader class={cn("shrink-0 pr-10", local.headerClass)}>
-            <Show when={local.title}>
-              <DialogTitle>{local.title}</DialogTitle>
+      <div class={cn("flex min-h-0 flex-1 flex-col gap-4 overflow-hidden", local.layoutClass)}>
+        <Show
+          when={local.header}
+          fallback={
+            <Show when={local.title || local.description}>
+              <DialogHeader class={cn("shrink-0 pr-10", local.headerClass)}>
+                <Show when={local.title}>
+                  <DialogTitle>{local.title}</DialogTitle>
+                </Show>
+                <Show when={local.description}>
+                  <DialogDescription>{local.description}</DialogDescription>
+                </Show>
+              </DialogHeader>
             </Show>
-            <Show when={local.description}>
-              <DialogDescription>{local.description}</DialogDescription>
-            </Show>
-          </DialogHeader>
+          }
+        >
+          {local.header}
         </Show>
         <DialogTemplateContext value={{ stickyFooter: true }}>
-          <div class={cn("min-h-0 flex-1 overflow-y-auto", local.bodyClass)}>{local.children}</div>
+          <div class={cn("min-h-0 overflow-y-auto", local.bodyClass)}>{local.children}</div>
         </DialogTemplateContext>
         <Show when={local.footer}>
-          <DialogFooter class={cn("shrink-0 pt-4", local.footerClass)}>{local.footer}</DialogFooter>
+          <DialogFooter class={cn("shrink-0", local.footerClass)}>{local.footer}</DialogFooter>
         </Show>
       </div>
     </DialogContent>
