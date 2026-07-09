@@ -5,6 +5,12 @@ export {
   type UseTableReturn,
   useTable,
 } from "./data-display/use-table.ts";
-export type { SearchInfiniteQueryConfig } from "./forms/search-infinite.tsx";
 export { default as SearchInfinite } from "./forms/search-infinite.tsx";
+export {
+  type CreateSearchInfiniteParams,
+  createSearchInfinite,
+  type SearchInfinitePage,
+  type SearchInfiniteQueryConfig,
+  type SearchInfiniteState,
+} from "./forms/use-search-infinite.ts";
 export * from "./table-infinite/index.ts";

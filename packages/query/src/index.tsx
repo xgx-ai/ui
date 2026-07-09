@@ -300,6 +300,7 @@ export function createInfiniteQuery<TPage, TPageParam = unknown>(
   const [fetchingNextPage, setFetchingNextPage] = createSignal(false, internalWritableOptions);
   const [hasNextPage, setHasNextPage] = createSignal(false, internalWritableOptions);
   const [nextPageParam, setNextPageParam] = createSignal<TPageParam>();
+  const [initialFetch, setInitialFetch] = createSignal<Promise<InfiniteData<TPage, TPageParam>>>();
   let activeKey: string | undefined;
   let initialPromise: Promise<InfiniteData<TPage, TPageParam>> | undefined;
   let initialRequestId = 0;
@@ -357,29 +358,39 @@ export function createInfiniteQuery<TPage, TPageParam = unknown>(
     return promise;
   };
 
-  const sourceData = createMemo<InfiniteData<TPage, TPageParam>>(() => {
-    refresh();
-    const nextOptions = options();
-    activeKey = stableQueryKey(nextOptions.queryKey);
-
-    if (!isEnabled(nextOptions.enabled)) {
-      setPending(false);
-      const current = latestData();
-      if (current) {
-        initialPromise = Promise.resolve(current);
-        return current;
+  // Fetches are driven by a two-phase effect, never from a memo computation: an
+  // async memo owns the promise it returns, and the runtime re-runs its computation
+  // around settlement — a fetch started inside one refires in a loop.
+  createEffect(
+    () => {
+      refresh();
+      const nextOptions = options();
+      return {
+        enabled: isEnabled(nextOptions.enabled),
+        key: stableQueryKey(nextOptions.queryKey),
+        options: nextOptions,
+      };
+    },
+    (state) => {
+      activeKey = state.key;
+      if (!state.enabled) {
+        setPending(false);
+        return;
       }
 
-      const promise = disabledQueryPromise<InfiniteData<TPage, TPageParam>>();
-      initialPromise = promise;
-      return promise;
-    }
+      setInitialFetch(() => loadInitialPage(state.options.initialPageParam, state.options));
+    },
+  );
 
-    return loadInitialPage(nextOptions.initialPageParam, nextOptions);
-  });
+  // Async memo over the in-flight promise: reading it suspends until the initial
+  // page (or the current query-key change) resolves. It observes the fetch; it
+  // does not start one.
+  const settledInitial = createMemo<InfiniteData<TPage, TPageParam>>(
+    () => initialFetch() ?? disabledQueryPromise<InfiniteData<TPage, TPageParam>>(),
+  );
 
   const data = () => {
-    const source = sourceData();
+    const source = settledInitial();
     return latestData() ?? source;
   };
 
@@ -423,11 +434,6 @@ export function createInfiniteQuery<TPage, TPageParam = unknown>(
   const refetch = async () => {
     setRefresh((value) => value + 1);
     flush();
-    try {
-      sourceData();
-    } catch {
-      // Initial reads suspend; the active promise is awaited below.
-    }
     return initialPromise ?? resolve(data);
   };
 
@@ -826,6 +832,7 @@ export interface IntersectionLoaderOptions {
   enabled?: () => boolean;
   load: () => void;
   loadDelay?: number;
+  root?: () => Element | null | undefined;
   rootMargin?: string;
   threshold?: number;
 }
@@ -839,6 +846,7 @@ export function createIntersectionLoader(options: IntersectionLoaderOptions) {
       canLoad: options.canLoad(),
       element: element(),
       enabled: options.enabled?.() ?? true,
+      root: options.root?.() ?? null,
     }),
     (state) => {
       if (!state.element || !state.enabled) return;
@@ -855,6 +863,7 @@ export function createIntersectionLoader(options: IntersectionLoaderOptions) {
           }
         },
         {
+          root: state.root,
           rootMargin: options.rootMargin,
           threshold: options.threshold ?? 0,
         },

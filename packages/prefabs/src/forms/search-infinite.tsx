@@ -1,5 +1,4 @@
 import type { JSX } from "@solidjs/web";
-import { useInfiniteQuery } from "@xgx/query";
 import {
   cn,
   ComboboxTrigger,
@@ -16,34 +15,24 @@ import {
   SearchSection,
   Spinner,
 } from "@xgx/ui";
-import {
-  type Accessor,
-  createEffect,
-  createSignal,
-  createUniqueId,
-  onCleanup,
-  Show,
-} from "solid-js";
+import { createIntersectionLoader } from "@xgx/query";
+import { type Accessor, createMemo, createSignal, createUniqueId, Show } from "solid-js";
 import { Search as SearchIcon, X } from "@xgx/ui/icons";
+import { createSearchInfinite, type SearchInfiniteQueryConfig } from "./use-search-infinite.ts";
 
-export interface SearchInfiniteQueryConfig<T> {
-  queryKey: unknown[];
-  queryFn: (params: {
-    search: string;
-    limit: number;
-    page: number;
-  }) => Promise<{ data: T[]; count: number }>;
-  limit?: number;
-  enabled?: Accessor<boolean> | boolean;
-}
+export type { SearchInfinitePage, SearchInfiniteQueryConfig } from "./use-search-infinite.ts";
 
-type SearchInfinitePage<T> = { data: T[]; count: number };
+type SearchInfiniteQueryConfigInput<T> =
+  | SearchInfiniteQueryConfig<T>
+  | Accessor<SearchInfiniteQueryConfig<T>>;
 
 type SearchInfiniteProps<T> = {
-  queryConfig: SearchInfiniteQueryConfig<T>;
+  queryConfig: SearchInfiniteQueryConfigInput<T>;
   value: T | undefined;
   optionValue: keyof T;
   optionTextValue: keyof T;
+  /** Hides matching fetched options from the listbox, e.g. already-selected rows. */
+  filterOption?: (item: T) => boolean;
   placeholder?: string;
   onChange?: (value: T | null) => void;
   onInputChange?: (value: string) => void;
@@ -68,152 +57,49 @@ function getDisplayValue<T>(item: T | undefined, optionTextValue: keyof T): stri
 }
 
 export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
-  const [isOpen, setIsOpen] = createSignal(false);
+  const [isOpen, setIsOpenSignal] = createSignal(false);
   let inputEl: HTMLInputElement | null = null;
-  const id = props.id ?? createUniqueId();
+  const fallbackId = createUniqueId();
 
-  const [searchTerm, setSearchTerm] = createSignal("");
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = createSignal("");
-  const debounceMs = props.debounceMs ?? 300;
-  const limit = props.queryConfig.limit ?? 20;
+  const queryConfig = () =>
+    typeof props.queryConfig === "function" ? props.queryConfig() : props.queryConfig;
 
-  // Debounce search term
-  let debounceTimeout: ReturnType<typeof setTimeout> | undefined;
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value);
-    props.onInputChange?.(value);
-    if (debounceTimeout) {
-      clearTimeout(debounceTimeout);
-    }
-    debounceTimeout = setTimeout(() => {
-      setDebouncedSearchTerm(value);
-    }, debounceMs);
-  };
-
-  onCleanup(() => {
-    if (debounceTimeout) {
-      clearTimeout(debounceTimeout);
-    }
+  const search = createSearchInfinite<T>({
+    queryConfig,
+    active: isOpen,
+    debounceMs: () => props.debounceMs,
   });
 
-  // Infinite query for data loading
-  const infiniteQuery = useInfiniteQuery<SearchInfinitePage<T>, number>(() => ({
-    queryKey: [...props.queryConfig.queryKey, "search-infinite", debouncedSearchTerm()],
-
-    queryFn: ({ pageParam }: { pageParam: number }) =>
-      props.queryConfig.queryFn({
-        search: debouncedSearchTerm(),
-        limit,
-        page: pageParam,
-      }),
-    initialPageParam: 0,
-    getNextPageParam: (
-      lastPage: SearchInfinitePage<T>,
-      _allPages: SearchInfinitePage<T>[],
-      lastPageParam: number,
-    ) => {
-      if (!lastPage || !lastPage.data || lastPage.data.length < limit) {
-        return undefined;
-      }
-      return lastPageParam + 1;
-    },
-    get enabled() {
-      const configEnabled =
-        typeof props.queryConfig.enabled === "function"
-          ? props.queryConfig.enabled()
-          : (props.queryConfig.enabled ?? true);
-      return configEnabled && isOpen();
-    },
-  }));
-
-  const options = () => {
-    return infiniteQuery.latest()?.pages.flatMap((page) => page.data) ?? [];
-  };
-
-  // Load more function
-  const loadMore = () => {
-    if (
-      infiniteQuery.hasNextPage() &&
-      !infiniteQuery.pending() &&
-      !infiniteQuery.fetchingNextPage()
-    ) {
-      void infiniteQuery.fetchNextPage();
+  const clearSearchInput = () => {
+    search.clearSearch();
+    props.onInputChange?.("");
+    if (inputEl) {
+      inputEl.value = "";
     }
   };
 
-  // Intersection observer for infinite scroll
-  let loadMoreEl: HTMLDivElement | undefined;
-  let io: IntersectionObserver | undefined;
-
-  const setupIntersectionObserver = () => {
-    if (!loadMoreEl) return;
-
-    if (io) {
-      io.disconnect();
-    }
-
-    const scrollContainer = loadMoreEl.closest(
-      '[style*="overflow-y-auto"], .overflow-y-auto, .max-h-64',
-    ) as HTMLElement;
-
-    io = new IntersectionObserver(
-      (entries) => {
-        if (
-          entries[0]?.isIntersecting &&
-          !infiniteQuery.pending() &&
-          !infiniteQuery.fetchingNextPage() &&
-          infiniteQuery.hasNextPage()
-        ) {
-          loadMore();
-        }
-      },
-      {
-        root: scrollContainer || undefined,
-        threshold: 0.1,
-        rootMargin: "0px 0px 10px 0px",
-      },
-    );
-
-    io.observe(loadMoreEl);
+  const setIsOpen = (open: boolean) => {
+    setIsOpenSignal(open);
+    if (!open) clearSearchInput();
   };
 
-  const cleanupIntersectionObserver = () => {
-    if (io) {
-      io.disconnect();
-      io = undefined;
-    }
+  const handleSearchChange = (value: string) => {
+    search.setSearch(value);
+    props.onInputChange?.(value);
   };
 
-  onCleanup(cleanupIntersectionObserver);
+  const options = createMemo(() => {
+    const filter = props.filterOption;
+    return filter ? search.options().filter(filter) : search.options();
+  });
 
-  // Handle open/close
-  createEffect(isOpen, (open) => {
-    if (open) {
-      setSearchTerm("");
-      setDebouncedSearchTerm("");
-      props.onInputChange?.("");
-      if (inputEl) {
-        inputEl.value = "";
-      }
-
-      // Setup observer after dropdown is mounted
-      const checkAndSetup = () => {
-        if (loadMoreEl) {
-          setupIntersectionObserver();
-        } else {
-          setTimeout(checkAndSetup, 50);
-        }
-      };
-      setTimeout(checkAndSetup, 50);
-    } else {
-      cleanupIntersectionObserver();
-      setSearchTerm("");
-      setDebouncedSearchTerm("");
-      props.onInputChange?.("");
-      if (inputEl) {
-        inputEl.value = "";
-      }
-    }
+  const [contentEl, setContentEl] = createSignal<HTMLElement | null>(null);
+  const sentinel = createIntersectionLoader({
+    canLoad: () => search.hasMore() && !search.isLoading() && !search.isFetchingMore(),
+    enabled: isOpen,
+    load: search.loadMore,
+    root: contentEl,
+    rootMargin: "0px 0px 48px 0px",
   });
 
   // Function to find matching option based on input value
@@ -239,12 +125,13 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
     const matchingOption = findMatchingOption(inputValue);
     if (matchingOption) {
       props.onChange?.(matchingOption);
+      setIsOpen(false);
     }
   };
 
   return (
     <div
-      id={id}
+      id={props.id ?? fallbackId}
       class="grid w-full items-center gap-1.5"
       data-required={props.required}
       data-label={props.label}
@@ -266,6 +153,7 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
           open={isOpen()}
           onOpenChange={setIsOpen}
           options={options()}
+          defaultFilter={() => true}
           optionValue={props.optionValue}
           optionTextValue={props.optionTextValue}
           value={props.value}
@@ -372,48 +260,37 @@ export default function SearchInfinite<T>(props: SearchInfiniteProps<T>) {
             onCloseAutoFocus={(e) => e.preventDefault()}
             class="max-h-64 overflow-y-auto"
             style="scroll-behavior: smooth; position: relative;"
+            ref={setContentEl}
           >
-            <Show when={infiniteQuery.pending() && options().length === 0}>
+            <Show when={search.isLoading() && options().length === 0}>
               <div class="flex justify-center items-center p-4">
-                <div class="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+                <Spinner class="size-4" />
               </div>
             </Show>
-            <Show when={!infiniteQuery.pending() || options().length > 0}>
+            <Show when={!search.isLoading() || options().length > 0}>
               <SearchListbox />
               <SearchNoResult>
                 <p class="text-xs pb-2">
                   {props.noResultText ||
-                    (searchTerm() ? `No results found for "${searchTerm()}"` : "No results found")}
+                    (search.searchTerm()
+                      ? `No results found for "${search.searchTerm()}"`
+                      : "No results found")}
                 </p>
               </SearchNoResult>
             </Show>
-            <Show when={props.extraButton}>
-              <div class="p-2 border-t mt-1">{props.extraButton!(() => setIsOpen(false))}</div>
-            </Show>
-
-            {/* Infinite scroll sentinel and loading indicator */}
-            <div
-              ref={(el) => {
-                loadMoreEl = el;
-              }}
-              class="w-full opacity-0"
-            />
-            <Show when={infiniteQuery.hasNextPage() || infiniteQuery.fetchingNextPage()}>
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinel.ref} class="w-full opacity-0" />
+            <Show when={search.isFetchingMore()}>
               <div class="flex items-center justify-center border-t border-border-subtle bg-surface-muted p-2 text-xs text-surface-muted-foreground">
-                <Show
-                  when={infiniteQuery.fetchingNextPage()}
-                  fallback={
-                    <div class="w-full text-center py-2">
-                      Scroll for more results
-                      <div class="text-xs opacity-50 mt-1">({options().length} loaded)</div>
-                    </div>
-                  }
-                >
-                  <div class="w-full text-center py-2">
-                    Loading more...
-                    <div class="mx-auto mt-1 h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-foreground" />
-                  </div>
-                </Show>
+                <div class="flex w-full items-center justify-center gap-2 py-2">
+                  Loading more...
+                  <Spinner class="size-4" />
+                </div>
+              </div>
+            </Show>
+            <Show when={props.extraButton}>
+              <div class="sticky bottom-0 z-10 mt-1 border-t bg-popover p-2">
+                {props.extraButton!(() => setIsOpen(false))}
               </div>
             </Show>
           </SearchContent>
