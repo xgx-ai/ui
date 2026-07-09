@@ -45,8 +45,11 @@ type DialogContextValue = {
   titleId: string;
 };
 
-const DialogContext = createContext<DialogContextValue>();
-const DialogTemplateContext = createContext<{ stickyFooter: boolean }>();
+// Solid 2 beta throws before our guard can run when a context has no default.
+const DialogContext = createContext<DialogContextValue | undefined>(undefined);
+const DialogTemplateContext = createContext<
+  { stickyFooter: boolean } | undefined
+>(undefined);
 
 function useDialog() {
   const context = useContext(DialogContext);
@@ -54,6 +57,10 @@ function useDialog() {
     throw new Error("Dialog parts must be used inside Dialog.");
   }
   return context;
+}
+
+function useOptionalDialog() {
+  return useContext(DialogContext);
 }
 
 type DialogProps = ComponentProps<"div"> & {
@@ -319,6 +326,11 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
       </Show>
     </>
   );
+  // Solid 2 beta does not preserve ancestor context through this manual
+  // portal insertion, so portalled dialog parts need the value re-provided.
+  const contentWithContext = () => (
+    <DialogContext value={dialog}>{contentChildren()}</DialogContext>
+  );
 
   return (
     <Show when={presence.present()}>
@@ -350,7 +362,7 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
               {...rest}
               class={contentClass()}
             >
-              {contentChildren()}
+              {contentWithContext()}
             </div>
           }
         >
@@ -372,7 +384,7 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
               {...rest}
               class={contentClass()}
             >
-              {contentChildren()}
+              {contentWithContext()}
             </DynamicAny>
           )}
         </Show>
@@ -464,12 +476,12 @@ type DialogTitleProps<T extends ValidComponent = "h2"> = ComponentProps<"h2"> & 
 };
 
 const DialogTitle = <T extends ValidComponent = "h2">(props: DialogTitleProps<T>) => {
-  const dialog = useDialog();
+  const dialog = useOptionalDialog();
   const [local, rest] = splitProps(props, ["as", "class", "children", "id"]);
   return (
     <Dynamic
       component={local.as ?? "h2"}
-      id={local.id ?? dialog.titleId}
+      id={local.id ?? dialog?.titleId}
       class={cn("font-semibold leading-none tracking-tight -mb-3", local.class)}
       {...rest}
     >
@@ -485,12 +497,12 @@ type DialogDescriptionProps<T extends ValidComponent = "p"> = ComponentProps<"p"
 };
 
 const DialogDescription = <T extends ValidComponent = "p">(props: DialogDescriptionProps<T>) => {
-  const dialog = useDialog();
+  const dialog = useOptionalDialog();
   const [local, rest] = splitProps(props, ["as", "class", "children", "id"]);
   return (
     <Dynamic
       component={local.as ?? "p"}
-      id={local.id ?? dialog.descriptionId}
+      id={local.id ?? dialog?.descriptionId}
       class={cn("pt-2 text-xs text-muted-foreground", local.class)}
       {...rest}
     >

@@ -5,7 +5,6 @@ import { Button } from "../../forms/button.tsx";
 import { TriangleAlert } from "../../icons.index";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogTemplate,
@@ -166,8 +165,19 @@ export function useResponseDialog() {
           >
             <Match when={dialogProps.template === "alert"}>
               {() => (
-                <DialogContent
+                <DialogTemplate
                   class={cn("w-full max-w-md", dialogProps.class)}
+                  header={
+                    <div class="flex items-start gap-4 pr-8">
+                      <div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-danger/10 text-danger">
+                        <TriangleAlert aria-hidden="true" class="size-5" />
+                      </div>
+                      <div class="flex min-w-0 flex-col gap-2">
+                        <DialogTitle>{dialogProps.title}</DialogTitle>
+                        <DialogDescription>{dialogProps.description}</DialogDescription>
+                      </div>
+                    </div>
+                  }
                   hideCloseButton={dialogProps.hideCloseButton}
                   mount={dialogProps.mount}
                   zIndex={dialogProps.zIndex ?? "z-[60]"}
@@ -177,14 +187,19 @@ export function useResponseDialog() {
                     }
                   }}
                 >
-                  <DialogAlertTemplate
-                    {...dialogProps}
-                    resolve={(value: unknown) => {
-                      settleDialog?.(value);
-                    }}
-                    reject={() => settleDialog?.(null)}
-                  />
-                </DialogContent>
+                  <DialogFooter class="gap-2 pt-1 sm:space-x-0">
+                    <Button variant={"outline"} size={"sm"} onClick={() => settleDialog?.(null)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      size={"sm"}
+                      variant={"destructive"}
+                      onClick={() => settleDialog?.(true)}
+                    >
+                      {dialogProps.templateProps?.action || "Confirm"}
+                    </Button>
+                  </DialogFooter>
+                </DialogTemplate>
               )}
             </Match>
           </Switch>
@@ -209,35 +224,4 @@ export function DialogContentPlaceholder(props: DialogContentProps<unknown>) {
   );
 }
 
-function DialogAlertTemplate(
-  props: DialogContentProps<unknown> & {
-    title?: string;
-    description?: string;
-    templateProps?: { action: string };
-  },
-) {
-  return (
-    <>
-      <div class="flex items-start pr-4 gap-4">
-        <div class={`flex size-10 shrink-0 items-center justify-center rounded-full bg-error`}>
-          <TriangleAlert color="red" />
-        </div>
-        <div class="flex flex-col gap-2">
-          <DialogTitle>{`${props.title}`}</DialogTitle>
-
-          <DialogDescription>{props.description}</DialogDescription>
-        </div>
-      </div>
-
-      <DialogFooter>
-        <Button variant={"outline"} size={"sm"} onClick={props.reject}>
-          Cancel
-        </Button>
-        <Button size={"sm"} variant={"destructive"} onClick={() => props.resolve(true)}>
-          {props.templateProps?.action || "Confirm"}
-        </Button>
-      </DialogFooter>
-    </>
-  );
-}
 export type ShowResponseDialog = ReturnType<typeof useResponseDialog>["showResponseDialog"];
