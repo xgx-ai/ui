@@ -45,14 +45,14 @@ export type PageLayoutOptions = {
 };
 
 /**
- * Physical pagination for a continuous document. Measures top-level blocks
- * and paginates exactly like an explicit `PageBreak`: when a block would
- * cross the bottom of the current page it is pushed to the next one by a
- * widget decoration with the same spacer + gap DOM (`data-type="page-break"`
- * with `data-auto="true"`), so automatic and manual breaks render
- * identically. Headings are kept with the block that follows them. Blocks
- * taller than a full page cannot be split; the boundaries crossing them are
- * reported via `onLayout` as overflows.
+ * Physical pagination for a continuous document. Measures page-level blocks
+ * and block children inside lists, then paginates exactly like an explicit
+ * `PageBreak`: when a block would cross the bottom of the current page it is
+ * pushed to the next one by a widget decoration with the same spacer + gap DOM
+ * (`data-type="page-break"` with `data-auto="true"`), so automatic and manual
+ * breaks render identically. Headings are kept with the block that follows
+ * them. Blocks taller than a full page cannot be split; the boundaries
+ * crossing them are reported via `onLayout` as overflows.
  */
 export const PageLayout = Extension.create<PageLayoutOptions>({
   name: "pageLayout",
@@ -80,7 +80,7 @@ export const PageLayout = Extension.create<PageLayoutOptions>({
   },
 });
 
-type BreakSpec = { pos: number; fillPx: number };
+type BreakSpec = { pos: number; fillPx: number; breakIndentPx: number };
 
 type PageLayoutState = {
   decorations: DecorationSet;
@@ -99,7 +99,11 @@ function createPageLayoutPlugin(options: PageLayoutOptions): Plugin<PageLayoutSt
   return new Plugin<PageLayoutState>({
     key: pageLayoutKey,
     state: {
-      init: () => ({ decorations: DecorationSet.empty, specs: [], relayoutSeq: 0 }),
+      init: () => ({
+        decorations: DecorationSet.empty,
+        specs: [],
+        relayoutSeq: 0,
+      }),
       apply(tr, value) {
         const meta = tr.getMeta(pageLayoutKey) as SpecsMeta | RelayoutMeta | undefined;
         if (meta?.type === "specs") {
@@ -166,8 +170,8 @@ function buildDecorations(doc: PMNode, specs: BreakSpec[]): DecorationSet {
   return DecorationSet.create(
     doc,
     specs.map((spec) =>
-      Decoration.widget(spec.pos, () => buildAutoBreakDom(spec.fillPx), {
-        key: `page-break-${spec.pos}-${Math.round(spec.fillPx)}`,
+      Decoration.widget(spec.pos, () => buildAutoBreakDom(spec.fillPx, spec.breakIndentPx), {
+        key: `page-break-${spec.pos}-${Math.round(spec.fillPx)}-${Math.round(spec.breakIndentPx)}`,
         side: -1,
         ignoreSelection: true,
       }),
@@ -175,11 +179,12 @@ function buildDecorations(doc: PMNode, specs: BreakSpec[]): DecorationSet {
   );
 }
 
-function buildAutoBreakDom(fillPx: number): HTMLElement {
+function buildAutoBreakDom(fillPx: number, breakIndentPx: number): HTMLElement {
   const dom = document.createElement("div");
   dom.setAttribute("data-type", "page-break");
   dom.setAttribute("data-auto", "true");
   dom.contentEditable = "false";
+  dom.style.setProperty("--page-break-indent", `${Math.round(breakIndentPx)}px`);
 
   const spacer = document.createElement("div");
   spacer.setAttribute("data-role", "page-break-spacer");
@@ -199,8 +204,16 @@ type MeasuredBlock = {
   height: number;
   /** Top in the natural flow: rendered top minus injected fill/gap heights. */
   naturalTop: number;
+  /** Left offset from the editor content root, used when a break is nested. */
+  breakIndentPx: number;
   isBreak: boolean;
   isHeading: boolean;
+};
+
+type InjectedBreak = {
+  el: HTMLElement;
+  top: number;
+  height: number;
 };
 
 type SimEvent =
@@ -221,40 +234,34 @@ function measure(view: EditorView, options: PageLayoutOptions): boolean {
   const pm = view.dom;
   if (!pm.isConnected || pageH <= 0) return false;
 
-  const pmTop = pm.getBoundingClientRect().top;
+  const pmRect = pm.getBoundingClientRect();
+  const pmTop = pmRect.top;
+  const pmLeft = pmRect.left;
 
   // Everything already injected for pagination (explicit break nodes and auto
   // widgets). Subtracting their heights recovers the natural, unpaginated
   // flow, which stays stable while decorations change — that is what makes
   // the layout pass idempotent.
-  const injected = Array.from(
-    pm.querySelectorAll<HTMLElement>(':scope > [data-type="page-break"]'),
-  ).map((el) => {
-    const rect = el.getBoundingClientRect();
-    return { el, top: rect.top - pmTop, height: rect.height };
-  });
+  const injected = Array.from(pm.querySelectorAll<HTMLElement>('[data-type="page-break"]')).map(
+    (el) => {
+      const rect = el.getBoundingClientRect();
+      return { el, top: rect.top - pmTop, height: rect.height };
+    },
+  );
 
   const blocks: MeasuredBlock[] = [];
   view.state.doc.forEach((node, offset) => {
     const el = view.nodeDOM(offset);
     if (!(el instanceof HTMLElement)) return;
 
-    const rect = el.getBoundingClientRect();
-    const renderedTop = rect.top - pmTop;
-    const isBreak = node.type.name === "pageBreak";
-    const injectedAbove = injected.reduce(
-      (sum, item) => (item.el !== el && item.top < renderedTop - 0.5 ? sum + item.height : sum),
-      0,
-    );
+    if (
+      isListNode(node) &&
+      appendListItemBlocks(node, offset, view, pmTop, pmLeft, injected, blocks)
+    ) {
+      return;
+    }
 
-    blocks.push({
-      pos: offset,
-      el,
-      height: isBreak ? 0 : rect.height,
-      naturalTop: renderedTop - injectedAbove,
-      isBreak,
-      isHeading: node.type.name === "heading",
-    });
+    blocks.push(measureBlock(node, offset, el, pmTop, pmLeft, injected));
   });
 
   // Simulate the page flow over natural positions.
@@ -297,6 +304,7 @@ function measure(view: EditorView, options: PageLayoutOptions): boolean {
         specs.push({
           pos: first.pos,
           fillPx: Math.max(0, pageStart + pageH - first.naturalTop),
+          breakIndentPx: first.breakIndentPx,
         });
         events.push({ kind: "auto", pos: first.pos });
         pageStart = first.naturalTop;
@@ -346,8 +354,114 @@ function measure(view: EditorView, options: PageLayoutOptions): boolean {
 function specsEqual(a: BreakSpec[], b: BreakSpec[]): boolean {
   if (a.length !== b.length) return false;
   return a.every(
-    (spec, index) => spec.pos === b[index].pos && Math.abs(spec.fillPx - b[index].fillPx) < 1,
+    (spec, index) =>
+      spec.pos === b[index].pos &&
+      Math.abs(spec.fillPx - b[index].fillPx) < 1 &&
+      Math.abs(spec.breakIndentPx - b[index].breakIndentPx) < 1,
   );
+}
+
+function isListNode(node: PMNode): boolean {
+  return node.type.name === "bulletList" || node.type.name === "orderedList";
+}
+
+function appendListItemBlocks(
+  listNode: PMNode,
+  listPos: number,
+  view: EditorView,
+  pmTop: number,
+  pmLeft: number,
+  injected: InjectedBreak[],
+  blocks: MeasuredBlock[],
+): boolean {
+  let added = false;
+
+  listNode.forEach((child, offset) => {
+    if (child.type.name !== "listItem") return;
+
+    const pos = listPos + 1 + offset;
+    const el = view.nodeDOM(pos);
+    if (!(el instanceof HTMLElement)) return;
+
+    if (appendListItemContentBlocks(child, pos, el, view, pmTop, pmLeft, injected, blocks)) {
+      added = true;
+      return;
+    }
+
+    blocks.push(measureBlock(child, pos, el, pmTop, pmLeft, injected));
+    added = true;
+  });
+
+  return added;
+}
+
+function appendListItemContentBlocks(
+  listItemNode: PMNode,
+  listItemPos: number,
+  listItemEl: HTMLElement,
+  view: EditorView,
+  pmTop: number,
+  pmLeft: number,
+  injected: InjectedBreak[],
+  blocks: MeasuredBlock[],
+): boolean {
+  let added = false;
+
+  listItemNode.forEach((child, offset) => {
+    const childPos = listItemPos + 1 + offset;
+    const childEl = view.nodeDOM(childPos);
+    if (!(childEl instanceof HTMLElement)) return;
+
+    if (isListNode(child)) {
+      if (appendListItemBlocks(child, childPos, view, pmTop, pmLeft, injected, blocks)) {
+        added = true;
+        return;
+      }
+
+      blocks.push(measureBlock(child, childPos, childEl, pmTop, pmLeft, injected));
+      added = true;
+      return;
+    }
+
+    blocks.push(
+      measureBlock(child, added ? childPos : listItemPos, childEl, pmTop, pmLeft, injected),
+    );
+    added = true;
+  });
+
+  if (!added && listItemNode.childCount === 0) {
+    blocks.push(measureBlock(listItemNode, listItemPos, listItemEl, pmTop, pmLeft, injected));
+    return true;
+  }
+
+  return added;
+}
+
+function measureBlock(
+  node: PMNode,
+  pos: number,
+  el: HTMLElement,
+  pmTop: number,
+  pmLeft: number,
+  injected: InjectedBreak[],
+): MeasuredBlock {
+  const rect = el.getBoundingClientRect();
+  const renderedTop = rect.top - pmTop;
+  const isBreak = node.type.name === "pageBreak";
+  const injectedAbove = injected.reduce(
+    (sum, item) => (item.el !== el && item.top < renderedTop - 0.5 ? sum + item.height : sum),
+    0,
+  );
+
+  return {
+    pos,
+    el,
+    height: isBreak ? 0 : rect.height,
+    naturalTop: renderedTop - injectedAbove,
+    breakIndentPx: Math.max(0, rect.left - pmLeft),
+    isBreak,
+    isHeading: node.type.name === "heading",
+  };
 }
 
 function emitGeometry(
@@ -361,9 +475,7 @@ function emitGeometry(
 
   const pm = view.dom;
   const pmTop = pm.getBoundingClientRect().top;
-  const breakEls = Array.from(
-    pm.querySelectorAll<HTMLElement>(':scope > [data-type="page-break"]'),
-  );
+  const breakEls = Array.from(pm.querySelectorAll<HTMLElement>('[data-type="page-break"]'));
   const gapEvents = events.filter((event) => event.kind !== "overflow");
   if (breakEls.length !== gapEvents.length) return false; // transient; retry
 
