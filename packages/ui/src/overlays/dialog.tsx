@@ -20,9 +20,8 @@ import {
   type Component,
   createContext,
   createEffect,
-  createUniqueId,
   createSignal,
-
+  createUniqueId,
   Show,
   useContext,
 } from "solid-js";
@@ -216,9 +215,7 @@ export type DialogContentProps<T extends ValidComponent = "div"> = ComponentProp
 // (e.g. reduced motion) so the content always unmounts.
 function createDialogPresence(open: () => boolean) {
   const [present, setPresent] = createSignal(open());
-  const [state, setState] = createSignal<"open" | "closed">(
-    open() ? "open" : "closed",
-  );
+  const [state, setState] = createSignal<"open" | "closed">(open() ? "open" : "closed");
   let element: HTMLElement | undefined;
 
   createEffect(
@@ -299,6 +296,27 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
     });
     return !prevented;
   };
+  const contentClass = () =>
+    cn(
+      "pointer-events-auto relative flex max-h-full max-w-full flex-col gap-4 overflow-hidden border border-border-subtle bg-surface-raised p-6 text-surface-raised-foreground shadow-elevation-high sm:!rounded-lg",
+      local.zIndex || "z-50",
+      local.class,
+    );
+  const contentChildren = () => (
+    <>
+      {local.children}
+      <Show when={!local.hideCloseButton}>
+        <button
+          type="button"
+          class="absolute right-4 top-4 flex size-8 cursor-pointer items-center justify-center rounded-full text-muted-foreground ring-offset-background transition-colors hover:bg-hover hover:text-hover-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+          onClick={dialog.close}
+        >
+          <X aria-hidden="true" class="size-4" />
+          <span class="sr-only">Close</span>
+        </button>
+      </Show>
+    </>
+  );
 
   return (
     <Show when={presence.present()}>
@@ -311,39 +329,51 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
             if (canCloseFromOutside()) dialog.close();
           }}
         />
-        <Dynamic
-          component={local.as ?? "div"}
-          role="dialog"
-          data-xgx-dialog-content=""
-          data-state={presence.state()}
-          aria-modal={dialog.modal() ? "true" : undefined}
-          aria-labelledby={local["aria-labelledby"] ?? dialog.titleId}
-          aria-describedby={local["aria-describedby"] ?? dialog.descriptionId}
-          tabIndex={-1}
-          ref={(element: HTMLElement) => {
-            setContentRef(element);
-            presence.setElement(element);
-            assignRef(local.ref, element);
-          }}
-          {...rest}
-          class={cn(
-            "pointer-events-auto relative flex max-h-full max-w-full flex-col gap-4 overflow-hidden border border-border-subtle bg-surface-raised p-6 text-surface-raised-foreground shadow-elevation-high sm:!rounded-lg",
-            local.zIndex || "z-50",
-            local.class,
-          )}
-        >
-          {local.children}
-          {!local.hideCloseButton && (
-            <button
-              type="button"
-              class="absolute right-4 top-4 flex size-8 cursor-pointer items-center justify-center rounded-full text-muted-foreground ring-offset-background transition-colors hover:bg-hover hover:text-hover-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-              onClick={dialog.close}
+        <Show
+          when={local.as}
+          fallback={
+            <div
+              role="dialog"
+              data-xgx-dialog-content=""
+              data-state={presence.state()}
+              aria-modal={dialog.modal() ? "true" : undefined}
+              aria-labelledby={local["aria-labelledby"] ?? dialog.titleId}
+              aria-describedby={local["aria-describedby"] ?? dialog.descriptionId}
+              tabIndex={-1}
+              ref={(element: HTMLDivElement) => {
+                setContentRef(element);
+                presence.setElement(element);
+                assignRef(local.ref, element);
+              }}
+              {...rest}
+              class={contentClass()}
             >
-              <X aria-hidden="true" class="size-4" />
-              <span class="sr-only">Close</span>
-            </button>
+              {contentChildren()}
+            </div>
+          }
+        >
+          {(as) => (
+            <Dynamic
+              component={as()}
+              role="dialog"
+              data-xgx-dialog-content=""
+              data-state={presence.state()}
+              aria-modal={dialog.modal() ? "true" : undefined}
+              aria-labelledby={local["aria-labelledby"] ?? dialog.titleId}
+              aria-describedby={local["aria-describedby"] ?? dialog.descriptionId}
+              tabIndex={-1}
+              ref={(element: HTMLElement) => {
+                setContentRef(element);
+                presence.setElement(element);
+                assignRef(local.ref, element);
+              }}
+              {...rest}
+              class={contentClass()}
+            >
+              {contentChildren()}
+            </Dynamic>
           )}
-        </Dynamic>
+        </Show>
       </DialogPortal>
     </Show>
   );

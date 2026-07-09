@@ -165,19 +165,27 @@ export function useResponseDialog() {
             }
           >
             <Match when={dialogProps.template === "alert"}>
-              <DialogContent
-                class={dialogProps.class}
-                mount={dialogProps.mount}
-                zIndex={dialogProps.zIndex ?? "z-[60]"}
-              >
-                <DialogAlertTemplate
-                  {...dialogProps}
-                  resolve={(value: unknown) => {
-                    settleDialog?.(value);
+              {() => (
+                <DialogContent
+                  class={cn("w-full max-w-md", dialogProps.class)}
+                  hideCloseButton={dialogProps.hideCloseButton}
+                  mount={dialogProps.mount}
+                  zIndex={dialogProps.zIndex ?? "z-[60]"}
+                  onInteractOutside={(event) => {
+                    if (dialogProps.closeOnInteractOutside !== true) {
+                      event.preventDefault();
+                    }
                   }}
-                  reject={() => settleDialog?.(null)}
-                />
-              </DialogContent>
+                >
+                  <DialogAlertTemplate
+                    {...dialogProps}
+                    resolve={(value: unknown) => {
+                      settleDialog?.(value);
+                    }}
+                    reject={() => settleDialog?.(null)}
+                  />
+                </DialogContent>
+              )}
             </Match>
           </Switch>
         </Dialog>
