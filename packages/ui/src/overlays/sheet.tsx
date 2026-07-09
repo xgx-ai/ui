@@ -233,7 +233,7 @@ const SheetContent = <T extends ValidComponent = "div">(props: SheetContentProps
           aria-modal={sheet.modal() ? "true" : undefined}
           aria-labelledby={local["aria-labelledby"] ?? sheet.titleId}
           aria-describedby={local["aria-describedby"] ?? sheet.descriptionId}
-          tabIndex={-1}
+          tabindex={-1}
           ref={(element: HTMLElement) => {
             setContentRef(element);
             assignRef(local.ref, element);

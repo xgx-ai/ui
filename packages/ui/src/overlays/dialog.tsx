@@ -33,6 +33,8 @@ import { assignRef } from "./floating";
 import { createModalBehavior } from "./modal-behavior";
 import { PortalMount } from "./portal";
 
+const DynamicAny = Dynamic as any;
+
 type DialogContextValue = {
   close: () => void;
   descriptionId: string;
@@ -339,7 +341,7 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
               aria-modal={dialog.modal() ? "true" : undefined}
               aria-labelledby={local["aria-labelledby"] ?? dialog.titleId}
               aria-describedby={local["aria-describedby"] ?? dialog.descriptionId}
-              tabIndex={-1}
+              tabindex={-1}
               ref={(element: HTMLDivElement) => {
                 setContentRef(element);
                 presence.setElement(element);
@@ -353,7 +355,7 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
           }
         >
           {(as) => (
-            <Dynamic
+            <DynamicAny
               component={as()}
               role="dialog"
               data-xgx-dialog-content=""
@@ -361,7 +363,7 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
               aria-modal={dialog.modal() ? "true" : undefined}
               aria-labelledby={local["aria-labelledby"] ?? dialog.titleId}
               aria-describedby={local["aria-describedby"] ?? dialog.descriptionId}
-              tabIndex={-1}
+              tabindex={-1}
               ref={(element: HTMLElement) => {
                 setContentRef(element);
                 presence.setElement(element);
@@ -371,7 +373,7 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
               class={contentClass()}
             >
               {contentChildren()}
-            </Dynamic>
+            </DynamicAny>
           )}
         </Show>
       </DialogPortal>
