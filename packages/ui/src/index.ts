@@ -841,6 +841,7 @@ export {
   useResponseDialog,
 } from "./overlays/dialog/dialog-response.tsx";
 // Overlays
+export type { DialogTemplateProps } from "./overlays/dialog.tsx";
 export {
   Dialog,
   DialogClose,
@@ -849,6 +850,7 @@ export {
   DialogFooter,
   DialogHeader,
   DialogPortal,
+  DialogTemplate,
   DialogTitle,
   DialogTrigger,
 } from "./overlays/dialog.tsx";

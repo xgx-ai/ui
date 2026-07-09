@@ -30,6 +30,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogTemplate,
   DialogTitle,
   DocumentPreviewHeader,
   DocumentPreviewParty,
@@ -110,7 +111,6 @@ import {
   toast,
   useResponseDialog,
 } from "@xgx/ui";
-import { Sortable, SortableHandle, type SortableItemState } from "@xgx/ui/sortablejs";
 import {
   Activity,
   AlertTriangle,
@@ -161,14 +161,15 @@ import {
   Workflow,
   X,
 } from "@xgx/ui/icons";
+import { Sortable, SortableHandle, type SortableItemState } from "@xgx/ui/sortablejs";
 import {
   createEffect,
   createMemo,
   createOptimistic,
   createSignal,
   createStore,
-  flush,
   For,
+  flush,
   onSettled,
   reconcile,
   Show,
@@ -2508,24 +2509,24 @@ export function OverlaysPanel() {
             </DropdownMenuContent>
           </DropdownMenu>
           <Dialog open={dialogOpen()} onOpenChange={setDialogOpen}>
-            <DialogContent class="w-full max-w-md">
-              <DialogHeader>
-                <DialogTitle>Review decision</DialogTitle>
-                <DialogDescription>
-                  Confirm the decision and keep the audit trail visible.
-                </DialogDescription>
-              </DialogHeader>
+            <DialogTemplate
+              class="w-full max-w-md"
+              description="Confirm the decision and keep the audit trail visible."
+              footer={
+                <>
+                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={() => setDialogOpen(false)}>Continue</Button>
+                </>
+              }
+              title="Review decision"
+            >
               <Callout variant="warning">
                 <CalloutTitle>Pending evidence</CalloutTitle>
                 <CalloutContent>One required attachment is still missing.</CalloutContent>
               </Callout>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={() => setDialogOpen(false)}>Continue</Button>
-              </DialogFooter>
-            </DialogContent>
+            </DialogTemplate>
           </Dialog>
         </CardContent>
       </Card>

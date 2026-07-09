@@ -3,7 +3,14 @@ import { createSignal, createStore, flush, Match, Show, Switch } from "solid-js"
 import { cn } from "../../cn.ts";
 import { Button } from "../../forms/button.tsx";
 import { TriangleAlert } from "../../icons.index";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "../dialog.tsx";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTemplate,
+  DialogTitle,
+} from "../dialog.tsx";
 
 export type DialogContentProps<T> = {
   resolve: (value: T) => void;
@@ -113,10 +120,12 @@ export function useResponseDialog() {
         >
           <Switch
             fallback={
-              <DialogContent
+              <DialogTemplate
                 class={cn("max-w-lg w-full", dialogProps.class)}
+                description={dialogProps.description}
                 mount={dialogProps.mount}
                 hideCloseButton={dialogProps.hideCloseButton}
+                title={dialogProps.title}
                 zIndex={dialogProps.zIndex ?? "z-[50]"}
                 onInteractOutside={(event) => {
                   if (dialogProps.closeOnInteractOutside !== true) {
@@ -124,12 +133,6 @@ export function useResponseDialog() {
                   }
                 }}
               >
-                <Show when={dialogProps.title}>
-                  <DialogTitle>{dialogProps.title}</DialogTitle>
-                </Show>
-                <Show when={dialogProps.description}>
-                  <DialogDescription>{dialogProps.description}</DialogDescription>
-                </Show>
                 {dialogProps.content?.({
                   resolve: (value: unknown) => {
                     settleDialog?.(value);
@@ -158,7 +161,7 @@ export function useResponseDialog() {
                     });
                   },
                 })}
-              </DialogContent>
+              </DialogTemplate>
             }
           >
             <Match when={dialogProps.template === "alert"}>

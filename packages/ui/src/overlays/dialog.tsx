@@ -17,12 +17,12 @@
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import {
+  type Component,
   createContext,
-  createUniqueId,
   createSignal,
+  createUniqueId,
   Show,
   useContext,
-  type Component,
 } from "solid-js";
 
 import { cn } from "../cn";
@@ -43,6 +43,7 @@ type DialogContextValue = {
 };
 
 const DialogContext = createContext<DialogContextValue>();
+const DialogTemplateContext = createContext<{ stickyFooter: boolean }>();
 
 function useDialog() {
   const context = useContext(DialogContext);
@@ -259,12 +260,12 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
             setContentRef(element);
             assignRef(local.ref, element);
           }}
+          {...rest}
           class={cn(
             "pointer-events-auto relative flex max-h-full max-w-full flex-col gap-4 overflow-hidden border border-border-subtle bg-surface-raised p-6 text-surface-raised-foreground shadow-elevation-high sm:!rounded-lg",
             local.zIndex || "z-50",
             local.class,
           )}
-          {...rest}
         >
           {local.children}
           {!local.hideCloseButton && (
@@ -283,16 +284,66 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
   );
 };
 
+type DialogTemplateProps = Omit<DialogContentProps, "title"> & {
+  bodyClass?: string;
+  description?: JSX.Element;
+  footer?: JSX.Element;
+  footerClass?: string;
+  headerClass?: string;
+  title?: JSX.Element;
+};
+
+const DialogTemplate: Component<DialogTemplateProps> = (props) => {
+  const [local, rest] = splitProps(props, [
+    "bodyClass",
+    "children",
+    "class",
+    "description",
+    "footer",
+    "footerClass",
+    "headerClass",
+    "title",
+  ]);
+
+  return (
+    <DialogContent class={local.class} {...rest}>
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <Show when={local.title || local.description}>
+          <DialogHeader class={cn("shrink-0 pr-10", local.headerClass)}>
+            <Show when={local.title}>
+              <DialogTitle>{local.title}</DialogTitle>
+            </Show>
+            <Show when={local.description}>
+              <DialogDescription>{local.description}</DialogDescription>
+            </Show>
+          </DialogHeader>
+        </Show>
+        <DialogTemplateContext value={{ stickyFooter: true }}>
+          <div class={cn("min-h-0 flex-1 overflow-y-auto", local.bodyClass)}>{local.children}</div>
+        </DialogTemplateContext>
+        <Show when={local.footer}>
+          <DialogFooter class={cn("shrink-0 pt-4", local.footerClass)}>{local.footer}</DialogFooter>
+        </Show>
+      </div>
+    </DialogContent>
+  );
+};
+
 const DialogHeader: Component<ComponentProps<"div">> = (props) => {
   const [local, rest] = splitProps(props, ["class"]);
   return <div class={cn("flex flex-col gap-4 text-center sm:!text-left", local.class)} {...rest} />;
 };
 
 const DialogFooter: Component<ComponentProps<"div">> = (props) => {
+  const template = useContext(DialogTemplateContext);
   const [local, rest] = splitProps(props, ["class"]);
   return (
     <div
-      class={cn("flex flex-col-reverse sm:!flex-row sm:!justify-end sm:!space-x-2", local.class)}
+      class={cn(
+        "flex flex-col-reverse sm:!flex-row sm:!justify-end sm:!space-x-2",
+        template?.stickyFooter && "sticky bottom-0 z-10 bg-surface-raised pt-4",
+        local.class,
+      )}
       {...rest}
     />
   );
@@ -353,6 +404,7 @@ function callEventHandler<TElement, TEvent>(
   }
 }
 
+export type { DialogTemplateProps };
 export {
   Dialog,
   DialogClose,
@@ -362,6 +414,7 @@ export {
   DialogHeader,
   DialogOverlay,
   DialogPortal,
+  DialogTemplate,
   DialogTitle,
   DialogTrigger,
 };
