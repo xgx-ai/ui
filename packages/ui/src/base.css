@@ -269,9 +269,13 @@
   --shadow-elevation-high: var(--elevation-high, 0 24px 48px -24px rgb(0 0 0 / 0.32));
 }
 
-/* Component base styles */
-* {
-  @apply border-border outline-ring/50;
+/* Component base styles.
+ * Layered so utility classes (border-transparent, border-primary, ...) can
+ * override the default border color; unlayered rules would always win. */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
 }
 
 button {

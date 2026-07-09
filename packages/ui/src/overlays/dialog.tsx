@@ -19,8 +19,10 @@ import { Dynamic } from "@solidjs/web";
 import {
   type Component,
   createContext,
-  createSignal,
+  createEffect,
   createUniqueId,
+  createSignal,
+
   Show,
   useContext,
 } from "solid-js";
@@ -208,6 +210,63 @@ export type DialogContentProps<T extends ValidComponent = "div"> = ComponentProp
   onInteractOutside?: (event: { preventDefault: () => void }) => void;
 };
 
+// Keeps content mounted through its exit animation so open AND close animate.
+// `present()` gates the mount; `state()` drives the enter/exit keyframes via
+// the `data-state` attribute. Falls back to a timer when no animation runs
+// (e.g. reduced motion) so the content always unmounts.
+function createDialogPresence(open: () => boolean) {
+  const [present, setPresent] = createSignal(open());
+  const [state, setState] = createSignal<"open" | "closed">(
+    open() ? "open" : "closed",
+  );
+  let element: HTMLElement | undefined;
+
+  createEffect(
+    () => open(),
+    (isOpen) => {
+      if (isOpen) {
+        setPresent(true);
+        setState("open");
+        return;
+      }
+
+      setState("closed");
+      const node = element;
+      if (!node) {
+        setPresent(false);
+        return;
+      }
+
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        setPresent(false);
+      };
+      const handleEnd = (event: AnimationEvent) => {
+        if (event.target === node) finish();
+      };
+      node.addEventListener("animationend", handleEnd);
+      node.addEventListener("animationcancel", handleEnd);
+      const timer = globalThis.setTimeout(finish, 400);
+
+      return () => {
+        node.removeEventListener("animationend", handleEnd);
+        node.removeEventListener("animationcancel", handleEnd);
+        globalThis.clearTimeout(timer);
+      };
+    },
+  );
+
+  return {
+    present,
+    state,
+    setElement: (node: HTMLElement) => {
+      element = node;
+    },
+  };
+}
+
 const DialogContent = <T extends ValidComponent = "div">(props: DialogContentProps<T>) => {
   const dialog = useDialog();
   const [local, rest] = splitProps(props, [
@@ -223,6 +282,7 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
     "ref",
   ]);
   const [contentRef, setContentRef] = createSignal<HTMLElement>();
+  const presence = createDialogPresence(dialog.open);
   createModalBehavior({
     content: contentRef,
     modal: dialog.modal,
@@ -241,9 +301,11 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
   };
 
   return (
-    <Show when={dialog.open()}>
+    <Show when={presence.present()}>
       <DialogPortal mount={local.mount} zIndex={local.zIndex}>
         <DialogOverlay
+          data-xgx-dialog-overlay=""
+          data-state={presence.state()}
           zIndex={local.zIndex}
           onClick={() => {
             if (canCloseFromOutside()) dialog.close();
@@ -252,12 +314,15 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
         <Dynamic
           component={local.as ?? "div"}
           role="dialog"
+          data-xgx-dialog-content=""
+          data-state={presence.state()}
           aria-modal={dialog.modal() ? "true" : undefined}
           aria-labelledby={local["aria-labelledby"] ?? dialog.titleId}
           aria-describedby={local["aria-describedby"] ?? dialog.descriptionId}
           tabIndex={-1}
           ref={(element: HTMLElement) => {
             setContentRef(element);
+            presence.setElement(element);
             assignRef(local.ref, element);
           }}
           {...rest}
