@@ -38,7 +38,7 @@ export interface QueryBoundaryProps<T> {
  * ```tsx
  * <QueryBoundary
  *   data={query.latest()}
- *   isLoading={query.pending() && !query.latest()}
+ *   isLoading={query.loading()}
  *   emptyFallback={
  *     <EmptyState>
  *       <EmptyStateIcon><FileText /></EmptyStateIcon>

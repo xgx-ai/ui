@@ -1,5 +1,5 @@
-import { type Accessor, createMemo, createSignal } from "solid-js";
 import { createInfiniteQuery, type InfiniteQueryResult, type QueryKey } from "@xgx/query";
+import { type Accessor, createMemo, createSignal } from "solid-js";
 
 /**
  * Base interface for table row data.
@@ -136,7 +136,7 @@ export function useTable<
     void query.refetch();
   };
 
-  const isLoading = createMemo(() => query.pending() && latestData().length === 0);
+  const isLoading = createMemo(() => query.loading());
   const isFetchingMore = createMemo(() => query.fetchingNextPage());
   const hasMore = createMemo(() => query.hasNextPage());
 

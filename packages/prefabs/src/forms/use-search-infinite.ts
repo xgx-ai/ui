@@ -1,5 +1,5 @@
-import { type Accessor, createMemo, createSignal, onCleanup } from "solid-js";
 import { createInfiniteQuery, type InfiniteQueryResult, type QueryKey } from "@xgx/query";
+import { type Accessor, createMemo, createSignal, onCleanup } from "solid-js";
 
 export interface SearchInfinitePage<T> {
   data: T[];
@@ -94,7 +94,7 @@ export function createSearchInfinite<T>(
   const options = createMemo(() => query.latest()?.pages.flatMap((page) => page.data) ?? []);
 
   const loadMore = () => {
-    if (query.hasNextPage() && !query.pending() && !query.fetchingNextPage()) {
+    if (query.hasNextPage() && !query.fetching() && !query.fetchingNextPage()) {
       void query.fetchNextPage();
     }
   };
@@ -105,7 +105,7 @@ export function createSearchInfinite<T>(
     searchTerm,
     setSearch,
     clearSearch,
-    isLoading: query.pending,
+    isLoading: query.loading,
     isFetchingMore: query.fetchingNextPage,
     hasMore: query.hasNextPage,
     loadMore,

@@ -1,14 +1,23 @@
 import type { JSX } from "@solidjs/web";
 import {
+  type Accessor,
+  action,
+  affects,
   createContext,
   createEffect,
   createMemo,
+  createOptimistic,
+  createRoot,
   createSignal,
+  createStore,
   Errored,
-  flush,
+  isPending,
   Loading,
   onCleanup,
-  resolve,
+  onSettled,
+  refresh,
+  runWithOwner,
+  type SourceAccessor,
   untrack,
   useContext,
 } from "solid-js";
@@ -18,23 +27,32 @@ export { Errored, Loading };
 
 export type QueryContext = {
   queryKey: QueryKey;
+  signal: AbortSignal;
 };
+
+type RetryOption = boolean | number | ((failureCount: number, error: unknown) => boolean);
+type RetryDelayOption = number | ((failureCount: number, error: unknown) => number);
+type MaybePromise<T> = T | Promise<T>;
 
 export type QueryOptions<TData> = {
   queryKey: QueryKey;
   queryFn: (context: QueryContext) => Promise<TData>;
   enabled?: boolean | (() => boolean);
   gcTime?: number;
-  retry?: boolean | number | ((failureCount: number, error: unknown) => boolean);
+  refetchOnReconnect?: boolean;
+  refetchOnWindowFocus?: boolean;
+  retry?: RetryOption;
+  retryDelay?: RetryDelayOption;
   staleTime?: number;
   timeoutMs?: number;
 };
 
 export type QueryDefaultOptions = {
-  experimental_prefetchInRender?: boolean;
   gcTime?: number;
+  refetchOnReconnect?: boolean;
   refetchOnWindowFocus?: boolean;
-  retry?: QueryOptions<unknown>["retry"];
+  retry?: RetryOption;
+  retryDelay?: RetryDelayOption;
   staleTime?: number;
   timeoutMs?: number;
 };
@@ -51,8 +69,7 @@ export type QueryClientConfig = {
 };
 
 export type QueryFactory = {
-  invalidate?: () => void;
-  prefix?: QueryKey;
+  prefix: QueryKey;
 };
 
 export type InfiniteQueryFactory<TPage, TPageParam, TArgs extends unknown[]> = QueryFactory &
@@ -61,12 +78,26 @@ export type InfiniteQueryFactory<TPage, TPageParam, TArgs extends unknown[]> = Q
 export type ValueQueryFactory<TData, TArgs extends unknown[]> = QueryFactory &
   ((...args: TArgs) => QueryOptions<TData>);
 
-export type DefineInfiniteQueryOptions<TPage, TPageParam, TArgs extends unknown[]> = {
+type SharedDefineQueryOptions = {
+  gcTime?: number;
+  refetchOnReconnect?: boolean;
+  refetchOnWindowFocus?: boolean;
+  retry?: RetryOption;
+  retryDelay?: RetryDelayOption;
+  staleTime?: number;
+  timeoutMs?: number;
+};
+
+export type DefineInfiniteQueryOptions<
+  TPage,
+  TPageParam,
+  TArgs extends unknown[],
+> = SharedDefineQueryOptions & {
   key: (...args: TArgs) => QueryKey;
-  prefix?: QueryKey;
+  prefix: QueryKey;
   initialPageParam: TPageParam;
   queryFn: (
-    context: { pageParam: TPageParam; queryKey: QueryKey },
+    context: { pageParam: TPageParam; queryKey: QueryKey; signal: AbortSignal },
     ...args: TArgs
   ) => Promise<TPage>;
   getNextPageParam?: (
@@ -77,33 +108,45 @@ export type DefineInfiniteQueryOptions<TPage, TPageParam, TArgs extends unknown[
   enabled?: boolean | (() => boolean);
 };
 
-export type DefineQueryOptions<TData, TArgs extends unknown[]> = {
+export type DefineQueryOptions<TData, TArgs extends unknown[]> = SharedDefineQueryOptions & {
   key: (...args: TArgs) => QueryKey;
-  prefix?: QueryKey;
+  prefix: QueryKey;
   queryFn: (context: QueryContext, ...args: TArgs) => Promise<TData>;
-  staleTime?: number;
+  enabled?: boolean | (() => boolean);
 };
 
 export type MutationOptions<TData, TVariables> = {
   mutationFn: (variables: TVariables) => Promise<TData>;
   invalidates?: Array<QueryFactory | QueryKey>;
-  onError?: (error: Error, variables: TVariables) => void;
-  onSettled?: (data: TData | undefined, error: Error | undefined, variables: TVariables) => void;
-  onSuccess?: (data: TData, variables: TVariables) => void;
-};
-
-type QueryCacheEntry<TData> = {
-  data?: TData;
-  error?: unknown;
-  key: QueryKey;
-  promise?: Promise<TData>;
-  updatedAt: number;
+  onError?: (error: Error, variables: TVariables) => MaybePromise<unknown>;
+  onSettled?: (
+    data: TData | undefined,
+    error: Error | undefined,
+    variables: TVariables,
+  ) => MaybePromise<unknown>;
+  onSuccess?: (data: TData, variables: TVariables) => MaybePromise<unknown>;
 };
 
 export interface QueryResult<TData> {
-  data: () => TData;
-  latest: () => TData | undefined;
-  pending: () => boolean;
+  /** The current authoritative value. Initial reads participate in `Loading`. */
+  data: SourceAccessor<TData>;
+  /** The last value resolved by this query instance, without suspending. */
+  latest: Accessor<TData | undefined>;
+  /** The cached value for the current key, without stale data from a previous key. */
+  cached: Accessor<TData | undefined>;
+  /** Whether the current key has cached data. */
+  hasData: Accessor<boolean>;
+  /** Solid's question-scoped pending verdict for `data`. */
+  pending: Accessor<boolean>;
+  /** Whether a request is executing, including quiet background work. */
+  fetching: Accessor<boolean>;
+  /** Whether the first request for the current key is executing. */
+  loading: Accessor<boolean>;
+  /** Whether a request is executing while current-key data remains available. */
+  refetching: Accessor<boolean>;
+  /** A quiet background refresh that does not declare a value change. */
+  refresh: () => Promise<TData>;
+  /** A declared, user-visible refetch. */
   refetch: () => Promise<TData>;
 }
 
@@ -113,11 +156,11 @@ type MutationState<TData> = {
   data: TData | undefined;
   error: Error | undefined;
   isError: boolean;
-  isPending: boolean;
   isSuccess: boolean;
 };
 
 export interface UseMutationResult<TData, TVariables> extends MutationState<TData> {
+  isPending: boolean;
   mutate: (variables?: TVariables) => void;
   mutateAsync: (variables?: TVariables) => Promise<TData>;
   reset: () => void;
@@ -128,9 +171,14 @@ export interface InfiniteData<TPage, TPageParam = unknown> {
   pageParams: TPageParam[];
 }
 
-export interface InfiniteQueryOptions<TPage, TPageParam = unknown> {
+export interface InfiniteQueryOptions<TPage, TPageParam = unknown>
+  extends SharedDefineQueryOptions {
   queryKey: QueryKey;
-  queryFn: (context: { pageParam: TPageParam; queryKey: QueryKey }) => Promise<TPage>;
+  queryFn: (context: {
+    pageParam: TPageParam;
+    queryKey: QueryKey;
+    signal: AbortSignal;
+  }) => Promise<TPage>;
   initialPageParam: TPageParam;
   getNextPageParam?: (
     lastPage: TPage,
@@ -141,37 +189,119 @@ export interface InfiniteQueryOptions<TPage, TPageParam = unknown> {
 }
 
 export interface InfiniteQueryResult<TPage, TPageParam = unknown> {
-  data: () => InfiniteData<TPage, TPageParam>;
-  latest: () => InfiniteData<TPage, TPageParam> | undefined;
-  pending: () => boolean;
-  fetchingNextPage: () => boolean;
-  hasNextPage: () => boolean;
+  data: SourceAccessor<InfiniteData<TPage, TPageParam>>;
+  latest: Accessor<InfiniteData<TPage, TPageParam> | undefined>;
+  pending: Accessor<boolean>;
+  fetching: Accessor<boolean>;
+  loading: Accessor<boolean>;
+  refetching: Accessor<boolean>;
+  fetchingNextPage: Accessor<boolean>;
+  hasNextPage: Accessor<boolean>;
   fetchNextPage: () => Promise<void>;
+  refresh: () => Promise<InfiniteData<TPage, TPageParam>>;
   refetch: () => Promise<InfiniteData<TPage, TPageParam>>;
 }
 
-const internalSignalOptions = { equals: false, ownedWrite: true } as const;
+type PreparedQuery<TData> = QueryOptions<TData> & {
+  hash: string;
+};
+
+type InternalSetter<T> = (value: T | ((previous: T) => T)) => T;
+
+type QueryCacheEntry = {
+  controller?: AbortController;
+  data: Accessor<unknown>;
+  dispose: () => void;
+  error?: unknown;
+  fetching: Accessor<boolean>;
+  gcTime: number;
+  gcTimer?: ReturnType<typeof setTimeout>;
+  hasData: Accessor<boolean>;
+  hash: string;
+  invalidationVersion: number;
+  key: QueryKey;
+  options?: PreparedQuery<unknown>;
+  promise?: Promise<unknown>;
+  requestId: number;
+  setData: InternalSetter<unknown>;
+  setFetching: InternalSetter<boolean>;
+  setHasData: InternalSetter<boolean>;
+  sources: Map<SourceAccessor<unknown>, boolean>;
+  stale: boolean;
+  staleTimer?: ReturnType<typeof setTimeout>;
+  updatedAt: number;
+};
+
+const DEFAULT_GC_TIME = 5 * 60_000;
+const disabledQueryPromise = new Promise<never>(() => {});
 const internalWritableOptions = { ownedWrite: true } as const;
 
 export function queryKey(...parts: unknown[]): QueryKey {
   return parts;
 }
 
-function stableQueryKey(queryKey: QueryKey): string {
-  try {
-    return JSON.stringify(queryKey);
-  } catch {
-    return queryKey.map(String).join("|");
+function serialiseQueryKeyPart(value: unknown, seen = new WeakSet<object>()): string {
+  if (value === null) return "null";
+
+  switch (typeof value) {
+    case "undefined":
+      return "undefined";
+    case "boolean":
+      return value ? "boolean:true" : "boolean:false";
+    case "number":
+      if (Number.isNaN(value)) return "number:NaN";
+      if (Object.is(value, -0)) return "number:-0";
+      return `number:${value}`;
+    case "bigint":
+      return `bigint:${value}`;
+    case "string":
+      return `string:${JSON.stringify(value)}`;
+    case "function":
+    case "symbol":
+      throw new TypeError("Query keys must contain serialisable values.");
+    case "object": {
+      if (seen.has(value)) throw new TypeError("Query keys cannot contain circular values.");
+      seen.add(value);
+
+      let result: string;
+      if (Array.isArray(value)) {
+        result = `[${value.map((item) => serialiseQueryKeyPart(item, seen)).join(",")}]`;
+      } else if (value instanceof Date) {
+        result = `date:${value.toISOString()}`;
+      } else {
+        const prototype = Object.getPrototypeOf(value);
+        if (prototype !== Object.prototype && prototype !== null) {
+          throw new TypeError("Query keys may only contain arrays, dates, and plain objects.");
+        }
+        const record = value as Record<string, unknown>;
+        const body = Object.keys(record)
+          .sort()
+          .map((key) => `${JSON.stringify(key)}:${serialiseQueryKeyPart(record[key], seen)}`)
+          .join(",");
+        result = `{${body}}`;
+      }
+
+      seen.delete(value);
+      return result;
+    }
   }
+
+  throw new TypeError("Unsupported query key value.");
+}
+
+function stableQueryKey(key: QueryKey): string {
+  return serialiseQueryKeyPart(key);
+}
+
+function queryKeyStartsWith(key: QueryKey, prefix: QueryKey): boolean {
+  if (prefix.length > key.length) return false;
+  return prefix.every(
+    (part, index) => serialiseQueryKeyPart(part) === serialiseQueryKeyPart(key[index]),
+  );
 }
 
 function isEnabled(value: boolean | (() => boolean) | undefined): boolean {
   return typeof value === "function" ? value() : (value ?? true);
-}
-
-function queryKeyStartsWith(queryKey: QueryKey, prefix: QueryKey): boolean {
-  if (prefix.length > queryKey.length) return false;
-  return prefix.every((part, index) => Object.is(part, queryKey[index]));
 }
 
 function isQueryKey(value: QueryFactory | QueryKey): value is QueryKey {
@@ -185,19 +315,20 @@ function normaliseQueryPrefix(input?: QueryKey | { queryKey?: QueryKey }): Query
 }
 
 function shouldRetry(
-  retry: QueryOptions<unknown>["retry"],
+  retry: RetryOption | undefined,
   failureCount: number,
   error: unknown,
 ): boolean {
   if (typeof retry === "function") return retry(failureCount, error);
   if (typeof retry === "number") return failureCount <= retry;
-  if (retry === false) return false;
   if (retry === true) return failureCount <= 3;
   return false;
 }
 
-function refreshableKey(key: QueryKey, refresh: number): QueryKey {
-  return [...key, { refresh }];
+function retryDelay(delay: RetryDelayOption | undefined, failureCount: number, error: unknown) {
+  if (typeof delay === "function") return Math.max(0, delay(failureCount, error));
+  if (typeof delay === "number") return Math.max(0, delay);
+  return Math.min(1_000 * 2 ** Math.max(0, failureCount - 1), 30_000);
 }
 
 export class QueryTimeoutError extends Error {
@@ -207,16 +338,71 @@ export class QueryTimeoutError extends Error {
   }
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs?: number): Promise<T> {
-  if (!timeoutMs || timeoutMs <= 0) return promise;
+export class QueryCancelledError extends Error {
+  constructor() {
+    super("Query was cancelled");
+    this.name = "QueryCancelledError";
+  }
+}
 
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<T>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new QueryTimeoutError(timeoutMs)), timeoutMs);
+export class QueryDisabledError extends Error {
+  constructor() {
+    super("Cannot refetch a disabled query without cached data");
+    this.name = "QueryDisabledError";
+  }
+}
+
+function abortReason(signal: AbortSignal): Error {
+  return signal.reason instanceof Error ? signal.reason : new QueryCancelledError();
+}
+
+function waitForRetry(delay: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolveWait, reject) => {
+    if (signal.aborted) {
+      reject(abortReason(signal));
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolveWait();
+    }, delay);
+    const onAbort = () => {
+      clearTimeout(timeout);
+      reject(abortReason(signal));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+function runQueryAttempt<TData>(
+  query: PreparedQuery<TData>,
+  controller: AbortController,
+): Promise<TData> {
+  const signal = controller.signal;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  let removeAbortListener = () => {};
+
+  const aborted = new Promise<TData>((_, reject) => {
+    const onAbort = () => reject(abortReason(signal));
+    if (signal.aborted) onAbort();
+    else {
+      signal.addEventListener("abort", onAbort, { once: true });
+      removeAbortListener = () => signal.removeEventListener("abort", onAbort);
+    }
   });
 
-  return Promise.race([promise, timeout]).finally(() => {
-    if (timeoutId) clearTimeout(timeoutId);
+  if (query.timeoutMs && query.timeoutMs > 0) {
+    timeout = setTimeout(() => {
+      controller.abort(new QueryTimeoutError(query.timeoutMs!));
+    }, query.timeoutMs);
+  }
+
+  const request = Promise.resolve().then(() => query.queryFn({ queryKey: query.queryKey, signal }));
+
+  return Promise.race([request, aborted]).finally(() => {
+    removeAbortListener();
+    if (timeout) clearTimeout(timeout);
   });
 }
 
@@ -242,289 +428,174 @@ function resultProxy<TResult extends object>(read: () => TResult): TResult {
 export function defineInfiniteQuery<TPage, TPageParam = unknown, TArgs extends unknown[] = []>(
   config: DefineInfiniteQueryOptions<TPage, TPageParam, TArgs>,
 ): InfiniteQueryFactory<TPage, TPageParam, TArgs> {
-  const [refresh, setRefresh] = createSignal(0, internalWritableOptions);
   const factory = ((...args: TArgs) => ({
-    queryKey: refreshableKey(config.key(...args), refresh()),
-    queryFn: (context: { pageParam: TPageParam; queryKey: QueryKey }) =>
+    queryKey: config.key(...args),
+    queryFn: (context: { pageParam: TPageParam; queryKey: QueryKey; signal: AbortSignal }) =>
       config.queryFn(context, ...args),
     initialPageParam: config.initialPageParam,
     getNextPageParam: config.getNextPageParam,
     enabled: config.enabled,
+    gcTime: config.gcTime,
+    refetchOnReconnect: config.refetchOnReconnect,
+    refetchOnWindowFocus: config.refetchOnWindowFocus,
+    retry: config.retry,
+    retryDelay: config.retryDelay,
+    staleTime: config.staleTime,
+    timeoutMs: config.timeoutMs,
   })) as InfiniteQueryFactory<TPage, TPageParam, TArgs>;
 
   factory.prefix = config.prefix;
-  factory.invalidate = () => setRefresh((value) => value + 1);
   return factory;
 }
 
 export function defineQuery<TData, TArgs extends unknown[] = []>(
   config: DefineQueryOptions<TData, TArgs>,
 ): ValueQueryFactory<TData, TArgs> {
-  const [refresh, setRefresh] = createSignal(0, internalWritableOptions);
   const factory = ((...args: TArgs) => ({
-    queryKey: refreshableKey(config.key(...args), refresh()),
+    queryKey: config.key(...args),
     queryFn: (context: QueryContext) => config.queryFn(context, ...args),
+    enabled: config.enabled,
+    gcTime: config.gcTime,
+    refetchOnReconnect: config.refetchOnReconnect,
+    refetchOnWindowFocus: config.refetchOnWindowFocus,
+    retry: config.retry,
+    retryDelay: config.retryDelay,
     staleTime: config.staleTime,
+    timeoutMs: config.timeoutMs,
   })) as ValueQueryFactory<TData, TArgs>;
 
   factory.prefix = config.prefix;
-  factory.invalidate = () => setRefresh((value) => value + 1);
   return factory;
 }
 
-const disabledQueryPromise = <TData,>() => new Promise<TData>(() => {});
-
-async function fetchQueryWithRetry<TData>(
-  client: QueryClient,
-  query: QueryOptions<TData>,
-): Promise<TData> {
-  const resolvedQuery = client.withQueryDefaults(query);
-  let failureCount = 0;
-
-  while (true) {
-    try {
-      return await client.fetchQuery(resolvedQuery);
-    } catch (error) {
-      failureCount += 1;
-      if (!shouldRetry(resolvedQuery.retry, failureCount, error)) throw error;
-    }
-  }
-}
-
-export function createInfiniteQuery<TPage, TPageParam = unknown>(
-  options: () => InfiniteQueryOptions<TPage, TPageParam>,
-): InfiniteQueryResult<TPage, TPageParam> {
-  const [refresh, setRefresh] = createSignal(0, internalWritableOptions);
-  const [latestData, setLatestData] = createSignal<InfiniteData<TPage, TPageParam>>();
-  const [pending, setPending] = createSignal(false, internalWritableOptions);
-  const [fetchingNextPage, setFetchingNextPage] = createSignal(false, internalWritableOptions);
-  const [hasNextPage, setHasNextPage] = createSignal(false, internalWritableOptions);
-  const [nextPageParam, setNextPageParam] = createSignal<TPageParam>();
-  const [initialFetch, setInitialFetch] = createSignal<Promise<InfiniteData<TPage, TPageParam>>>();
-  let activeKey: string | undefined;
-  let initialPromise: Promise<InfiniteData<TPage, TPageParam>> | undefined;
-  let initialRequestId = 0;
-  let nextPageRequestId = 0;
-
-  const computeNextPageParam = (
-    nextOptions: InfiniteQueryOptions<TPage, TPageParam>,
-    data: InfiniteData<TPage, TPageParam>,
-  ) => {
-    const lastPage = data.pages.at(-1);
-    const lastPageParam = data.pageParams.at(-1);
-
-    if (lastPage === undefined || lastPageParam === undefined || !nextOptions.getNextPageParam) {
-      return undefined;
-    }
-
-    return nextOptions.getNextPageParam(lastPage, data.pages, lastPageParam);
-  };
-
-  const loadInitialPage = (
-    pageParam: TPageParam,
-    nextOptions: InfiniteQueryOptions<TPage, TPageParam>,
-  ): Promise<InfiniteData<TPage, TPageParam>> => {
-    const currentRequestId = ++initialRequestId;
-    const requestKey = stableQueryKey(nextOptions.queryKey);
-    setPending(true);
-    setFetchingNextPage(false);
-
-    const promise = Promise.resolve()
-      .then(() =>
-        nextOptions.queryFn({
-          pageParam,
-          queryKey: nextOptions.queryKey,
-        }),
-      )
-      .then((page) => {
-        if (currentRequestId !== initialRequestId || requestKey !== activeKey) {
-          return latestData() ?? { pages: [], pageParams: [] };
-        }
-
-        const data = { pages: [page], pageParams: [pageParam] };
-        const nextParam = computeNextPageParam(nextOptions, data);
-        setLatestData(data);
-        setHasNextPage(nextParam !== undefined);
-        setNextPageParam(() => nextParam);
-        return data;
-      })
-      .finally(() => {
-        if (currentRequestId === initialRequestId && requestKey === activeKey) {
-          setPending(false);
-        }
-      });
-
-    initialPromise = promise;
-    return promise;
-  };
-
-  // Fetches are driven by a two-phase effect, never from a memo computation: an
-  // async memo owns the promise it returns, and the runtime re-runs its computation
-  // around settlement — a fetch started inside one refires in a loop.
-  createEffect(
-    () => {
-      refresh();
-      const nextOptions = options();
-      return {
-        enabled: isEnabled(nextOptions.enabled),
-        key: stableQueryKey(nextOptions.queryKey),
-        options: nextOptions,
-      };
-    },
-    (state) => {
-      activeKey = state.key;
-      if (!state.enabled) {
-        setPending(false);
-        return;
-      }
-
-      setInitialFetch(() => loadInitialPage(state.options.initialPageParam, state.options));
-    },
-  );
-
-  // Async memo over the in-flight promise: reading it suspends until the initial
-  // page (or the current query-key change) resolves. It observes the fetch; it
-  // does not start one.
-  const settledInitial = createMemo<InfiniteData<TPage, TPageParam>>(
-    () => initialFetch() ?? disabledQueryPromise<InfiniteData<TPage, TPageParam>>(),
-  );
-
-  const data = () => {
-    const source = settledInitial();
-    return latestData() ?? source;
-  };
-
-  const fetchNextPage = async () => {
-    const current = latestData();
-    const pageParam = nextPageParam();
-    if (!current || !hasNextPage() || pageParam === undefined || pending() || fetchingNextPage())
-      return;
-
-    const nextOptions = options();
-    const requestKey = stableQueryKey(nextOptions.queryKey);
-    if (requestKey !== activeKey || !isEnabled(nextOptions.enabled)) return;
-
-    const currentRequestId = ++nextPageRequestId;
-    setFetchingNextPage(true);
-
-    try {
-      const page = await nextOptions.queryFn({
-        pageParam,
-        queryKey: nextOptions.queryKey,
-      });
-      if (currentRequestId !== nextPageRequestId || requestKey !== activeKey) return;
-
-      const currentData = latestData();
-      if (!currentData) return;
-
-      const pages = [...currentData.pages, page];
-      const pageParams = [...currentData.pageParams, pageParam];
-      const data = { pages, pageParams };
-      const nextPageParam = computeNextPageParam(nextOptions, data);
-      setLatestData(data);
-      setHasNextPage(nextPageParam !== undefined);
-      setNextPageParam(() => nextPageParam);
-    } finally {
-      if (currentRequestId === nextPageRequestId && requestKey === activeKey) {
-        setFetchingNextPage(false);
-      }
-    }
-  };
-
-  const refetch = async () => {
-    setRefresh((value) => value + 1);
-    flush();
-    return initialPromise ?? resolve(data);
-  };
-
-  return {
-    data,
-    latest: latestData,
-    pending,
-    fetchingNextPage,
-    hasNextPage,
-    fetchNextPage,
-    refetch,
-  };
-}
-
-export const useInfiniteQuery = createInfiniteQuery;
-
 export class QueryClient {
-  #cache = new Map<string, QueryCacheEntry<unknown>>();
+  #cache = new Map<string, QueryCacheEntry>();
   #config: QueryClientConfig;
-  #listeners = new Set<(prefix?: QueryKey) => void>();
+  #mountCount = 0;
+  #onFocus = () => {
+    void this.#refreshStaleQueries("focus").catch(() => {});
+  };
+  #onOnline = () => {
+    void this.#refreshStaleQueries("reconnect").catch(() => {});
+  };
 
   constructor(config: QueryClientConfig = {}) {
     this.#config = config;
   }
 
-  fetchQuery<TData>(query: QueryOptions<TData>): Promise<TData> {
-    const resolvedQuery = this.#withQueryDefaults(query);
-    const key = stableQueryKey(resolvedQuery.queryKey);
-    const cached = this.#cache.get(key) as QueryCacheEntry<TData> | undefined;
-    const staleTime = resolvedQuery.staleTime ?? 0;
-    const now = Date.now();
+  prepareQuery<TData>(query: QueryOptions<TData>): PreparedQuery<TData> {
+    const defaults = this.#config.defaultOptions?.queries;
+    const resolved = defaults
+      ? {
+          ...query,
+          gcTime: query.gcTime ?? defaults.gcTime,
+          refetchOnReconnect: query.refetchOnReconnect ?? defaults.refetchOnReconnect,
+          refetchOnWindowFocus: query.refetchOnWindowFocus ?? defaults.refetchOnWindowFocus,
+          retry: query.retry ?? defaults.retry,
+          retryDelay: query.retryDelay ?? defaults.retryDelay,
+          staleTime: query.staleTime ?? defaults.staleTime,
+          timeoutMs: query.timeoutMs ?? defaults.timeoutMs,
+        }
+      : query;
 
-    if (cached?.data !== undefined && now - cached.updatedAt <= staleTime) {
-      return Promise.resolve(cached.data);
+    return { ...resolved, hash: stableQueryKey(resolved.queryKey) };
+  }
+
+  getOrCreateEntry<TData>(query: PreparedQuery<TData>): QueryCacheEntry {
+    const existing = this.#cache.get(query.hash);
+    if (existing) {
+      const previousStaleTime = existing.options?.staleTime ?? 0;
+      const nextStaleTime = query.staleTime ?? 0;
+      existing.key = query.queryKey;
+      existing.options = query as PreparedQuery<unknown>;
+      existing.gcTime = query.gcTime ?? existing.gcTime;
+      if (existing.hasData() && !existing.stale && previousStaleTime !== nextStaleTime) {
+        if (nextStaleTime === Number.POSITIVE_INFINITY) {
+          if (existing.staleTimer) clearTimeout(existing.staleTimer);
+          existing.staleTimer = undefined;
+        } else {
+          const remaining = nextStaleTime - (Date.now() - existing.updatedAt);
+          if (remaining <= 0) {
+            if (existing.staleTimer) clearTimeout(existing.staleTimer);
+            existing.staleTimer = undefined;
+            existing.stale = true;
+          } else {
+            this.#scheduleStale(existing, remaining);
+          }
+        }
+      }
+      return existing;
     }
 
-    if (cached?.promise) return cached.promise;
+    const entry = runWithOwner(null, () =>
+      createRoot((dispose) => {
+        const [data, setData] = createSignal<unknown>(undefined, internalWritableOptions);
+        const [hasData, setHasData] = createSignal(false, internalWritableOptions);
+        const [fetching, setFetching] = createSignal(false, internalWritableOptions);
 
-    const promise = withTimeout(
-      Promise.resolve().then(() => resolvedQuery.queryFn({ queryKey: resolvedQuery.queryKey })),
-      resolvedQuery.timeoutMs,
-    )
-      .then((data) => {
-        this.#cache.set(key, {
+        return {
           data,
-          key: resolvedQuery.queryKey,
-          updatedAt: Date.now(),
-        });
-        return data;
-      })
-      .catch((error) => {
-        this.#cache.set(key, {
-          error,
-          key: resolvedQuery.queryKey,
-          updatedAt: Date.now(),
-        });
-        throw error;
-      });
+          dispose,
+          fetching,
+          gcTime: query.gcTime ?? this.#config.defaultOptions?.queries?.gcTime ?? DEFAULT_GC_TIME,
+          hasData,
+          hash: query.hash,
+          invalidationVersion: 0,
+          key: query.queryKey,
+          options: query as PreparedQuery<unknown>,
+          requestId: 0,
+          setData,
+          setFetching,
+          setHasData,
+          sources: new Map(),
+          stale: true,
+          updatedAt: 0,
+        } satisfies QueryCacheEntry;
+      }),
+    );
 
-    this.#cache.set(key, {
-      ...cached,
-      key: resolvedQuery.queryKey,
-      promise,
-      updatedAt: cached?.updatedAt ?? 0,
-    });
+    this.#cache.set(query.hash, entry);
+    return entry;
+  }
 
-    return promise;
+  readQuery<TData>(query: PreparedQuery<TData>): TData | Promise<TData> {
+    const entry = this.getOrCreateEntry(query);
+    if (entry.hasData() && !entry.stale) return entry.data() as TData;
+    if (entry.promise) return entry.promise as Promise<TData>;
+    return this.#startFetch(entry, query);
+  }
+
+  fetchQuery<TData>(query: QueryOptions<TData>): Promise<TData> {
+    return Promise.resolve(this.readQuery(this.prepareQuery(query)));
   }
 
   withQueryDefaults<TData>(query: QueryOptions<TData>): QueryOptions<TData> {
-    return this.#withQueryDefaults(query);
+    const { hash: _, ...resolved } = this.prepareQuery(query);
+    return resolved;
   }
 
   notifyMutationError(error: unknown): void {
     this.#config.defaultOptions?.mutations?.onError?.(error);
   }
 
-  #withQueryDefaults<TData>(query: QueryOptions<TData>): QueryOptions<TData> {
-    const defaults = this.#config.defaultOptions?.queries;
-    if (!defaults) return query;
-    return {
-      ...query,
-      gcTime: query.gcTime ?? defaults.gcTime,
-      retry: query.retry ?? defaults.retry,
-      staleTime: query.staleTime ?? defaults.staleTime,
-      timeoutMs: query.timeoutMs ?? defaults.timeoutMs,
-    };
-  }
-
   prefetchQuery<TData>(query: QueryOptions<TData>): Promise<TData> {
     return this.fetchQuery(query);
+  }
+
+  refetchQuery<TData>(query: QueryOptions<TData>): Promise<TData> {
+    const prepared = this.prepareQuery(query);
+    const entry = this.getOrCreateEntry(prepared);
+    entry.invalidationVersion += 1;
+    entry.stale = true;
+    if (entry.staleTimer) {
+      clearTimeout(entry.staleTimer);
+      entry.staleTimer = undefined;
+    }
+    this.#cancelEntry(entry);
+
+    const request = this.#startFetch(entry, prepared);
+    for (const source of this.#activeSources(entry)) refresh(source);
+    return request;
   }
 
   ensureQueryData<TData>(query: QueryOptions<TData>): Promise<TData> {
@@ -532,290 +603,686 @@ export class QueryClient {
   }
 
   getQueryData<TData>(queryKey: QueryKey): TData | undefined {
-    return this.#cache.get(stableQueryKey(queryKey))?.data as TData | undefined;
+    const entry = this.#cache.get(stableQueryKey(queryKey));
+    return entry?.hasData() ? (entry.data() as TData) : undefined;
   }
 
   setQueryData<TData>(queryKey: QueryKey, data: TData): void {
-    this.#cache.set(stableQueryKey(queryKey), {
-      data,
-      key: queryKey,
-      updatedAt: Date.now(),
-    });
+    const hash = stableQueryKey(queryKey);
+    const entry =
+      this.#cache.get(hash) ??
+      this.getOrCreateEntry({
+        hash,
+        queryKey,
+        queryFn: () => Promise.resolve(data),
+      });
+
+    entry.setData(() => data);
+    entry.setHasData(true);
+    entry.error = undefined;
+    entry.stale = false;
+    entry.updatedAt = Date.now();
+    this.#scheduleStale(entry, entry.options?.staleTime);
+    for (const [source, enabled] of entry.sources) {
+      if (enabled) refresh(source);
+    }
+    this.#scheduleGc(entry);
   }
 
   removeQueries(input?: QueryKey | { queryKey?: QueryKey }): void {
     const prefix = normaliseQueryPrefix(input);
-    if (!prefix) {
-      this.#cache.clear();
-      return;
-    }
+    for (const entry of this.#matchingEntries(prefix)) {
+      const activeSources = this.#activeSources(entry);
+      if (activeSources.length === 0) {
+        this.#deleteEntry(entry);
+        continue;
+      }
 
-    for (const [key, entry] of this.#cache) {
-      if (queryKeyStartsWith(entry.key, prefix)) this.#cache.delete(key);
+      entry.invalidationVersion += 1;
+      entry.stale = true;
+      entry.setData(undefined);
+      entry.setHasData(false);
+      this.#cancelEntry(entry);
+      for (const source of activeSources) refresh(source);
     }
   }
 
   invalidateQueries(input?: QueryKey | { queryKey?: QueryKey }): Promise<void> {
-    const prefix = normaliseQueryPrefix(input);
-    this.removeQueries(prefix);
-    this.#notify(prefix);
-    return Promise.resolve();
+    return this.invalidateQueriesMany([normaliseQueryPrefix(input)]);
   }
 
-  subscribe(listener: (prefix?: QueryKey) => void): () => void {
-    this.#listeners.add(listener);
-    return () => this.#listeners.delete(listener);
+  invalidateQueriesMany(prefixes: Array<QueryKey | undefined>): Promise<void> {
+    const entries = new Set<QueryCacheEntry>();
+    for (const entry of this.#cache.values()) {
+      if (prefixes.some((prefix) => !prefix || queryKeyStartsWith(entry.key, prefix))) {
+        entries.add(entry);
+      }
+    }
+    return this.#invalidateEntries(entries).then(() => undefined);
   }
 
-  #notify(prefix?: QueryKey): void {
-    for (const listener of this.#listeners) {
-      listener(prefix);
+  affectQueriesMany(prefixes: QueryKey[]): void {
+    for (const entry of this.#cache.values()) {
+      if (!prefixes.some((prefix) => queryKeyStartsWith(entry.key, prefix))) continue;
+      for (const source of this.#activeSources(entry)) affects(source);
     }
   }
 
-  mount() {}
-  unmount() {}
+  affectEntry(entry: QueryCacheEntry, fallbackSource?: SourceAccessor<unknown>): void {
+    const sources = this.#activeSources(entry);
+    if (fallbackSource && !sources.includes(fallbackSource)) sources.push(fallbackSource);
+    for (const source of sources) affects(source);
+  }
+
+  refreshEntry<TData>(
+    entry: QueryCacheEntry,
+    fallbackSource?: SourceAccessor<unknown>,
+  ): Promise<TData> {
+    return this.#invalidateEntries(new Set([entry]), fallbackSource, true).then(
+      (values) => values[0] as TData,
+    );
+  }
+
+  observe(entry: QueryCacheEntry, source: SourceAccessor<unknown>, enabled: boolean): () => void {
+    if (entry.gcTimer) {
+      clearTimeout(entry.gcTimer);
+      entry.gcTimer = undefined;
+    }
+    entry.sources.set(source, enabled);
+
+    return () => {
+      entry.sources.delete(source);
+      this.#scheduleGc(entry);
+    };
+  }
+
+  mount(): void {
+    this.#mountCount += 1;
+    if (this.#mountCount !== 1 || typeof window === "undefined") return;
+    window.addEventListener("focus", this.#onFocus);
+    window.addEventListener("online", this.#onOnline);
+  }
+
+  unmount(): void {
+    this.#mountCount = Math.max(0, this.#mountCount - 1);
+    if (this.#mountCount !== 0 || typeof window === "undefined") return;
+    window.removeEventListener("focus", this.#onFocus);
+    window.removeEventListener("online", this.#onOnline);
+  }
+
+  #startFetch<TData>(entry: QueryCacheEntry, query: PreparedQuery<TData>): Promise<TData> {
+    const requestId = ++entry.requestId;
+    const invalidationVersion = entry.invalidationVersion;
+    const controller = new AbortController();
+    entry.controller = controller;
+    entry.options = query as PreparedQuery<unknown>;
+    entry.gcTime = query.gcTime ?? entry.gcTime;
+    entry.setFetching(true);
+
+    const promise = (async () => {
+      let failureCount = 0;
+      while (true) {
+        try {
+          return await runQueryAttempt(query, controller);
+        } catch (error) {
+          if (controller.signal.aborted || error instanceof QueryTimeoutError) throw error;
+          failureCount += 1;
+          if (!shouldRetry(query.retry, failureCount, error)) throw error;
+          await waitForRetry(retryDelay(query.retryDelay, failureCount, error), controller.signal);
+        }
+      }
+    })()
+      .then((data) => {
+        if (requestId === entry.requestId) {
+          entry.setData(() => data);
+          entry.setHasData(true);
+          entry.error = undefined;
+          entry.stale = invalidationVersion !== entry.invalidationVersion;
+          entry.updatedAt = Date.now();
+          this.#scheduleStale(entry, query.staleTime);
+        }
+        return data;
+      })
+      .catch((error) => {
+        if (requestId === entry.requestId) entry.error = error;
+        throw error;
+      })
+      .finally(() => {
+        if (requestId === entry.requestId) {
+          entry.promise = undefined;
+          entry.controller = undefined;
+          entry.setFetching(false);
+          this.#scheduleGc(entry);
+        }
+      });
+
+    entry.promise = promise;
+    return promise;
+  }
+
+  #activeSources(entry: QueryCacheEntry): SourceAccessor<unknown>[] {
+    const sources: SourceAccessor<unknown>[] = [];
+    for (const [source, enabled] of entry.sources) {
+      if (enabled) sources.push(source);
+    }
+    return sources;
+  }
+
+  #cancelEntry(entry: QueryCacheEntry): void {
+    if (!entry.controller) return;
+    entry.requestId += 1;
+    entry.promise = undefined;
+    entry.controller.abort(new QueryCancelledError());
+    entry.controller = undefined;
+  }
+
+  #invalidateEntries(
+    entries: Set<QueryCacheEntry>,
+    fallbackSource?: SourceAccessor<unknown>,
+    throwOnError = false,
+  ): Promise<unknown[]> {
+    const pending: Promise<unknown>[] = [];
+
+    for (const entry of entries) {
+      entry.invalidationVersion += 1;
+      entry.stale = true;
+      if (entry.staleTimer) {
+        clearTimeout(entry.staleTimer);
+        entry.staleTimer = undefined;
+      }
+      const activeSources = this.#activeSources(entry);
+      if (fallbackSource && entries.size === 1 && !activeSources.includes(fallbackSource)) {
+        activeSources.push(fallbackSource);
+      }
+      if (activeSources.length === 0) continue;
+
+      this.#cancelEntry(entry);
+      if (entry.options) pending.push(this.#startFetch(entry, entry.options));
+      for (const source of activeSources) refresh(source);
+    }
+
+    return throwOnError
+      ? Promise.all(pending)
+      : Promise.allSettled(pending).then((results) =>
+          results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : [])),
+        );
+  }
+
+  #matchingEntries(prefix?: QueryKey): QueryCacheEntry[] {
+    return [...this.#cache.values()].filter(
+      (entry) => !prefix || queryKeyStartsWith(entry.key, prefix),
+    );
+  }
+
+  #scheduleGc(entry: QueryCacheEntry): void {
+    if (entry.sources.size > 0 || entry.promise || entry.gcTimer) return;
+    if (entry.gcTime === Number.POSITIVE_INFINITY) return;
+
+    entry.gcTimer = setTimeout(
+      () => {
+        entry.gcTimer = undefined;
+        if (entry.sources.size === 0 && !entry.promise) this.#deleteEntry(entry);
+      },
+      Math.max(0, entry.gcTime),
+    );
+  }
+
+  #scheduleStale(entry: QueryCacheEntry, staleTime = 0): void {
+    if (entry.staleTimer) clearTimeout(entry.staleTimer);
+    entry.staleTimer = undefined;
+    if (entry.stale || staleTime === Number.POSITIVE_INFINITY) return;
+
+    entry.staleTimer = setTimeout(
+      () => {
+        entry.staleTimer = undefined;
+        entry.stale = true;
+      },
+      Math.max(0, staleTime),
+    );
+  }
+
+  #deleteEntry(entry: QueryCacheEntry): void {
+    if (entry.sources.size > 0) return;
+    if (entry.gcTimer) clearTimeout(entry.gcTimer);
+    if (entry.staleTimer) clearTimeout(entry.staleTimer);
+    entry.controller?.abort(new QueryCancelledError());
+    if (this.#cache.get(entry.hash) === entry) this.#cache.delete(entry.hash);
+    entry.dispose();
+  }
+
+  #entryIsStale(entry: QueryCacheEntry): boolean {
+    if (entry.stale || !entry.hasData()) return true;
+    const staleTime = entry.options?.staleTime ?? 0;
+    return staleTime !== Number.POSITIVE_INFINITY && Date.now() - entry.updatedAt >= staleTime;
+  }
+
+  #refreshStaleQueries(reason: "focus" | "reconnect"): Promise<void> {
+    const entries = new Set<QueryCacheEntry>();
+    for (const entry of this.#cache.values()) {
+      if (this.#activeSources(entry).length === 0 || !this.#entryIsStale(entry)) continue;
+      const enabled =
+        reason === "focus"
+          ? entry.options?.refetchOnWindowFocus
+          : entry.options?.refetchOnReconnect;
+      if (enabled) entries.add(entry);
+    }
+    return this.#invalidateEntries(entries).then(() => undefined);
+  }
 }
 
 const defaultQueryClient = new QueryClient();
-const QueryClientContext = createContext<QueryClient>();
+const QueryClientContext = createContext(defaultQueryClient);
 
 export function QueryClientProvider(props: { client?: QueryClient; children?: JSX.Element }) {
-  return (
-    <QueryClientContext value={props.client ?? defaultQueryClient}>
-      {props.children}
-    </QueryClientContext>
-  );
+  const client = () => props.client ?? defaultQueryClient;
+  onSettled(() => {
+    const current = client();
+    current.mount();
+    return () => current.unmount();
+  });
+
+  return <QueryClientContext value={client()}>{props.children}</QueryClientContext>;
 }
 
 export function useQueryClient(queryClient?: QueryClient) {
-  return queryClient ?? useContext(QueryClientContext) ?? defaultQueryClient;
+  return queryClient ?? useContext(QueryClientContext);
 }
 
-export function useQuery<TData>(options: () => QueryOptions<TData>): UseQueryResult<TData> {
-  const client = useQueryClient();
-  const [refresh, setRefresh] = createSignal(0, internalWritableOptions);
-  const [latestData, setLatestData] = createSignal<TData | undefined>(
-    undefined,
-    internalSignalOptions,
-  );
-  const [pending, setPending] = createSignal(false, internalWritableOptions);
-  let activeQueryKey: QueryKey | undefined;
-  let requestId = 0;
-  let activePromise: Promise<TData> | undefined;
+function createQueryResult<TData>(
+  options: () => QueryOptions<TData>,
+  suppliedClient?: QueryClient,
+): QueryResult<TData> {
+  const client = useQueryClient(suppliedClient);
+  const state = createMemo(() => {
+    const query = client.prepareQuery(options());
+    return {
+      enabled: isEnabled(query.enabled),
+      entry: client.getOrCreateEntry(query),
+      query,
+    };
+  });
 
   const data = createMemo<TData>(() => {
-    refresh();
-    const nextOptions = options();
-    activeQueryKey = nextOptions.queryKey;
-
-    if (!isEnabled(nextOptions.enabled)) {
-      setPending(false);
-      const current = latestData();
-      if (current !== undefined) {
-        activePromise = Promise.resolve(current);
-        return current;
-      }
-
-      const promise = disabledQueryPromise<TData>();
-      activePromise = promise;
-      return promise;
+    const current = state();
+    if (!current.enabled) {
+      if (current.entry.hasData()) return current.entry.data() as TData;
+      return disabledQueryPromise;
     }
-
-    const currentRequestId = ++requestId;
-    setPending(true);
-    const promise = fetchQueryWithRetry(client, nextOptions)
-      .then((nextData) => {
-        if (currentRequestId === requestId) {
-          setLatestData(() => nextData);
-        }
-        return nextData;
-      })
-      .finally(() => {
-        if (currentRequestId === requestId) setPending(false);
-      });
-
-    activePromise = promise;
-    return promise;
+    return client.readQuery(current.query);
   });
 
-  const refetch = async () => {
-    const nextOptions = options();
-    activeQueryKey = nextOptions.queryKey;
-    client.removeQueries(nextOptions.queryKey);
-    setRefresh((value) => value + 1);
-    flush();
-    try {
-      data();
-    } catch {
-      // Initial reads suspend; the active promise is awaited below.
+  const [latestData, setLatestData] = createSignal<TData | undefined>();
+
+  createEffect(
+    () => {
+      const current = state();
+      if (!current.entry.hasData()) return undefined;
+      return {
+        hash: current.entry.hash,
+        value: current.entry.data() as TData,
+      };
+    },
+    (value) => {
+      if (value) setLatestData(() => value.value);
+    },
+  );
+
+  createEffect(
+    () => {
+      const current = state();
+      return {
+        enabled: current.enabled,
+        entry: current.entry,
+      };
+    },
+    ({ enabled, entry }) => {
+      const stopObserving = client.observe(entry, data, enabled);
+      if (enabled) refresh(data);
+      return stopObserving;
+    },
+  );
+
+  const refreshQuery = () => {
+    const current = untrack(state);
+    if (!current.enabled) {
+      return current.entry.hasData()
+        ? Promise.resolve(current.entry.data() as TData)
+        : Promise.reject(new QueryDisabledError());
     }
-    return activePromise ?? resolve(data);
+
+    return client.refreshEntry<TData>(current.entry, data);
   };
 
-  const unsubscribe = client.subscribe((prefix) => {
-    if (activeQueryKey && (!prefix || queryKeyStartsWith(activeQueryKey, prefix))) {
-      setRefresh((value) => value + 1);
-    }
+  const refetch = action(function* () {
+    const current = untrack(state);
+    if (current.enabled) client.affectEntry(current.entry, data);
+    return yield refreshQuery();
   });
-  onCleanup(unsubscribe);
+
+  const cached = () => {
+    const entry = state().entry;
+    return entry.hasData() ? (entry.data() as TData) : undefined;
+  };
+  const fetching = () => state().enabled && state().entry.fetching();
+  const loading = () => fetching() && !state().entry.hasData();
 
   return {
     data,
     latest: latestData,
-    pending,
+    cached,
+    hasData: () => state().entry.hasData(),
+    pending: () => state().enabled && isPending(() => data()),
+    fetching,
+    loading,
+    refetching: () => fetching() && state().entry.hasData(),
+    refresh: refreshQuery,
     refetch,
   };
 }
 
-export function createValueQuery<TData>(options: () => QueryOptions<TData>): QueryResult<TData> {
-  const client = useQueryClient();
-  const [refresh, setRefresh] = createSignal(0, internalWritableOptions);
-  const [latestData, setLatestData] = createSignal<TData | undefined>(
-    undefined,
-    internalSignalOptions,
+export function useQuery<TData>(
+  options: () => QueryOptions<TData>,
+  queryClient?: QueryClient,
+): UseQueryResult<TData> {
+  return createQueryResult(options, queryClient);
+}
+
+export const createQuery = useQuery;
+export const createValueQuery = useQuery;
+
+function infinitePageKey<TPageParam>(key: QueryKey, pageParam: TPageParam): QueryKey {
+  return [...key, { $page: pageParam }];
+}
+
+export function createInfiniteQuery<TPage, TPageParam = unknown>(
+  options: () => InfiniteQueryOptions<TPage, TPageParam>,
+  suppliedClient?: QueryClient,
+): InfiniteQueryResult<TPage, TPageParam> {
+  const client = useQueryClient(suppliedClient);
+  const descriptor = createMemo(options);
+  const firstPage = createValueQuery<TPage>(() => {
+    const current = descriptor();
+    return {
+      queryKey: current.queryKey,
+      queryFn: ({ queryKey, signal }) =>
+        current.queryFn({
+          pageParam: current.initialPageParam,
+          queryKey,
+          signal,
+        }),
+      enabled: current.enabled,
+      gcTime: current.gcTime,
+      refetchOnReconnect: current.refetchOnReconnect,
+      refetchOnWindowFocus: current.refetchOnWindowFocus,
+      retry: current.retry,
+      retryDelay: current.retryDelay,
+      staleTime: current.staleTime,
+      timeoutMs: current.timeoutMs,
+    };
+  }, client);
+
+  const [pages, setPages] = createStore<InfiniteData<TPage, TPageParam>>({
+    pages: [],
+    pageParams: [],
+  });
+  const [pagesHash, setPagesHash] = createSignal("", internalWritableOptions);
+
+  createEffect(
+    () => {
+      const current = descriptor();
+      return {
+        hash: stableQueryKey(current.queryKey),
+        page: firstPage.cached(),
+        pageParam: current.initialPageParam,
+        ready: firstPage.hasData(),
+      };
+    },
+    (current) => {
+      if (!current.ready) return;
+      setPagesHash(current.hash);
+      setPages((draft) => {
+        draft.pages.splice(0, draft.pages.length, current.page as TPage);
+        draft.pageParams.splice(0, draft.pageParams.length, current.pageParam);
+      });
+    },
   );
-  const [pending, setPending] = createSignal(false, internalWritableOptions);
-  let activePromise: Promise<TData> | undefined;
-  const data = createMemo<TData>(() => {
-    refresh();
-    const nextOptions = options();
 
-    if (!isEnabled(nextOptions.enabled)) {
-      setPending(false);
-      const current = latestData();
-      if (current !== undefined) {
-        activePromise = Promise.resolve(current);
-        return current;
+  const nextPageParam = createMemo(() => {
+    const current = descriptor();
+    if (pagesHash() !== stableQueryKey(current.queryKey)) return undefined;
+    const lastPage = pages.pages.at(-1);
+    const lastPageParam = pages.pageParams.at(-1);
+    if (lastPage === undefined || lastPageParam === undefined || !current.getNextPageParam) {
+      return undefined;
+    }
+    return current.getNextPageParam(lastPage, [...pages.pages], lastPageParam);
+  });
+
+  const [fetchingNextPage, setFetchingNextPage] = createOptimistic(false);
+  let activeNextPage:
+    | {
+        hash: string;
+        promise: Promise<void>;
       }
+    | undefined;
 
-      const promise = disabledQueryPromise<TData>();
-      activePromise = promise;
-      return promise;
+  const runNextPage = action(function* (hash: string, pageParam: TPageParam) {
+    setFetchingNextPage(true);
+    const current = untrack(descriptor);
+    const page = yield client.fetchQuery<TPage>({
+      queryKey: infinitePageKey(current.queryKey, pageParam),
+      queryFn: ({ signal }) => current.queryFn({ pageParam, queryKey: current.queryKey, signal }),
+      gcTime: current.gcTime,
+      refetchOnReconnect: current.refetchOnReconnect,
+      refetchOnWindowFocus: current.refetchOnWindowFocus,
+      retry: current.retry,
+      retryDelay: current.retryDelay,
+      staleTime: current.staleTime,
+      timeoutMs: current.timeoutMs,
+    });
+
+    if (stableQueryKey(untrack(descriptor).queryKey) !== hash) return;
+    setPagesHash(hash);
+    setPages((draft) => {
+      draft.pages.push(page);
+      draft.pageParams.push(pageParam);
+    });
+  });
+
+  const fetchNextPage = () => {
+    const current = untrack(descriptor);
+    const hash = stableQueryKey(current.queryKey);
+    const pageParam = untrack(nextPageParam);
+    if (pageParam === undefined || !isEnabled(current.enabled)) return Promise.resolve();
+    if (activeNextPage?.hash === hash) return activeNextPage.promise;
+
+    const promise = runNextPage(hash, pageParam).finally(() => {
+      if (activeNextPage?.promise === promise) activeNextPage = undefined;
+    });
+    activeNextPage = { hash, promise };
+    return promise;
+  };
+
+  const data = (() => {
+    firstPage.data();
+    return pages;
+  }) as SourceAccessor<InfiniteData<TPage, TPageParam>>;
+
+  const refreshPages = async () => {
+    const current = untrack(descriptor);
+    const hash = stableQueryKey(current.queryKey);
+    if (!isEnabled(current.enabled)) {
+      const value = firstPage.latest();
+      if (value === undefined) throw new QueryDisabledError();
+      return pages;
     }
 
-    setPending(true);
-    const promise = fetchQueryWithRetry(client, nextOptions)
-      .then((nextData) => {
-        setLatestData(() => nextData);
-        return nextData;
-      })
-      .finally(() => setPending(false));
-    activePromise = promise;
-    return promise;
+    const pageParams =
+      pagesHash() === hash && pages.pageParams.length > 0
+        ? [...pages.pageParams]
+        : [current.initialPageParam];
+    const nextPages = await Promise.all(
+      pageParams.map((pageParam, index) =>
+        client.refetchQuery<TPage>({
+          queryKey: index === 0 ? current.queryKey : infinitePageKey(current.queryKey, pageParam),
+          queryFn: ({ signal }) =>
+            current.queryFn({ pageParam, queryKey: current.queryKey, signal }),
+          gcTime: current.gcTime,
+          refetchOnReconnect: current.refetchOnReconnect,
+          refetchOnWindowFocus: current.refetchOnWindowFocus,
+          retry: current.retry,
+          retryDelay: current.retryDelay,
+          staleTime: current.staleTime,
+          timeoutMs: current.timeoutMs,
+        }),
+      ),
+    );
+    const result: InfiniteData<TPage, TPageParam> = {
+      pages: nextPages,
+      pageParams,
+    };
+    if (stableQueryKey(untrack(descriptor).queryKey) !== hash) return result;
+    setPagesHash(hash);
+    setPages((draft) => {
+      draft.pages.splice(0, draft.pages.length, ...nextPages);
+      draft.pageParams.splice(0, draft.pageParams.length, ...pageParams);
+    });
+    return result;
+  };
+
+  const refetch = action(function* () {
+    const current = untrack(descriptor);
+    if (isEnabled(current.enabled)) client.affectQueriesMany([current.queryKey]);
+    return yield refreshPages();
   });
 
   return {
     data,
-    latest: latestData,
-    pending,
-    refetch: async () => {
-      const query = options();
-      void client.invalidateQueries(query.queryKey);
-      setRefresh((value) => value + 1);
-      flush();
-      try {
-        data();
-      } catch {
-        // Initial reads suspend; the active promise is awaited below.
-      }
-      return activePromise ?? resolve(data);
-    },
+    latest: () => (firstPage.latest() === undefined ? undefined : pages),
+    pending: firstPage.pending,
+    fetching: firstPage.fetching,
+    loading: firstPage.loading,
+    refetching: firstPage.refetching,
+    fetchingNextPage,
+    hasNextPage: () => nextPageParam() !== undefined,
+    fetchNextPage,
+    refresh: refreshPages,
+    refetch,
   };
+}
+
+export const useInfiniteQuery = createInfiniteQuery;
+
+function invalidationPrefixes(invalidations: Array<QueryFactory | QueryKey> | undefined) {
+  const prefixes: QueryKey[] = [];
+  for (const invalidation of invalidations ?? []) {
+    const prefix = isQueryKey(invalidation) ? invalidation : invalidation.prefix;
+    const hash = stableQueryKey(prefix);
+    if (!prefixes.some((candidate) => stableQueryKey(candidate) === hash)) prefixes.push(prefix);
+  }
+  return prefixes;
 }
 
 export function createMutation<TData, TVariables>(
   options: () => MutationOptions<TData, TVariables>,
+  suppliedClient?: QueryClient,
 ): UseMutationResult<TData, TVariables> {
-  const client = useQueryClient();
-  const [state, setState] = createSignal<MutationState<TData>>(
-    {
-      data: undefined,
-      error: undefined,
-      isError: false,
-      isPending: false,
-      isSuccess: false,
-    },
-    internalSignalOptions,
-  );
+  const client = useQueryClient(suppliedClient);
+  const [state, setState] = createStore<MutationState<TData>>({
+    data: undefined,
+    error: undefined,
+    isError: false,
+    isSuccess: false,
+  });
+  const [pending, setPending] = createOptimistic(false);
+  let mutationId = 0;
 
-  const mutateAsync = async (variables?: TVariables) => {
-    const resolvedVariables = variables as TVariables;
-    const mutation = options();
-    setState({
-      data: undefined,
-      error: undefined,
-      isError: false,
-      isPending: true,
-      isSuccess: false,
-    });
-
-    try {
-      const data = await mutation.mutationFn(resolvedVariables);
-      for (const invalidation of mutation.invalidates ?? []) {
-        if (isQueryKey(invalidation)) {
-          void client.invalidateQueries(invalidation);
-        } else {
-          invalidation.invalidate?.();
-          if (invalidation.prefix) void client.invalidateQueries(invalidation.prefix);
-        }
-      }
-      mutation.onSuccess?.(data, resolvedVariables);
-      mutation.onSettled?.(data, undefined, resolvedVariables);
-      setState({
-        data,
-        error: undefined,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-      });
-      return data;
-    } catch (cause) {
-      const nextError = cause instanceof Error ? cause : new Error(String(cause));
-      client.notifyMutationError(nextError);
-      mutation.onError?.(nextError, resolvedVariables);
-      mutation.onSettled?.(undefined, nextError, resolvedVariables);
-      setState({
-        data: undefined,
-        error: nextError,
-        isError: true,
-        isPending: false,
-        isSuccess: false,
-      });
-      throw nextError;
-    }
+  const mutateAndInvalidate = async (input: {
+    mutation: MutationOptions<TData, TVariables>;
+    prefixes: QueryKey[];
+    variables: TVariables;
+  }) => {
+    const data = await input.mutation.mutationFn(input.variables);
+    if (input.prefixes.length > 0) await client.invalidateQueriesMany(input.prefixes);
+    return data;
   };
 
-  return resultProxy<UseMutationResult<TData, TVariables>>(() => {
-    const current = state();
-    return {
-      data: current.data,
-      error: current.error,
-      isError: current.isError,
-      isPending: current.isPending,
-      isSuccess: current.isSuccess,
-      mutate: (variables?: TVariables) => {
-        void mutateAsync(variables).catch(() => {});
-      },
-      mutateAsync,
-      reset() {
-        setState({
-          data: undefined,
-          error: undefined,
-          isError: false,
-          isPending: false,
-          isSuccess: false,
+  const mutateAsync = action(function* (variables?: TVariables) {
+    const resolvedVariables = variables as TVariables;
+    const mutation = untrack(options);
+    const prefixes = invalidationPrefixes(mutation.invalidates);
+    const currentMutationId = ++mutationId;
+    client.affectQueriesMany(prefixes);
+    setPending(true);
+    setState((draft) => {
+      draft.data = undefined;
+      draft.error = undefined;
+      draft.isError = false;
+      draft.isSuccess = false;
+    });
+    let settledCallbackStarted = false;
+
+    try {
+      const data = yield mutateAndInvalidate({
+        mutation,
+        prefixes,
+        variables: resolvedVariables,
+      });
+      if (mutation.onSuccess) yield mutation.onSuccess(data, resolvedVariables);
+      if (mutation.onSettled) {
+        settledCallbackStarted = true;
+        yield mutation.onSettled(data, undefined, resolvedVariables);
+      }
+      if (currentMutationId === mutationId) {
+        setState((draft) => {
+          draft.data = data;
+          draft.error = undefined;
+          draft.isError = false;
+          draft.isSuccess = true;
         });
-      },
-    };
+      }
+      return data;
+    } catch (cause) {
+      const error = cause instanceof Error ? cause : new Error(String(cause));
+      client.notifyMutationError(error);
+      if (mutation.onError) yield mutation.onError(error, resolvedVariables);
+      if (mutation.onSettled && !settledCallbackStarted) {
+        yield mutation.onSettled(undefined, error, resolvedVariables);
+      }
+      if (currentMutationId === mutationId) {
+        setState((draft) => {
+          draft.data = undefined;
+          draft.error = error;
+          draft.isError = true;
+          draft.isSuccess = false;
+        });
+      }
+      throw error;
+    }
   });
+
+  return resultProxy<UseMutationResult<TData, TVariables>>(() => ({
+    data: state.data,
+    error: state.error,
+    isError: state.isError,
+    isPending: pending(),
+    isSuccess: state.isSuccess,
+    mutate: (variables?: TVariables) => {
+      void mutateAsync(variables).catch(() => {});
+    },
+    mutateAsync,
+    reset() {
+      setState((draft) => {
+        draft.data = undefined;
+        draft.error = undefined;
+        draft.isError = false;
+        draft.isSuccess = false;
+      });
+    },
+  }));
 }
 
 export const useMutation = createMutation;
-
-export function createQuery<TData>(options: () => QueryOptions<TData>): UseQueryResult<TData> {
-  return useQuery(options);
-}
 
 export function queryOptions<TData>(options: QueryOptions<TData>): QueryOptions<TData> {
   return options;

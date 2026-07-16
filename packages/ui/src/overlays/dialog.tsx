@@ -46,6 +46,7 @@ type DialogContextValue = {
   titleId: string;
 };
 
+// Solid 2 treats an undefined context default as missing, so use an explicit sentinel.
 const missingDialogContext = Symbol("missing-dialog-context");
 const DialogContext = createContext<DialogContextValue | typeof missingDialogContext>(
   missingDialogContext,

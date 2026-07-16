@@ -1,9 +1,9 @@
 /// <reference path="./babel.d.ts" />
 
-import tsPreset from "@babel/preset-typescript";
-import solidPreset from "babel-preset-solid";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import tsPreset from "@babel/preset-typescript";
+import solidPreset from "babel-preset-solid";
 
 type SolidPluginOptions = {
   generate?: "dom" | "ssr" | "universal";

@@ -24,7 +24,7 @@
     "./icons": "./src/icons.index.ts",
     "./map": "./src/map/index.ts",
     "./map/style.css": "./src/map/style.css",
-    "./query": "../query/src/compat.tsx",
+    "./query": "../query/src/index.tsx",
     "./schema-form": "./src/forms/schema-form/index.ts",
     "./sortablejs": "./src/dnd/sortablejs/index.ts",
     "./bun-plugin-solid": "./src/bun-plugins/solid.ts",

@@ -11,7 +11,6 @@
         "@babel/preset-typescript": "^7.29.7",
         "@floating-ui/dom": "^1.7.6",
         "@maplibre/maplibre-gl-geocoder": "^1.9.4",
-        "@tanstack/query-core": "^5.90.20",
         "@tanstack/router-generator": "^1.150.0",
         "@tiptap/core": "3.20.4",
         "@tiptap/extension-bubble-menu": "3.20.4",
@@ -94,9 +93,6 @@
     "packages/query": {
       "name": "@xgx/query",
       "version": "0.1.0",
-      "dependencies": {
-        "@tanstack/query-core": "^5.90.20",
-      },
       "peerDependencies": {
         "@solidjs/web": "^2.0.0-beta.19",
         "solid-js": "^2.0.0-beta.19",
@@ -394,8 +390,6 @@
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
     "@tanstack/history": ["@tanstack/history@1.162.0", "", {}, "sha512-79pf/RkhteYZTRgcR4F9kbk84P2N8rugQJswxfIqovlbRiT3yI7eBE+5QorIrZaOKktsgzRlXh1l/du/xpl4iA=="],
-
-    "@tanstack/query-core": ["@tanstack/query-core@5.101.2", "", {}, "sha512-hH5MLoJhF7KaIGd7q3xTXGXvslI+GYlM1Z/35aSHHWaCJWB7XvTSHYuV3eM7tw+aE0mT/xMro4M4Q9rCGHT0lw=="],
 
     "@tanstack/router-core": ["@tanstack/router-core@1.171.13", "", { "dependencies": { "@tanstack/history": "1.162.0", "cookie-es": "^3.0.0", "seroval": "^1.5.4", "seroval-plugins": "^1.5.4" } }, "sha512-+NOwEj1kO/6IGmpHRIZHasYxYWpyBQGNIZAST9aNrk9Q3YlU9SgqVnl1pbLa9qAKfeNdXQIRve0RQb/0kyDeDA=="],
 

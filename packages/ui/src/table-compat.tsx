@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
-import { createInfiniteQuery } from "../../query/src/index.tsx";
 import { createMemo, For, Loading, Show } from "solid-js";
+import { createInfiniteQuery } from "../../query/src/index.tsx";
 import type {
   CellContext,
   ColumnDef,
@@ -82,12 +82,12 @@ export function useTableInfinite<TData>(
         };
       },
       get isFetching() {
-        return query.pending() || query.fetchingNextPage();
+        return query.fetching() || query.fetchingNextPage();
       },
       get isLoading() {
-        return query.pending() && latestRows().length === 0;
+        return query.loading();
       },
-      pending: query.pending,
+      pending: query.fetching,
     },
     totalCount,
   };
