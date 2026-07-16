@@ -12,6 +12,7 @@
 - `@xgx/ui` contains query-free primitives, tokens, forms, overlays, layout, and shared types.
 - `@xgx/query` contains Solid v2 suspending async/query primitives. See [Query](./query.md).
 - `@xgx/prefabs` contains composed workflows that may depend on both `@xgx/ui` and `@xgx/query`.
+- `@xgx/ui/map` contains the optional Solid v2 MapLibre integration. Its styles are an explicit `@xgx/ui/map/style.css` import.
 - The demo may import all three packages; `@xgx/ui` must not import query or prefabs.
 
 ## Token Contract

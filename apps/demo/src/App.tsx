@@ -46,6 +46,7 @@ import {
   FeedbackPanel,
   FormsPanel,
   FoundationsPanel,
+  MapPanel,
   NavigationPanel,
   OverlaysPanel,
   ProfilePanel,
@@ -329,6 +330,8 @@ export default function App() {
         );
       case "reporting":
         return <ReportingPanel theme={theme()} />;
+      case "map":
+        return <MapPanel theme={theme()} />;
       case "workflows":
         return (
           <WorkflowsPanel

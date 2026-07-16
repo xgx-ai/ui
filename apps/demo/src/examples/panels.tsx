@@ -16,6 +16,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
+  Center,
   ChartPanel,
   Checkbox,
   CommandRegion,
@@ -45,8 +46,11 @@ import {
   DropdownMenuTrigger,
   ErrorAlert,
   FileDropzone,
+  Flex,
+  H4,
   IconButton,
   LineChart,
+  LoadingIndicator,
   MetricCard,
   MetricGrid,
   NumberField,
@@ -87,6 +91,8 @@ import {
   SliderThumb,
   SliderTrack,
   SliderValueLabel,
+  Small,
+  Stack,
   StatusBadge,
   SwitchPreset,
   Tabs,
@@ -161,6 +167,7 @@ import {
   Workflow,
   X,
 } from "@xgx/ui/icons";
+import { Control, Layer, MapBox, type MapBoxProps, Marker, Popup, Source } from "@xgx/ui/map";
 import { Sortable, SortableHandle, type SortableItemState } from "@xgx/ui/sortablejs";
 import {
   createEffect,
@@ -2342,6 +2349,204 @@ export function ReportingPanel(props: { theme: ThemeMode }) {
         </DetailPanel>
       </ReportDrilldownLayout>
     </div>
+  );
+}
+
+const offlineMapOptions = {
+  attributionControl: false,
+  center: [-2.45, 53.5],
+  maxZoom: 12,
+  minZoom: 5,
+  style: {
+    version: 8,
+    sources: {},
+    layers: [
+      {
+        id: "catalog-map-background",
+        type: "background",
+        paint: { "background-color": "#e8eef5" },
+      },
+    ],
+  },
+  zoom: 6.7,
+} satisfies NonNullable<MapBoxProps["options"]>;
+
+const offlineServiceArea = {
+  type: "Feature" as const,
+  properties: { name: "North West service area" },
+  geometry: {
+    type: "Polygon" as const,
+    coordinates: [
+      [
+        [-3.3, 53.2],
+        [-3.1, 53.85],
+        [-2.5, 54.05],
+        [-1.75, 53.75],
+        [-1.9, 53.15],
+        [-2.55, 52.95],
+        [-3.3, 53.2],
+      ],
+    ],
+  },
+};
+
+const offlineDispatchRoute = {
+  type: "Feature" as const,
+  properties: { name: "Dispatch route" },
+  geometry: {
+    type: "LineString" as const,
+    coordinates: [
+      [-3.0, 53.4],
+      [-2.2426, 53.4808],
+      [-1.5491, 53.8008],
+    ],
+  },
+};
+
+const offlineSites = {
+  type: "FeatureCollection" as const,
+  features: [
+    {
+      type: "Feature" as const,
+      properties: { name: "Liverpool" },
+      geometry: { type: "Point" as const, coordinates: [-2.9916, 53.4084] },
+    },
+    {
+      type: "Feature" as const,
+      properties: { name: "Manchester" },
+      geometry: { type: "Point" as const, coordinates: [-2.2426, 53.4808] },
+    },
+    {
+      type: "Feature" as const,
+      properties: { name: "Leeds" },
+      geometry: { type: "Point" as const, coordinates: [-1.5491, 53.8008] },
+    },
+  ],
+};
+
+const offlineMapPalettes = {
+  light: {
+    area: "#2563eb",
+    areaBorder: "#1d4ed8",
+    route: "#b45309",
+    site: "#0f172a",
+    siteStroke: "#ffffff",
+  },
+  dark: {
+    area: "#60a5fa",
+    areaBorder: "#93c5fd",
+    route: "#fbbf24",
+    site: "#f8fafc",
+    siteStroke: "#172033",
+  },
+} satisfies Record<ThemeMode, Record<string, string>>;
+
+export function MapPanel(props: { theme: ThemeMode }) {
+  const [hubOpen, setHubOpen] = createSignal(true);
+  const palette = createMemo(() => offlineMapPalettes[props.theme]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Offline MapLibre</CardTitle>
+        <CardDescription>
+          Solid 2 map composition using an inline style and inline GeoJSON, with no style or tile
+          requests.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <MapBox
+          id="catalog-maplibre"
+          options={offlineMapOptions}
+          placeholder={
+            <Center bg="muted" minH="full" w="full">
+              <LoadingIndicator padding="sm" size="sm">
+                Preparing offline map…
+              </LoadingIndicator>
+            </Center>
+          }
+          style={{
+            border: "1px solid var(--border-subtle)",
+            "border-radius": "var(--radius-xl, 0.75rem)",
+            height: "32rem",
+            overflow: "hidden",
+          }}
+        >
+          <Source id="catalog-service-area" type="geojson" data={offlineServiceArea}>
+            <Layer
+              id="catalog-service-area-fill"
+              type="fill"
+              paint={{
+                "fill-color": palette().area,
+                "fill-opacity": 0.24,
+              }}
+            />
+            <Layer
+              id="catalog-service-area-outline"
+              type="line"
+              paint={{
+                "line-color": palette().areaBorder,
+                "line-width": 2,
+              }}
+            />
+          </Source>
+
+          <Source id="catalog-dispatch-route" type="geojson" data={offlineDispatchRoute}>
+            <Layer
+              id="catalog-dispatch-route-line"
+              type="line"
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": palette().route,
+                "line-dasharray": [1.5, 1.5],
+                "line-width": 4,
+              }}
+            />
+          </Source>
+
+          <Source id="catalog-sites" type="geojson" data={offlineSites}>
+            <Layer
+              id="catalog-site-points"
+              type="circle"
+              paint={{
+                "circle-color": palette().site,
+                "circle-radius": 7,
+                "circle-stroke-color": palette().siteStroke,
+                "circle-stroke-width": 2,
+              }}
+            />
+          </Source>
+
+          <Control.Navigation position="top-right" />
+          <Control.Scale position="bottom-right" options={{ unit: "metric" }} />
+          <Marker
+            lngLat={[-2.2426, 53.4808]}
+            onClick={() => setHubOpen((open) => !open)}
+            options={{ color: palette().areaBorder }}
+          />
+          <Show when={hubOpen()}>
+            <Popup
+              lngLat={[-2.2426, 53.4808]}
+              onClose={() => setHubOpen(false)}
+              options={{ closeOnClick: false, offset: 30 }}
+            >
+              <Stack align="start" gap="1">
+                <H4>Manchester dispatch hub</H4>
+                <Small>Marker and popup content are mounted declaratively by Solid.</Small>
+                <Badge variant="success">Operational</Badge>
+              </Stack>
+            </Popup>
+          </Show>
+        </MapBox>
+      </CardContent>
+      <CardFooter>
+        <Flex gap="2" wrap="wrap">
+          <Badge variant="info">Inline style</Badge>
+          <Badge variant="info">Inline GeoJSON</Badge>
+          <Badge variant="success">No network tiles</Badge>
+        </Flex>
+      </CardFooter>
+    </Card>
   );
 }
 

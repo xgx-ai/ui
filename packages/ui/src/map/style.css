@@ -1,0 +1,100 @@
+@import "maplibre-gl/dist/maplibre-gl.css";
+@import "@maplibre/maplibre-gl-geocoder/dist/maplibre-gl-geocoder.css";
+
+.maplibregl-popup-content {
+  min-width: 12.5rem;
+  padding: 0.5rem;
+  color: var(--popover-foreground, var(--surface-raised-foreground, CanvasText));
+  background: var(--popover, var(--surface-raised, Canvas));
+  border: 1px solid var(--border, ButtonBorder);
+  border-radius: var(--radius-xl, 0.75rem);
+  box-shadow: var(--elevation-medium, 0 0.5rem 1.5rem rgb(0 0 0 / 0.16));
+}
+
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--popover, var(--surface-raised, Canvas));
+}
+
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--popover, var(--surface-raised, Canvas));
+}
+
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--popover, var(--surface-raised, Canvas));
+}
+
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--popover, var(--surface-raised, Canvas));
+}
+
+.maplibregl-popup-close-button {
+  padding: 0.25rem 0.5rem;
+  color: var(--muted-foreground, GrayText);
+  border-radius: 0 var(--radius-xl, 0.75rem) 0 var(--radius-md, 0.375rem);
+}
+
+.maplibregl-popup-close-button:hover {
+  color: var(--accent-foreground, CanvasText);
+  background: var(--accent, ButtonFace);
+}
+
+.xgx-map-draw-marker,
+.xgx-map-radius-marker,
+.xgx-map-line-marker {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: grab;
+  background: var(--xgx-map-marker-colour, var(--primary));
+  border: 0.125rem solid var(--background, Canvas);
+  border-radius: 9999px;
+  box-shadow: var(--elevation-low, 0 0.0625rem 0.125rem rgb(0 0 0 / 0.12));
+  transition:
+    scale 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.xgx-map-draw-marker:focus-visible,
+.xgx-map-radius-marker:focus-visible,
+.xgx-map-line-marker:focus-visible {
+  outline: 0.125rem solid var(--ring, Highlight);
+  outline-offset: 0.125rem;
+}
+
+.xgx-map-draw-marker {
+  width: 1rem;
+  height: 1rem;
+}
+
+.xgx-map-radius-marker {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.xgx-map-line-marker {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--primary-foreground, Canvas);
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+.xgx-map-draw-marker[data-active="true"],
+.xgx-map-line-marker[data-active="true"] {
+  background: var(--background, Canvas);
+  border-color: var(--xgx-map-marker-active-colour, var(--primary));
+  scale: 1.1;
+}
+
+.xgx-map-line-marker[data-locked="true"] {
+  pointer-events: none;
+  cursor: default;
+  color: var(--warning-foreground, CanvasText);
+  background: var(--warning, ButtonFace);
+  border-color: var(--warning-foreground, ButtonText);
+}

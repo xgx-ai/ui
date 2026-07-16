@@ -52,6 +52,7 @@ const DialogTemplateContext = createContext<
   { stickyFooter: boolean } | undefined
 >(undefined);
 
+
 function useDialog() {
   const context = useContext(DialogContext);
   if (!context) {

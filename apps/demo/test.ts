@@ -132,7 +132,9 @@ assertNoMatch(
 );
 
 assertNoMatch(
-  [...packageSourceFiles, ...walk("apps/demo")].filter((file) => file !== "apps/demo/test.ts"),
+  [...packageSourceFiles, ...walk("apps/demo")].filter(
+    (file) => !file.startsWith("apps/demo/dist/") && file !== "apps/demo/test.ts",
+  ),
   /file:\/\//,
   "file URL reference found",
 );
@@ -156,6 +158,7 @@ for (const route of [
   "data",
   "dnd",
   "forms",
+  "map",
   "profile",
   "reporting",
   "settings",
@@ -170,6 +173,7 @@ for (const requiredCopy of [
   "AI Workspace",
   "AI Guardrails",
   "Generated answer",
+  "Offline MapLibre",
   "Users And Roles",
   "Enterprise Controls",
   "Audit Log",
