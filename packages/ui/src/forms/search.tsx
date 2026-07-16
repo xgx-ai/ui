@@ -226,11 +226,6 @@ const Search = <T,>(props: SearchRootProps<T>) => {
       getOptionValue(current as T, props.optionValue);
     return String(text ?? "");
   };
-  const resetInputToSelection = () => {
-    setInputValueSignal(selectedTextValue());
-    setFilterValueSignal("");
-    local.onInputChange?.("");
-  };
   const setInputValue = (next: string) => {
     setInputValueSignal(next);
     setFilterValueSignal(next);
@@ -329,15 +324,31 @@ const Search = <T,>(props: SearchRootProps<T>) => {
   const floatingAnchor = () => anchorRef() ?? rootRef();
   const disabled = () => Boolean(local.disabled);
 
-  createEffect(open, (isOpen) => {
-    if (isOpen) {
-      selectedDuringOpen = false;
-      return;
-    }
+  createEffect(
+    () => {
+      const isOpen = open();
+      if (isOpen) return { isOpen: true as const };
 
-    if (!selectedDuringOpen) resetInputToSelection();
-    selectedDuringOpen = false;
-  });
+      return {
+        isOpen: false as const,
+        onInputChange: local.onInputChange,
+        selectedTextValue: selectedTextValue(),
+      };
+    },
+    (state) => {
+      if (state.isOpen) {
+        selectedDuringOpen = false;
+        return;
+      }
+
+      if (!selectedDuringOpen) {
+        setInputValueSignal(state.selectedTextValue);
+        setFilterValueSignal("");
+        state.onInputChange?.("");
+      }
+      selectedDuringOpen = false;
+    },
+  );
 
   createEffect(
     () => ({

@@ -69,7 +69,8 @@ function getDisplayValue<T>(item: T | undefined, optionTextValue: keyof T): stri
 export default function SearchSingle<T>(props: SearchProps<T>) {
   const [isOpen, setIsOpen] = createSignal(false);
   let inputEl: HTMLInputElement | null = null;
-  const id = props.id ?? createUniqueId();
+  const generatedId = createUniqueId();
+  const id = () => props.id ?? generatedId;
 
   const [searchQuery, setSearchQuery] = createSignal("");
   const [infiniteOffset, setInfiniteOffset] = createSignal(0);
@@ -177,7 +178,7 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
   let scrollContainer: HTMLElement | null = null;
 
   const setupIntersectionObserver = () => {
-    if (!loadMoreEl || !props.enableInfiniteScroll) {
+    if (!loadMoreEl) {
       return;
     }
 
@@ -212,35 +213,40 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
     }
   };
 
-  createEffect(isOpen, (open) => {
-    if (open) {
+  createEffect(
+    () => ({
+      enableInfiniteScroll: Boolean(props.enableInfiniteScroll),
+      onInputChange: props.onInputChange,
+      open: isOpen(),
+    }),
+    (state) => {
       if (inputEl) {
         inputEl.value = "";
       }
       resetInfiniteSearch();
+      state.onInputChange?.("");
 
-      if (props.enableInfiniteScroll) {
-        const checkAndSetup = () => {
-          if (loadMoreEl) {
-            setupIntersectionObserver();
-          } else {
-            setTimeout(checkAndSetup, 50);
-          }
-        };
-        setTimeout(checkAndSetup, 50);
+      if (!state.open || !state.enableInfiniteScroll) {
+        cleanupIntersectionObserver();
+        return;
       }
 
-      props.onInputChange?.("");
-    } else if (!open) {
-      cleanupIntersectionObserver();
+      let setupTimeout: ReturnType<typeof setTimeout> | undefined;
+      const checkAndSetup = () => {
+        if (loadMoreEl) {
+          setupIntersectionObserver();
+          return;
+        }
+        setupTimeout = setTimeout(checkAndSetup, 50);
+      };
+      setupTimeout = setTimeout(checkAndSetup, 50);
 
-      if (inputEl) {
-        inputEl.value = "";
-      }
-      resetInfiniteSearch();
-      props.onInputChange?.("");
-    }
-  });
+      return () => {
+        if (setupTimeout !== undefined) clearTimeout(setupTimeout);
+        cleanupIntersectionObserver();
+      };
+    },
+  );
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
@@ -252,22 +258,26 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
   };
 
   createEffect(
-    () => props.options,
-    (options) => {
-      //get element by id
-      const element = document.getElementById(id);
+    () => {
+      const optionTextValue = props.optionTextValue;
+      return {
+        id: id(),
+        serialisedOptions: JSON.stringify(
+          props.options.map((option) => getDisplayValue(option, optionTextValue)),
+        ),
+      };
+    },
+    (state) => {
+      const element = document.getElementById(state.id);
       if (element) {
-        element.setAttribute(
-          "data-options",
-          JSON.stringify(options.map((option) => getDisplayValue(option, props.optionTextValue))),
-        );
+        element.setAttribute("data-options", state.serialisedOptions);
       }
     },
   );
 
   return (
     <div
-      id={id}
+      id={id()}
       class="grid w-full items-center gap-1.5"
       data-required={props.required}
       data-label={props.label}

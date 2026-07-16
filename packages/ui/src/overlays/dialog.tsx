@@ -23,6 +23,7 @@ import {
   createSignal,
   createUniqueId,
   Show,
+  untrack,
   useContext,
 } from "solid-js";
 
@@ -223,8 +224,9 @@ export type DialogContentProps<T extends ValidComponent = "div"> = ComponentProp
 // the `data-state` attribute. Falls back to a timer when no animation runs
 // (e.g. reduced motion) so the content always unmounts.
 function createDialogPresence(open: () => boolean) {
-  const [present, setPresent] = createSignal(open());
-  const [state, setState] = createSignal<"open" | "closed">(open() ? "open" : "closed");
+  const initiallyOpen = untrack(open);
+  const [present, setPresent] = createSignal(initiallyOpen);
+  const [state, setState] = createSignal<"open" | "closed">(initiallyOpen ? "open" : "closed");
   let element: HTMLElement | undefined;
 
   createEffect(
