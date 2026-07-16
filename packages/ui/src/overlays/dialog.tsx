@@ -46,23 +46,23 @@ type DialogContextValue = {
   titleId: string;
 };
 
-// Solid 2 beta throws before our guard can run when a context has no default.
-const DialogContext = createContext<DialogContextValue | undefined>(undefined);
-const DialogTemplateContext = createContext<
-  { stickyFooter: boolean } | undefined
->(undefined);
-
+const missingDialogContext = Symbol("missing-dialog-context");
+const DialogContext = createContext<DialogContextValue | typeof missingDialogContext>(
+  missingDialogContext,
+);
+const DialogTemplateContext = createContext({ stickyFooter: false });
 
 function useDialog() {
   const context = useContext(DialogContext);
-  if (!context) {
+  if (context === missingDialogContext) {
     throw new Error("Dialog parts must be used inside Dialog.");
   }
   return context;
 }
 
 function useOptionalDialog() {
-  return useContext(DialogContext);
+  const context = useContext(DialogContext);
+  return context === missingDialogContext ? undefined : context;
 }
 
 type DialogProps = ComponentProps<"div"> & {

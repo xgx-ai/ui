@@ -45,7 +45,7 @@ function solidRuntimeEntrypoints(development: boolean): Record<string, string> {
   const signalsRoot = dirname(Bun.resolveSync("@solidjs/signals/package.json", solidRoot));
 
   return {
-    "@solidjs/signals": join(signalsRoot, development ? "dist/dev.js" : "dist/prod.js"),
+    "@solidjs/signals": join(signalsRoot, development ? "dist/dev.js" : "dist/prod/index.js"),
     "@solidjs/web": join(solidWebRoot, development ? "dist/dev.js" : "dist/web.js"),
     "solid-js": join(solidRoot, development ? "dist/dev.js" : "dist/solid.js"),
   };
