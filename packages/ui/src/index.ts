@@ -1,11 +1,11 @@
 // Utilities
 
-// Activity Timeline
-export { ActivityTimeline } from "./activity-timeline/index.ts";
 export type {
   ActivityTimelineFilter,
   ActivityTimelineProps,
 } from "./activity-timeline/index.ts";
+// Activity Timeline
+export { ActivityTimeline } from "./activity-timeline/index.ts";
 // Calendar
 export {
   Calendar,
@@ -45,6 +45,18 @@ export type {
 } from "./data-display/avatar-group.tsx";
 export { AvatarGroup } from "./data-display/avatar-group.tsx";
 export { BarList } from "./data-display/bar-list.tsx";
+// Data Display - Charts
+export {
+  BarChart,
+  BubbleChart,
+  Chart,
+  DonutChart,
+  LineChart,
+  PieChart,
+  PolarAreaChart,
+  RadarChart,
+  ScatterChart,
+} from "./data-display/charts.tsx";
 export type {
   DataGridCellProps,
   DataGridColumn,
@@ -82,11 +94,6 @@ export {
   NotificationItem,
 } from "./data-display/notification-item.tsx";
 export type {
-  StatCardGroupProps,
-  StatCardProps,
-} from "./data-display/stat-card.tsx";
-export { StatCard, StatCardGroup } from "./data-display/stat-card.tsx";
-export type {
   ChartPanelProps,
   ChartPanelState,
   MetricCardProps,
@@ -111,6 +118,16 @@ export {
   TrendIndicator,
 } from "./data-display/reporting.tsx";
 export type {
+  SidebarRowProps,
+  SidebarSectionProps,
+} from "./data-display/sidebar-section.tsx";
+export { SidebarRow, SidebarSection } from "./data-display/sidebar-section.tsx";
+export type {
+  StatCardGroupProps,
+  StatCardProps,
+} from "./data-display/stat-card.tsx";
+export { StatCard, StatCardGroup } from "./data-display/stat-card.tsx";
+export type {
   SimpleTableColumn,
   SimpleTableProps,
 } from "./data-display/table.tsx";
@@ -126,25 +143,15 @@ export {
   TableRow,
   TableStatusBar,
 } from "./data-display/table.tsx";
-export type { UseTableReturn } from "./table-compat.tsx";
-export {
-  Table,
-  TableColumnHeader,
-  TableInfinite,
-  useTableInfinite,
-} from "./table-compat.tsx";
+// Data Display - Timeline
 export type {
-  CellContext,
-  ColumnDef,
-  HeaderContext,
-  SortDirection,
-  TableCellRenderer,
-  TableColumn,
-  TableColumnMeta,
-  TableController,
-  TableHeaderRenderer,
-  TableRowContext,
-} from "./table-types.ts";
+  TimelineItemProps as TimelineFullItemProps,
+  TimelineProps,
+  TimelinePropsItem,
+} from "./data-display/timeline.tsx";
+export { Timeline } from "./data-display/timeline.tsx";
+export type { TimelineItemProps } from "./data-display/timeline-item.tsx";
+export { TimelineItem } from "./data-display/timeline-item.tsx";
 export {
   H1,
   H2,
@@ -159,21 +166,14 @@ export {
   Typography,
 } from "./data-display/typography.tsx";
 export type {
-  SidebarRowProps,
-  SidebarSectionProps,
-} from "./data-display/sidebar-section.tsx";
-export { SidebarRow, SidebarSection } from "./data-display/sidebar-section.tsx";
-export type { TimelineItemProps } from "./data-display/timeline-item.tsx";
-export { TimelineItem } from "./data-display/timeline-item.tsx";
-// Detail Sidebar
-export { DetailSidebar } from "./detail-sidebar/index.ts";
-export type {
   DetailSidebarBadge,
   DetailSidebarHeader,
   DetailSidebarProps,
   DetailSidebarSection,
   DetailSidebarSlimIcon,
 } from "./detail-sidebar/index.ts";
+// Detail Sidebar
+export { DetailSidebar } from "./detail-sidebar/index.ts";
 export type {
   // Preview types
   DefaultPreviewProps,
@@ -387,6 +387,9 @@ export { Button, buttonVariants } from "./forms/button.tsx";
 export { ButtonDropdown } from "./forms/button-dropdown.tsx";
 export { Checkbox } from "./forms/checkbox.tsx";
 export { ColorPicker } from "./forms/color-picker.tsx";
+// Forms - ColorPickerField
+export type { ColorPickerFieldProps } from "./forms/color-picker-field.tsx";
+export { ColorPickerField } from "./forms/color-picker-field.tsx";
 export {
   Combobox,
   ComboboxContent,
@@ -424,6 +427,10 @@ export {
   DatePickerViewTrigger,
   DatePickerYearSelect,
 } from "./forms/date-picker.tsx";
+// Forms - DaySelector
+export { default as DaySelector } from "./forms/day-selector.tsx";
+// Forms - FileField
+export { default as FileField } from "./forms/file-field.tsx";
 // Forms - FileDropzone
 // export type { FileDropzoneProps } from "./forms/file-dropzone.tsx";
 // export { FileDropzone } from "./forms/file-dropzone.tsx";
@@ -458,6 +465,11 @@ export {
   FileUploadRoot,
   FileUploadTrigger,
 } from "./forms/file-upload.tsx";
+// Forms - FormAttributeContext
+export {
+  FormAttributeProvider,
+  useFormAttributesProvider,
+} from "./forms/form-attribute-context.tsx";
 // Form Components
 export { FieldLabel } from "./forms/form-components/field-label.tsx";
 // Form Components - PropertyField, TextAreaForm
@@ -467,6 +479,8 @@ export type { TextAreaFormProps } from "./forms/form-components/text-area-form.t
 export { TextAreaForm } from "./forms/form-components/text-area-form.tsx";
 export type { TextFieldFormProps } from "./forms/form-components/text-field-form.tsx";
 export { TextFieldForm } from "./forms/form-components/text-field-form.tsx";
+// Forms - FormField
+export { default as FormField } from "./forms/form-field.tsx";
 // Forms - HiddenFileInput
 export type { HiddenFileInputProps } from "./forms/hidden-file-input.tsx";
 export { HiddenFileInput } from "./forms/hidden-file-input.tsx";
@@ -482,6 +496,8 @@ export {
   NumberFieldInput,
   NumberFieldLabel,
 } from "./forms/number-field.tsx";
+// Forms - OptionalObjectField
+export { default as OptionalObjectField } from "./forms/optional-object-field.tsx";
 export {
   OTPField,
   OTPFieldGroup,
@@ -498,14 +514,6 @@ export {
   RadioGroupItem,
   RadioGroupItemLabel,
 } from "./forms/radio-group.tsx";
-export {
-  createForm,
-  Form,
-  Form as SchemaForm,
-  introspectField,
-  introspectSchema,
-  unwrapField,
-} from "./forms/schema-form/index.ts";
 export type {
   CreateFormOptions,
   FieldBinding,
@@ -515,6 +523,14 @@ export type {
   FormInstance,
   FormProps,
   FormSelectOption,
+} from "./forms/schema-form/index.ts";
+export {
+  createForm,
+  Form,
+  Form as SchemaForm,
+  introspectField,
+  introspectSchema,
+  unwrapField,
 } from "./forms/schema-form/index.ts";
 export {
   Search,
@@ -534,6 +550,10 @@ export {
 // Forms - SearchBar
 export type { SearchBarProps } from "./forms/search-bar.tsx";
 export { SearchBar, searchBarVariants } from "./forms/search-bar.tsx";
+// Forms - SearchMultiple
+export { default as SearchMultiple } from "./forms/search-multiple.tsx";
+// Forms - SearchSingle
+export { default as SearchSingle } from "./forms/search-single.tsx";
 export {
   Select,
   SelectContent,
@@ -541,6 +561,16 @@ export {
   SelectTrigger,
   SelectValue,
 } from "./forms/select.tsx";
+// Forms - SelectDropdown
+export type {
+  DropdownOption,
+  DropdownProps,
+} from "./forms/select-dropdown.tsx";
+export { SelectDropdown } from "./forms/select-dropdown.tsx";
+// Forms - SelectMultiple
+export { default as SelectMultiple } from "./forms/select-multiple.tsx";
+// Forms - SelectWrapper
+export { SelectWrapper } from "./forms/select-wrapper.tsx";
 // Forms - SignaturePad
 export { SignaturePad } from "./forms/signature-pad.tsx";
 export {
@@ -559,6 +589,8 @@ export {
   SwitchPreset,
   SwitchThumb,
 } from "./forms/switch.tsx";
+// Forms - SwitchWrapper
+export { default as SwitchWrapper } from "./forms/switch-wrapper.tsx";
 export type { TextFieldInputProps } from "./forms/text-field.tsx";
 export {
   TextField,
@@ -568,23 +600,10 @@ export {
   TextFieldLabel,
   TextFieldTextArea,
 } from "./forms/text-field.tsx";
+// Forms - TextFieldArea
+export { default as TextFieldArea } from "./forms/text-field-area.tsx";
 export { Toggle, toggleVariants } from "./forms/toggle.tsx";
 export { ToggleGroup, ToggleGroupItem } from "./forms/toggle-group.tsx";
-export type {
-  IconButtonProps,
-  ToolbarIconButtonProps,
-  ToolbarSurfaceProps,
-  ToolbarToggleGroupProps,
-  ToolbarToggleItemProps,
-} from "./shell-controls.tsx";
-export {
-  IconButton,
-  iconButtonVariants,
-  ToolbarIconButton,
-  ToolbarSurface,
-  ToolbarToggleGroup,
-  ToolbarToggleItem,
-} from "./shell-controls.tsx";
 // Layout
 export {
   Accordion,
@@ -592,7 +611,6 @@ export {
   AccordionItem,
   AccordionTrigger,
 } from "./layout/accordion.tsx";
-export { AspectRatio } from "./layout/aspect-ratio.tsx";
 export type {
   AppContentProps,
   AppMainProps,
@@ -615,6 +633,7 @@ export {
   CommandRegion,
   DetailPanel,
 } from "./layout/app-shell.tsx";
+export { AspectRatio } from "./layout/aspect-ratio.tsx";
 export type {
   AuthCardProps,
   AuthPageProps,
@@ -864,24 +883,25 @@ export {
   FilterItem,
   FilterPopover,
 } from "./overlays/filter-popover.tsx";
-export {
-  PortalMount,
-  type PortalMountProps,
-} from "./overlays/portal.tsx";
 export { assignRef, containsNode } from "./overlays/floating.ts";
 export {
-  PopperPositioner,
-  PopperRoot,
-  type PopperPlacement,
-  type PopperPositionerProps,
-  type PopperRootProps,
-} from "./overlays/popper.tsx";
-export {
   Popover,
+  PopoverAnchor,
   PopoverClose,
   PopoverContent,
   PopoverTrigger,
 } from "./overlays/popover.tsx";
+export {
+  type PopperPlacement,
+  PopperPositioner,
+  type PopperPositionerProps,
+  PopperRoot,
+  type PopperRootProps,
+} from "./overlays/popper.tsx";
+export {
+  PortalMount,
+  type PortalMountProps,
+} from "./overlays/portal.tsx";
 export {
   Sheet,
   SheetContent,
@@ -891,6 +911,21 @@ export {
   SheetTitle,
   SheetTrigger,
 } from "./overlays/sheet.tsx";
+export type {
+  IconButtonProps,
+  ToolbarIconButtonProps,
+  ToolbarSurfaceProps,
+  ToolbarToggleGroupProps,
+  ToolbarToggleItemProps,
+} from "./shell-controls.tsx";
+export {
+  IconButton,
+  iconButtonVariants,
+  ToolbarIconButton,
+  ToolbarSurface,
+  ToolbarToggleGroup,
+  ToolbarToggleItem,
+} from "./shell-controls.tsx";
 // Specialized
 export type { ChatMessage, ChatProps } from "./specialized/chat.tsx";
 export {
@@ -937,6 +972,8 @@ export {
   RichTextEditor,
   RichTextEditorForm,
 } from "./specialized/rich-text-editor/index.ts";
+// Specialized - SelectableCard
+export { SelectableCard } from "./specialized/selectable-card.tsx";
 export type { StepCardProps } from "./specialized/step-card.tsx";
 export { StepCard } from "./specialized/step-card.tsx";
 export type {
@@ -945,58 +982,22 @@ export type {
   TreePreviewSection,
 } from "./specialized/tree-preview.tsx";
 export { TreePreview } from "./specialized/tree-preview.tsx";
-// Data Display - Charts
+export type { UseTableReturn } from "./table-compat.tsx";
 export {
-  BarChart,
-  BubbleChart,
-  Chart,
-  DonutChart,
-  LineChart,
-  PieChart,
-  PolarAreaChart,
-  RadarChart,
-  ScatterChart,
-} from "./data-display/charts.tsx";
-// Data Display - Timeline
+  Table,
+  TableColumnHeader,
+  TableInfinite,
+  useTableInfinite,
+} from "./table-compat.tsx";
 export type {
-  TimelineItemProps as TimelineFullItemProps,
-  TimelineProps,
-  TimelinePropsItem,
-} from "./data-display/timeline.tsx";
-export { Timeline } from "./data-display/timeline.tsx";
-// Forms - ColorPickerField
-export type { ColorPickerFieldProps } from "./forms/color-picker-field.tsx";
-export { ColorPickerField } from "./forms/color-picker-field.tsx";
-// Forms - FileField
-export { default as FileField } from "./forms/file-field.tsx";
-// Forms - TextFieldArea
-export { default as TextFieldArea } from "./forms/text-field-area.tsx";
-// Forms - FormField
-export { default as FormField } from "./forms/form-field.tsx";
-// Forms - OptionalObjectField
-export { default as OptionalObjectField } from "./forms/optional-object-field.tsx";
-// Forms - FormAttributeContext
-export {
-  FormAttributeProvider,
-  useFormAttributesProvider,
-} from "./forms/form-attribute-context.tsx";
-// Forms - SelectWrapper
-export { SelectWrapper } from "./forms/select-wrapper.tsx";
-// Forms - SelectMultiple
-export { default as SelectMultiple } from "./forms/select-multiple.tsx";
-// Forms - SelectDropdown
-export type {
-  DropdownOption,
-  DropdownProps,
-} from "./forms/select-dropdown.tsx";
-export { SelectDropdown } from "./forms/select-dropdown.tsx";
-// Forms - SearchSingle
-export { default as SearchSingle } from "./forms/search-single.tsx";
-// Forms - SearchMultiple
-export { default as SearchMultiple } from "./forms/search-multiple.tsx";
-// Forms - SwitchWrapper
-export { default as SwitchWrapper } from "./forms/switch-wrapper.tsx";
-// Forms - DaySelector
-export { default as DaySelector } from "./forms/day-selector.tsx";
-// Specialized - SelectableCard
-export { SelectableCard } from "./specialized/selectable-card.tsx";
+  CellContext,
+  ColumnDef,
+  HeaderContext,
+  SortDirection,
+  TableCellRenderer,
+  TableColumn,
+  TableColumnMeta,
+  TableController,
+  TableHeaderRenderer,
+  TableRowContext,
+} from "./table-types.ts";

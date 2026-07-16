@@ -156,6 +156,43 @@ type PopoverTriggerProps<T extends ValidComponent = "button"> = ComponentProps<"
   children?: JSX.Element;
 };
 
+type PopoverAnchorProps<T extends ValidComponent = "div"> = ComponentProps<"div"> & {
+  as?: T;
+  children?: JSX.Element;
+};
+
+const PopoverAnchor = <T extends ValidComponent = "div">(props: PopoverAnchorProps<T>) => {
+  const popover = usePopover();
+  const [local, others] = splitProps(props, ["as", "children", "ref"]);
+
+  if (!local.as) {
+    return (
+      <div
+        ref={(element) => {
+          popover.setTriggerRef(element);
+          assignRef(local.ref, element);
+        }}
+        {...others}
+      >
+        {local.children}
+      </div>
+    );
+  }
+
+  return (
+    <DynamicAny
+      component={local.as}
+      ref={(element: HTMLElement) => {
+        popover.setTriggerRef(element);
+        assignRef(local.ref, element);
+      }}
+      {...others}
+    >
+      {local.children}
+    </DynamicAny>
+  );
+};
+
 const PopoverTrigger = <T extends ValidComponent = "button">(props: PopoverTriggerProps<T>) => {
   const popover = usePopover();
   const [local, others] = splitProps(props, ["as", "children", "onClick", "ref", "type"]);
@@ -261,5 +298,19 @@ const PopoverClose = (props: PopoverCloseProps) => {
 const PopoverTitle = (props: ComponentProps<"div">) => <div {...props} />;
 const PopoverDescription = (props: ComponentProps<"div">) => <div {...props} />;
 
-export { Popover, PopoverClose, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger };
-export type { Placement, PopoverContentProps, PopoverProps, PopoverTriggerProps };
+export type {
+  Placement,
+  PopoverAnchorProps,
+  PopoverContentProps,
+  PopoverProps,
+  PopoverTriggerProps,
+};
+export {
+  Popover,
+  PopoverAnchor,
+  PopoverClose,
+  PopoverContent,
+  PopoverDescription,
+  PopoverTitle,
+  PopoverTrigger,
+};
