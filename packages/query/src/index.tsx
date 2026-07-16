@@ -560,13 +560,22 @@ export class QueryClient {
 
   readQuery<TData>(query: PreparedQuery<TData>): TData | Promise<TData> {
     const entry = this.getOrCreateEntry(query);
-    if (entry.hasData() && !entry.stale) return entry.data() as TData;
+    if (entry.hasData()) {
+      if (entry.stale && !entry.promise) {
+        void this.#startFetch(entry, query).catch(() => undefined);
+      }
+      return entry.data() as TData;
+    }
     if (entry.promise) return entry.promise as Promise<TData>;
     return this.#startFetch(entry, query);
   }
 
   fetchQuery<TData>(query: QueryOptions<TData>): Promise<TData> {
-    return Promise.resolve(this.readQuery(this.prepareQuery(query)));
+    const prepared = this.prepareQuery(query);
+    const entry = this.getOrCreateEntry(prepared);
+    if (entry.hasData() && !entry.stale) return Promise.resolve(entry.data() as TData);
+    if (entry.promise) return entry.promise as Promise<TData>;
+    return this.#startFetch(entry, prepared);
   }
 
   withQueryDefaults<TData>(query: QueryOptions<TData>): QueryOptions<TData> {

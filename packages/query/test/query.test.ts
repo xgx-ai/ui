@@ -115,6 +115,40 @@ test("stale time waits for a later trigger instead of looping after settlement",
   expect(await client.fetchQuery(options)).toBe(2);
 });
 
+test("a remounted stale query renders cached data while refreshing", async () => {
+  const client = new QueryClient();
+  const refreshed = deferred<number>();
+  let calls = 0;
+  const options = () => ({
+    queryKey: ["stale-remount"],
+    queryFn: async () => {
+      calls += 1;
+      return calls === 1 ? 1 : refreshed.promise;
+    },
+    staleTime: 0,
+  });
+
+  expect(await client.fetchQuery(options())).toBe(1);
+  await nextTask();
+
+  await inRoot(async () => {
+    const query = createValueQuery(options, client);
+
+    expect(query.data()).toBe(1);
+    await Promise.resolve();
+    expect(calls).toBe(2);
+    expect(query.loading()).toBe(false);
+    expect(query.refetching()).toBe(true);
+
+    refreshed.resolve(2);
+    await nextTask();
+
+    expect(query.data()).toBe(2);
+    expect(query.latest()).toBe(2);
+    expect(query.refetching()).toBe(false);
+  });
+});
+
 test("prefix invalidation refetches active queries and waits for settlement", async () => {
   await inRoot(async () => {
     const client = new QueryClient();
