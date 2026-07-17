@@ -33,32 +33,42 @@ export type QueryContext = {
 type RetryOption = boolean | number | ((failureCount: number, error: unknown) => boolean);
 type RetryDelayOption = number | ((failureCount: number, error: unknown) => number);
 type MaybePromise<T> = T | Promise<T>;
+type RefetchIntervalOption<TData> = false | number | ((data: TData | undefined) => false | number);
+type StructuralSharingOption<TData> =
+  | boolean
+  | ((previous: TData | undefined, next: TData) => TData);
 
 export type QueryOptions<TData> = {
   queryKey: QueryKey;
   queryFn: (context: QueryContext) => Promise<TData>;
   enabled?: boolean | (() => boolean);
   gcTime?: number;
+  refetchInterval?: RefetchIntervalOption<TData>;
   refetchOnReconnect?: boolean;
   refetchOnWindowFocus?: boolean;
   retry?: RetryOption;
   retryDelay?: RetryDelayOption;
   staleTime?: number;
+  structuralSharing?: StructuralSharingOption<TData>;
   timeoutMs?: number;
 };
 
 export type QueryDefaultOptions = {
   gcTime?: number;
+  refetchInterval?: false | number;
   refetchOnReconnect?: boolean;
   refetchOnWindowFocus?: boolean;
   retry?: RetryOption;
   retryDelay?: RetryDelayOption;
   staleTime?: number;
+  structuralSharing?: boolean;
   timeoutMs?: number;
 };
 
 export type MutationDefaultOptions = {
   onError?: (error: unknown) => void;
+  retry?: RetryOption;
+  retryDelay?: RetryDelayOption;
 };
 
 export type QueryClientConfig = {
@@ -113,6 +123,8 @@ export type DefineQueryOptions<TData, TArgs extends unknown[]> = SharedDefineQue
   prefix: QueryKey;
   queryFn: (context: QueryContext, ...args: TArgs) => Promise<TData>;
   enabled?: boolean | (() => boolean);
+  refetchInterval?: RefetchIntervalOption<TData>;
+  structuralSharing?: StructuralSharingOption<TData>;
 };
 
 export type MutationOptions<TData, TVariables> = {
@@ -125,6 +137,8 @@ export type MutationOptions<TData, TVariables> = {
     variables: TVariables,
   ) => MaybePromise<unknown>;
   onSuccess?: (data: TData, variables: TVariables) => MaybePromise<unknown>;
+  retry?: RetryOption;
+  retryDelay?: RetryDelayOption;
 };
 
 export interface QueryResult<TData> {
@@ -144,6 +158,12 @@ export interface QueryResult<TData> {
   loading: Accessor<boolean>;
   /** Whether a request is executing while current-key data remains available. */
   refetching: Accessor<boolean>;
+  /** The most recent request error for the current key. */
+  error: Accessor<Error | undefined>;
+  /** Whether the current key's most recent request failed. */
+  failed: Accessor<boolean>;
+  /** The time at which the current key last resolved successfully. */
+  updatedAt: Accessor<number>;
   /** A quiet background refresh that does not declare a value change. */
   refresh: () => Promise<TData>;
   /** A declared, user-visible refetch. */
@@ -195,6 +215,9 @@ export interface InfiniteQueryResult<TPage, TPageParam = unknown> {
   fetching: Accessor<boolean>;
   loading: Accessor<boolean>;
   refetching: Accessor<boolean>;
+  error: Accessor<Error | undefined>;
+  failed: Accessor<boolean>;
+  updatedAt: Accessor<number>;
   fetchingNextPage: Accessor<boolean>;
   hasNextPage: Accessor<boolean>;
   fetchNextPage: () => Promise<void>;
@@ -212,7 +235,7 @@ type QueryCacheEntry = {
   controller?: AbortController;
   data: Accessor<unknown>;
   dispose: () => void;
-  error?: unknown;
+  error: Accessor<Error | undefined>;
   fetching: Accessor<boolean>;
   gcTime: number;
   gcTimer?: ReturnType<typeof setTimeout>;
@@ -222,14 +245,17 @@ type QueryCacheEntry = {
   key: QueryKey;
   options?: PreparedQuery<unknown>;
   promise?: Promise<unknown>;
+  refetchTimer?: ReturnType<typeof setTimeout>;
   requestId: number;
   setData: InternalSetter<unknown>;
+  setError: InternalSetter<Error | undefined>;
   setFetching: InternalSetter<boolean>;
   setHasData: InternalSetter<boolean>;
   sources: Map<SourceAccessor<unknown>, boolean>;
   stale: boolean;
   staleTimer?: ReturnType<typeof setTimeout>;
-  updatedAt: number;
+  setUpdatedAt: InternalSetter<number>;
+  updatedAt: Accessor<number>;
 };
 
 const DEFAULT_GC_TIME = 5 * 60_000;
@@ -329,6 +355,73 @@ function retryDelay(delay: RetryDelayOption | undefined, failureCount: number, e
   if (typeof delay === "function") return Math.max(0, delay(failureCount, error));
   if (typeof delay === "number") return Math.max(0, delay);
   return Math.min(1_000 * 2 ** Math.max(0, failureCount - 1), 30_000);
+}
+
+function refetchInterval<TData>(
+  interval: RefetchIntervalOption<TData> | undefined,
+  data: TData | undefined,
+): false | number {
+  const resolved = typeof interval === "function" ? interval(data) : interval;
+  return typeof resolved === "number" && resolved > 0 ? resolved : false;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object") return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function replaceEqualDeep<T>(previous: T, next: T): T {
+  if (Object.is(previous, next)) return previous;
+
+  if (Array.isArray(previous) && Array.isArray(next)) {
+    let equal = previous.length === next.length;
+    const result = next.map((value, index) => {
+      const shared = replaceEqualDeep(previous[index], value);
+      if (!Object.is(shared, previous[index])) equal = false;
+      return shared;
+    });
+    return (equal ? previous : result) as T;
+  }
+
+  if (isPlainRecord(previous) && isPlainRecord(next)) {
+    const previousKeys = Object.keys(previous);
+    const nextKeys = Object.keys(next);
+    let equal = previousKeys.length === nextKeys.length;
+    const result: Record<string, unknown> = {};
+    for (const key of nextKeys) {
+      if (!(key in previous)) equal = false;
+      const shared = replaceEqualDeep(previous[key], next[key]);
+      if (!Object.is(shared, previous[key])) equal = false;
+      result[key] = shared;
+    }
+    return (equal ? previous : result) as T;
+  }
+
+  return next;
+}
+
+function shareQueryData<TData>(
+  sharing: StructuralSharingOption<TData> | undefined,
+  previous: TData | undefined,
+  next: TData,
+): TData {
+  if (typeof sharing === "function") return sharing(previous, next);
+  if (sharing === false || previous === undefined) return next;
+  return replaceEqualDeep(previous, next);
+}
+
+function delayForRetry(delay: number): Promise<void> {
+  return new Promise((resolveDelay) => setTimeout(resolveDelay, delay));
+}
+
+function refreshSource<T>(source: SourceAccessor<T>): void {
+  try {
+    refresh(source);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("INVALID_REFRESH_TARGET")) return;
+    throw error;
+  }
 }
 
 export class QueryTimeoutError extends Error {
@@ -456,11 +549,13 @@ export function defineQuery<TData, TArgs extends unknown[] = []>(
     queryFn: (context: QueryContext) => config.queryFn(context, ...args),
     enabled: config.enabled,
     gcTime: config.gcTime,
+    refetchInterval: config.refetchInterval,
     refetchOnReconnect: config.refetchOnReconnect,
     refetchOnWindowFocus: config.refetchOnWindowFocus,
     retry: config.retry,
     retryDelay: config.retryDelay,
     staleTime: config.staleTime,
+    structuralSharing: config.structuralSharing,
     timeoutMs: config.timeoutMs,
   })) as ValueQueryFactory<TData, TArgs>;
 
@@ -485,20 +580,31 @@ export class QueryClient {
 
   prepareQuery<TData>(query: QueryOptions<TData>): PreparedQuery<TData> {
     const defaults = this.#config.defaultOptions?.queries;
-    const resolved = defaults
-      ? {
-          ...query,
-          gcTime: query.gcTime ?? defaults.gcTime,
-          refetchOnReconnect: query.refetchOnReconnect ?? defaults.refetchOnReconnect,
-          refetchOnWindowFocus: query.refetchOnWindowFocus ?? defaults.refetchOnWindowFocus,
-          retry: query.retry ?? defaults.retry,
-          retryDelay: query.retryDelay ?? defaults.retryDelay,
-          staleTime: query.staleTime ?? defaults.staleTime,
-          timeoutMs: query.timeoutMs ?? defaults.timeoutMs,
-        }
-      : query;
+    const resolved = {
+      ...query,
+      gcTime: query.gcTime ?? defaults?.gcTime,
+      refetchInterval: query.refetchInterval ?? defaults?.refetchInterval,
+      refetchOnReconnect: query.refetchOnReconnect ?? defaults?.refetchOnReconnect ?? true,
+      refetchOnWindowFocus: query.refetchOnWindowFocus ?? defaults?.refetchOnWindowFocus ?? true,
+      retry: query.retry ?? defaults?.retry,
+      retryDelay: query.retryDelay ?? defaults?.retryDelay,
+      staleTime: query.staleTime ?? defaults?.staleTime,
+      structuralSharing: query.structuralSharing ?? defaults?.structuralSharing,
+      timeoutMs: query.timeoutMs ?? defaults?.timeoutMs,
+    };
 
     return { ...resolved, hash: stableQueryKey(resolved.queryKey) };
+  }
+
+  withMutationDefaults<TData, TVariables>(
+    mutation: MutationOptions<TData, TVariables>,
+  ): MutationOptions<TData, TVariables> {
+    const defaults = this.#config.defaultOptions?.mutations;
+    return {
+      ...mutation,
+      retry: mutation.retry ?? defaults?.retry,
+      retryDelay: mutation.retryDelay ?? defaults?.retryDelay,
+    };
   }
 
   getOrCreateEntry<TData>(query: PreparedQuery<TData>): QueryCacheEntry {
@@ -514,7 +620,7 @@ export class QueryClient {
           if (existing.staleTimer) clearTimeout(existing.staleTimer);
           existing.staleTimer = undefined;
         } else {
-          const remaining = nextStaleTime - (Date.now() - existing.updatedAt);
+          const remaining = nextStaleTime - (Date.now() - existing.updatedAt());
           if (remaining <= 0) {
             if (existing.staleTimer) clearTimeout(existing.staleTimer);
             existing.staleTimer = undefined;
@@ -532,10 +638,16 @@ export class QueryClient {
         const [data, setData] = createSignal<unknown>(undefined, internalWritableOptions);
         const [hasData, setHasData] = createSignal(false, internalWritableOptions);
         const [fetching, setFetching] = createSignal(false, internalWritableOptions);
+        const [error, setError] = createSignal<Error | undefined>(
+          undefined,
+          internalWritableOptions,
+        );
+        const [updatedAt, setUpdatedAt] = createSignal(0, internalWritableOptions);
 
         return {
           data,
           dispose,
+          error,
           fetching,
           gcTime: query.gcTime ?? this.#config.defaultOptions?.queries?.gcTime ?? DEFAULT_GC_TIME,
           hasData,
@@ -545,11 +657,13 @@ export class QueryClient {
           options: query as PreparedQuery<unknown>,
           requestId: 0,
           setData,
+          setError,
           setFetching,
           setHasData,
+          setUpdatedAt,
           sources: new Map(),
           stale: true,
-          updatedAt: 0,
+          updatedAt,
         } satisfies QueryCacheEntry;
       }),
     );
@@ -603,7 +717,7 @@ export class QueryClient {
     this.#cancelEntry(entry);
 
     const request = this.#startFetch(entry, prepared);
-    for (const source of this.#activeSources(entry)) refresh(source);
+    for (const source of this.#activeSources(entry)) refreshSource(source);
     return request;
   }
 
@@ -626,14 +740,20 @@ export class QueryClient {
         queryFn: () => Promise.resolve(data),
       });
 
-    entry.setData(() => data);
+    const previous = entry.hasData() ? (entry.data() as TData) : undefined;
+    const shared = shareQueryData(
+      entry.options?.structuralSharing as StructuralSharingOption<TData> | undefined,
+      previous,
+      data,
+    );
+    entry.setData(() => shared);
     entry.setHasData(true);
-    entry.error = undefined;
+    entry.setError(undefined);
     entry.stale = false;
-    entry.updatedAt = Date.now();
+    entry.setUpdatedAt(Date.now());
     this.#scheduleStale(entry, entry.options?.staleTime);
     for (const [source, enabled] of entry.sources) {
-      if (enabled) refresh(source);
+      if (enabled) refreshSource(source);
     }
     this.#scheduleGc(entry);
   }
@@ -652,7 +772,7 @@ export class QueryClient {
       entry.setData(undefined);
       entry.setHasData(false);
       this.#cancelEntry(entry);
-      for (const source of activeSources) refresh(source);
+      for (const source of activeSources) refreshSource(source);
     }
   }
 
@@ -698,9 +818,11 @@ export class QueryClient {
       entry.gcTimer = undefined;
     }
     entry.sources.set(source, enabled);
+    this.#scheduleRefetch(entry);
 
     return () => {
       entry.sources.delete(source);
+      if (this.#activeSources(entry).length === 0) this.#clearRefetch(entry);
       this.#scheduleGc(entry);
     };
   }
@@ -726,6 +848,8 @@ export class QueryClient {
     entry.controller = controller;
     entry.options = query as PreparedQuery<unknown>;
     entry.gcTime = query.gcTime ?? entry.gcTime;
+    this.#clearRefetch(entry);
+    entry.setError(undefined);
     entry.setFetching(true);
 
     const promise = (async () => {
@@ -743,24 +867,29 @@ export class QueryClient {
     })()
       .then((data) => {
         if (requestId === entry.requestId) {
-          entry.setData(() => data);
+          const previous = entry.hasData() ? (entry.data() as TData) : undefined;
+          const shared = shareQueryData(query.structuralSharing, previous, data);
+          entry.setData(() => shared);
           entry.setHasData(true);
-          entry.error = undefined;
+          entry.setError(undefined);
           entry.stale = invalidationVersion !== entry.invalidationVersion;
-          entry.updatedAt = Date.now();
+          entry.setUpdatedAt(Date.now());
           this.#scheduleStale(entry, query.staleTime);
+          return shared;
         }
         return data;
       })
       .catch((error) => {
-        if (requestId === entry.requestId) entry.error = error;
-        throw error;
+        const resolvedError = error instanceof Error ? error : new Error(String(error));
+        if (requestId === entry.requestId) entry.setError(resolvedError);
+        throw resolvedError;
       })
       .finally(() => {
         if (requestId === entry.requestId) {
           entry.promise = undefined;
           entry.controller = undefined;
           entry.setFetching(false);
+          this.#scheduleRefetch(entry);
           this.#scheduleGc(entry);
         }
       });
@@ -807,7 +936,7 @@ export class QueryClient {
 
       this.#cancelEntry(entry);
       if (entry.options) pending.push(this.#startFetch(entry, entry.options));
-      for (const source of activeSources) refresh(source);
+      for (const source of activeSources) refreshSource(source);
     }
 
     return throwOnError
@@ -850,9 +979,37 @@ export class QueryClient {
     );
   }
 
+  #clearRefetch(entry: QueryCacheEntry): void {
+    if (!entry.refetchTimer) return;
+    clearTimeout(entry.refetchTimer);
+    entry.refetchTimer = undefined;
+  }
+
+  #scheduleRefetch(entry: QueryCacheEntry): void {
+    this.#clearRefetch(entry);
+    if (
+      entry.promise ||
+      (!entry.hasData() && !entry.error()) ||
+      !entry.options ||
+      this.#activeSources(entry).length === 0
+    ) {
+      return;
+    }
+
+    const interval = refetchInterval(entry.options.refetchInterval, entry.data());
+    if (interval === false) return;
+
+    entry.refetchTimer = setTimeout(() => {
+      entry.refetchTimer = undefined;
+      if (this.#activeSources(entry).length === 0) return;
+      void this.#invalidateEntries(new Set([entry]));
+    }, interval);
+  }
+
   #deleteEntry(entry: QueryCacheEntry): void {
     if (entry.sources.size > 0) return;
     if (entry.gcTimer) clearTimeout(entry.gcTimer);
+    this.#clearRefetch(entry);
     if (entry.staleTimer) clearTimeout(entry.staleTimer);
     entry.controller?.abort(new QueryCancelledError());
     if (this.#cache.get(entry.hash) === entry) this.#cache.delete(entry.hash);
@@ -862,7 +1019,7 @@ export class QueryClient {
   #entryIsStale(entry: QueryCacheEntry): boolean {
     if (entry.stale || !entry.hasData()) return true;
     const staleTime = entry.options?.staleTime ?? 0;
-    return staleTime !== Number.POSITIVE_INFINITY && Date.now() - entry.updatedAt >= staleTime;
+    return staleTime !== Number.POSITIVE_INFINITY && Date.now() - entry.updatedAt() >= staleTime;
   }
 
   #refreshStaleQueries(reason: "focus" | "reconnect"): Promise<void> {
@@ -946,7 +1103,7 @@ function createQueryResult<TData>(
     },
     ({ enabled, entry }) => {
       const stopObserving = client.observe(entry, data, enabled);
-      if (enabled) refresh(data);
+      if (enabled) refreshSource(data);
       return stopObserving;
     },
   );
@@ -984,6 +1141,9 @@ function createQueryResult<TData>(
     fetching,
     loading,
     refetching: () => fetching() && state().entry.hasData(),
+    error: () => state().entry.error(),
+    failed: () => state().entry.error() !== undefined,
+    updatedAt: () => state().entry.updatedAt(),
     refresh: refreshQuery,
     refetch,
   };
@@ -1172,6 +1332,9 @@ export function createInfiniteQuery<TPage, TPageParam = unknown>(
     fetching: firstPage.fetching,
     loading: firstPage.loading,
     refetching: firstPage.refetching,
+    error: firstPage.error,
+    failed: firstPage.failed,
+    updatedAt: firstPage.updatedAt,
     fetchingNextPage,
     hasNextPage: () => nextPageParam() !== undefined,
     fetchNextPage,
@@ -1211,14 +1374,25 @@ export function createMutation<TData, TVariables>(
     prefixes: QueryKey[];
     variables: TVariables;
   }) => {
-    const data = await input.mutation.mutationFn(input.variables);
+    let failureCount = 0;
+    let data: TData;
+    while (true) {
+      try {
+        data = await input.mutation.mutationFn(input.variables);
+        break;
+      } catch (error) {
+        failureCount += 1;
+        if (!shouldRetry(input.mutation.retry, failureCount, error)) throw error;
+        await delayForRetry(retryDelay(input.mutation.retryDelay, failureCount, error));
+      }
+    }
     if (input.prefixes.length > 0) await client.invalidateQueriesMany(input.prefixes);
     return data;
   };
 
   const mutateAsync = action(function* (variables?: TVariables) {
     const resolvedVariables = variables as TVariables;
-    const mutation = untrack(options);
+    const mutation = client.withMutationDefaults(untrack(options));
     const prefixes = invalidationPrefixes(mutation.invalidates);
     const currentMutationId = ++mutationId;
     client.affectQueriesMany(prefixes);

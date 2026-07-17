@@ -392,6 +392,94 @@ test("retry and timeout policies are enforced", async () => {
   ).rejects.toBeInstanceOf(QueryTimeoutError);
 });
 
+test("query errors and update timestamps are exposed", async () => {
+  await inRoot(async () => {
+    const client = new QueryClient();
+    let fail = true;
+    const query = createValueQuery(
+      () => ({
+        queryKey: ["error-state"],
+        queryFn: async () => {
+          if (fail) throw new Error("unavailable");
+          return "ready";
+        },
+      }),
+      client,
+    );
+
+    await expect(resolve(() => query.data())).rejects.toThrow("unavailable");
+    expect(query.failed()).toBe(true);
+    expect(query.error()?.message).toBe("unavailable");
+    expect(query.updatedAt()).toBe(0);
+
+    fail = false;
+    expect(await query.refetch()).toBe("ready");
+    expect(query.failed()).toBe(false);
+    expect(query.error()).toBeUndefined();
+    expect(query.updatedAt()).toBeGreaterThan(0);
+  });
+});
+
+test("structural sharing preserves equal nested values", async () => {
+  const client = new QueryClient();
+  const first = await client.fetchQuery({
+    queryKey: ["sharing"],
+    queryFn: async () => ({ item: { id: 1 }, version: 1 }),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const second = await client.refetchQuery({
+    queryKey: ["sharing"],
+    queryFn: async () => ({ item: { id: 1 }, version: 2 }),
+  });
+
+  expect(second).not.toBe(first);
+  expect(second.item).toBe(first.item);
+});
+
+test("active queries continue polling after a failed interval", async () => {
+  await inRoot(async (dispose) => {
+    let calls = 0;
+    const query = createValueQuery(() => ({
+      queryKey: ["polling"],
+      queryFn: async () => {
+        calls += 1;
+        if (calls === 2) throw new Error("temporary");
+        return calls;
+      },
+      refetchInterval: 5,
+    }));
+
+    expect(await resolve(() => query.data())).toBe(1);
+    await new Promise((resolveWait) => setTimeout(resolveWait, 30));
+    expect(calls).toBeGreaterThanOrEqual(3);
+    expect(query.failed()).toBe(false);
+
+    dispose();
+    const callsAtDispose = calls;
+    await new Promise((resolveWait) => setTimeout(resolveWait, 15));
+    expect(calls).toBe(callsAtDispose);
+  });
+});
+
+test("mutations retry before reporting an error", async () => {
+  await inRoot(async () => {
+    let attempts = 0;
+    const mutation = createMutation(() => ({
+      mutationFn: async () => {
+        attempts += 1;
+        if (attempts < 3) throw new Error("try again");
+        return "saved";
+      },
+      retry: 2,
+      retryDelay: 0,
+    }));
+
+    expect(await mutation.mutateAsync()).toBe("saved");
+    expect(attempts).toBe(3);
+    expect(mutation.isSuccess).toBe(true);
+  });
+});
+
 test("inactive query data is garbage collected", async () => {
   const client = new QueryClient();
   await client.fetchQuery({

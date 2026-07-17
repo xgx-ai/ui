@@ -23,6 +23,8 @@ export type UseTableReturn<TData> = {
     };
     isFetching: boolean;
     isLoading: boolean;
+    error: () => Error | undefined;
+    failed: () => boolean;
     pending: () => boolean;
   };
   totalCount: () => number;
@@ -87,6 +89,8 @@ export function useTableInfinite<TData>(
       get isLoading() {
         return query.loading();
       },
+      error: query.error,
+      failed: query.failed,
       pending: query.fetching,
     },
     totalCount,
