@@ -1112,10 +1112,13 @@ export function createInfiniteQuery<TPage, TPageParam = unknown>(
     return promise;
   };
 
-  const data = (() => {
-    firstPage.data();
-    return pages;
-  }) as SourceAccessor<InfiniteData<TPage, TPageParam>>;
+  const data = createMemo<InfiniteData<TPage, TPageParam>>(
+    () => {
+      firstPage.data();
+      return pages;
+    },
+    { equals: false },
+  );
 
   const refreshPages = async () => {
     const current = untrack(descriptor);

@@ -96,6 +96,7 @@ const TABLE_LOADING_BAR_STYLES = `
 
 type PendingQuerySource = {
   query?: {
+    readonly latest?: () => unknown;
     readonly pending?: () => boolean;
   };
 };
@@ -330,7 +331,15 @@ function getColumnStyles<TData>(
 function getLatestTableData<TData>(
   table: UseTableInfiniteReturn<TData, any, any> | TableController<TData>,
 ): TData[] {
-  return table.latestData?.() ?? [];
+  return table.latestData?.() ?? table.data();
+}
+
+function getRenderableTableData<TData>(
+  table: UseTableInfiniteReturn<TData, any, any> | TableController<TData>,
+): TData[] {
+  const queryLatest = (table as PendingQuerySource).query?.latest;
+  if (queryLatest && queryLatest() === undefined) return table.data();
+  return getLatestTableData(table);
 }
 
 function getQueryIsPending(table: object): boolean {
@@ -468,7 +477,10 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
 
   const rows = createMemo<TableRowContext<TData>[]>(() => {
     const sort = sorting();
-    const sourceData = props.table.data();
+    // Solid 2 beta can retain stale keyed children when this list reads a newly-pending
+    // source beneath <Loading>. Suspend for the first page, then render latestData so
+    // later query-key changes keep the settled rows reactive while the loading bar runs.
+    const sourceData = getRenderableTableData(props.table);
     const data = sourceData.map((row, index) => ({
       id: rowId(row, index),
       index,
