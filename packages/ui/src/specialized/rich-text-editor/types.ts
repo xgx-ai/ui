@@ -40,6 +40,8 @@ export interface RichTextEditorProps {
   value?: string;
   /** Callback when content changes */
   onChange?: (html: string) => void;
+  /** Callback with the editor instance after each document update */
+  onUpdate?: (editor: Editor) => void;
   /** Callback when editor loses focus */
   onBlur?: () => void;
   /** Placeholder text when empty */

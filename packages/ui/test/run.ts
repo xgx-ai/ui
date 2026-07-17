@@ -2,6 +2,7 @@ import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { SolidPlugin } from "../src/bun-plugins/solid.ts";
+import runEditorSpec from "./editor.spec.ts";
 
 const rootDir = path.resolve(import.meta.dir, "..");
 const tmpDir = path.join(rootDir, ".tmp");
@@ -81,6 +82,8 @@ if (!ssrBundle) {
 }
 
 try {
+  runEditorSpec();
+
   for (const bundle of bundles) {
     const spec = await import(pathToFileURL(bundle.path).href);
     await spec.default();

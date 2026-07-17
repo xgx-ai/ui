@@ -7,6 +7,7 @@ export type {
   PageOverflowGeometry,
 } from "./extensions/page-layout.ts";
 export { PageLayout } from "./extensions/page-layout.ts";
+export type { ParameterNodeOptions } from "./extensions/parameter-node.ts";
 export { ParameterNode } from "./extensions/parameter-node.ts";
 export type {
   EditorParameter,

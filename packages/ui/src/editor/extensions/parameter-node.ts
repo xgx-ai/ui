@@ -11,6 +11,44 @@ import {
   updateParameterValue,
 } from "./parameter-store";
 
+export interface ParameterNodeOptions {
+  /** Render a resolved, editable parameter value or a self-contained merge-tag token. */
+  mode: "value" | "token";
+}
+
+function createTokenNodeView(node: ProseMirrorNode): NodeView {
+  let paramName = node.attrs.paramName as string;
+  const dom = document.createElement("span");
+  dom.contentEditable = "false";
+  dom.className =
+    "inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-1.5 py-0.5 align-baseline font-mono text-xs text-accent-foreground";
+
+  const render = () => {
+    dom.setAttribute("data-type", "parameter");
+    dom.setAttribute("data-param-name", paramName);
+    dom.setAttribute("aria-label", `Merge tag ${paramName}`);
+    dom.textContent = `{{${paramName}}}`;
+  };
+
+  render();
+
+  return {
+    dom,
+    update(updatedNode) {
+      if (updatedNode.type.name !== "parameter") return false;
+      paramName = updatedNode.attrs.paramName as string;
+      render();
+      return true;
+    },
+    stopEvent() {
+      return true;
+    },
+    ignoreMutation() {
+      return true;
+    },
+  };
+}
+
 function getDisplayValue(paramName: string) {
   const value = getParameterValue(paramName);
   return value && value.trim().length > 0 ? value : `{{${paramName}}}`;
@@ -29,11 +67,17 @@ function getInputWidth(value: string, paramName: string) {
   return `${Math.max(10, value.length, Math.ceil(paramName.length / 1.5))}ch`;
 }
 
-export const ParameterNode = Node.create({
+export const ParameterNode = Node.create<ParameterNodeOptions>({
   name: "parameter",
   group: "inline",
   inline: true,
   atom: true,
+
+  addOptions() {
+    return {
+      mode: "value",
+    };
+  },
 
   addAttributes() {
     return {
@@ -51,12 +95,25 @@ export const ParameterNode = Node.create({
     return [{ tag: 'span[data-type="parameter"]' }];
   },
 
-  renderHTML({ HTMLAttributes }) {
-    return ["span", mergeAttributes(HTMLAttributes, { "data-type": "parameter" }), 0];
+  renderHTML({ HTMLAttributes, node }) {
+    const paramName = typeof node.attrs.paramName === "string" ? node.attrs.paramName : "";
+    return [
+      "span",
+      mergeAttributes(HTMLAttributes, { "data-type": "parameter" }),
+      `{{${paramName}}}`,
+    ];
+  },
+
+  renderText({ node }) {
+    const paramName = node.attrs.paramName;
+    return typeof paramName === "string" && paramName ? `{{${paramName}}}` : "";
   },
 
   addNodeView() {
+    const mode = this.options.mode;
     return ({ node, editor }: { node: ProseMirrorNode; editor: Editor }): NodeView => {
+      if (mode === "token") return createTokenNodeView(node);
+
       let paramName = node.attrs.paramName as string;
       let isEditing = false;
       let draftValue = getParameterValue(paramName) ?? "";

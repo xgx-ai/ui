@@ -6,7 +6,7 @@ import Highlight from "@tiptap/extension-highlight";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TextStyle } from "@tiptap/extension-text-style";
 import StarterKit from "@tiptap/starter-kit";
-import { createRenderEffect, createSignal, onCleanup, Show } from "solid-js";
+import { createRenderEffect, createSignal, onSettled, Show } from "solid-js";
 import { cn } from "../../cn.ts";
 import { BubbleMenuPortal } from "./bubble-menu-portal";
 import type { RichTextEditorProps } from "./types";
@@ -14,17 +14,21 @@ import { defaultToolbarConfig } from "./types";
 import "./collaboration-carets.css";
 
 export function RichTextEditor(props: RichTextEditorProps) {
-  const [editorContainer, setEditorContainer] = createSignal<HTMLDivElement | null>(null);
   const [editor, setEditor] = createSignal<Editor | null>(null);
 
-  // Ref-based guard to prevent race conditions with duplicate editor creation
-  let isInitializing = false;
-  let editorCallbacks: Pick<RichTextEditorProps, "onBlur" | "onChange" | "onEditorReady"> = {};
+  // Solid 2 refs should stay non-reactive; onSettled runs after JSX has assigned them.
+  let editorContainer: HTMLDivElement | undefined;
+  let wrapperRef: HTMLDivElement | undefined;
+
+  let editorCallbacks: Pick<
+    RichTextEditorProps,
+    "onBlur" | "onChange" | "onEditorReady" | "onUpdate"
+  > = {};
 
   // Tiptap construction options are initial-only; value and editability are synced below.
   const initialEditorSnapshot = () => {
-    const container = editorContainer();
-    if (!container || editor()) return;
+    const container = editorContainer;
+    if (!container) return;
 
     const toolbarConfig = props.toolbarConfig ?? defaultToolbarConfig;
     const collaboration = props.collaboration;
@@ -78,6 +82,7 @@ export function RichTextEditor(props: RichTextEditorProps) {
       onBlur: props.onBlur,
       onChange: props.onChange,
       onEditorReady: props.onEditorReady,
+      onUpdate: props.onUpdate,
       placeholder: props.placeholder ?? "Enter text...",
       readOnly: !!props.readOnly,
       value: props.value,
@@ -87,13 +92,11 @@ export function RichTextEditor(props: RichTextEditorProps) {
   type InitialEditorSnapshot = NonNullable<ReturnType<typeof initialEditorSnapshot>>;
 
   const initializeEditor = (snapshot: InitialEditorSnapshot) => {
-    // Prevent duplicate initialization from race conditions
-    if (isInitializing) return;
-    isInitializing = true;
     editorCallbacks = {
       onBlur: snapshot.onBlur,
       onChange: snapshot.onChange,
       onEditorReady: snapshot.onEditorReady,
+      onUpdate: snapshot.onUpdate,
     };
     const isCollaborative = !!snapshot.collaboration;
 
@@ -157,6 +160,7 @@ export function RichTextEditor(props: RichTextEditorProps) {
       content: isCollaborative ? undefined : (snapshot.value ?? ""),
       editable: !snapshot.disabled && !snapshot.readOnly,
       onUpdate: ({ editor }) => {
+        editorCallbacks.onUpdate?.(editor);
         editorCallbacks.onChange?.(editor.getHTML());
       },
       onBlur: () => {
@@ -167,16 +171,23 @@ export function RichTextEditor(props: RichTextEditorProps) {
 
     setEditor(newEditor);
     editorCallbacks.onEditorReady?.(newEditor);
+    return newEditor;
   };
 
-  createRenderEffect(initialEditorSnapshot, (snapshot) => {
+  onSettled(() => {
+    const snapshot = initialEditorSnapshot();
     if (!snapshot) return;
 
-    const timeoutId = setTimeout(() => {
-      initializeEditor(snapshot);
-    }, 10);
+    const currentEditor = initializeEditor(snapshot);
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      editorCallbacks.onEditorReady?.(null);
+      try {
+        currentEditor.destroy();
+      } catch {
+        // Ignore cleanup errors from an editor already destroyed by its host.
+      }
+    };
   });
 
   createRenderEffect(
@@ -185,6 +196,7 @@ export function RichTextEditor(props: RichTextEditorProps) {
       onBlur: props.onBlur,
       onChange: props.onChange,
       onEditorReady: props.onEditorReady,
+      onUpdate: props.onUpdate,
     }),
     ({ currentEditor, ...callbacks }) => {
       if (!currentEditor) return;
@@ -220,28 +232,20 @@ export function RichTextEditor(props: RichTextEditorProps) {
     },
   );
 
-  onCleanup(() => {
-    const currentEditor = editor();
-    editorCallbacks.onEditorReady?.(null);
-    setEditor(null);
-    isInitializing = false; // Reset guard for potential re-mount
-    if (currentEditor) {
-      try {
-        currentEditor.destroy();
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
-  });
-
   const showBubbleMenu = () =>
     props.showFloatingToolbar !== false && !props.readOnly && !props.disabled;
-  const [wrapperRef, setWrapperRef] = createSignal<HTMLDivElement | undefined>();
 
   return (
-    <div ref={(el) => setWrapperRef(el)} class="relative">
+    <div
+      ref={(element) => {
+        wrapperRef = element;
+      }}
+      class="relative"
+    >
       <div
-        ref={setEditorContainer}
+        ref={(element) => {
+          editorContainer = element;
+        }}
         class={cn(
           "flex flex-col w-full rounded-md border border-input bg-background text-xs",
           "ring-offset-background focus-within:outline-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
@@ -266,7 +270,7 @@ export function RichTextEditor(props: RichTextEditorProps) {
           <BubbleMenuPortal
             editor={currentEditor()}
             config={props.toolbarConfig ?? defaultToolbarConfig}
-            containerRef={wrapperRef()}
+            containerRef={wrapperRef}
           />
         )}
       </Show>

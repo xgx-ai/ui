@@ -34,15 +34,21 @@ export function RichTextEditorForm(props: RichTextEditorFormProps) {
       </Show>
 
       <RichTextEditor
-        value={props.value}
-        onChange={props.onChange}
-        onBlur={props.onBlur}
-        placeholder={props.placeholder}
-        disabled={props.disabled}
-        readOnly={props.readOnly}
-        toolbarConfig={props.toolbarConfig}
-        minHeight={props.minHeight}
         collaboration={props.collaboration}
+        contentClass={props.contentClass}
+        disabled={props.disabled}
+        editorProps={props.editorProps}
+        extensions={props.extensions}
+        minHeight={props.minHeight}
+        onBlur={props.onBlur}
+        onChange={props.onChange}
+        onEditorReady={props.onEditorReady}
+        onUpdate={props.onUpdate}
+        placeholder={props.placeholder}
+        readOnly={props.readOnly}
+        showFloatingToolbar={props.showFloatingToolbar}
+        toolbarConfig={props.toolbarConfig}
+        value={props.value}
       />
 
       <div
