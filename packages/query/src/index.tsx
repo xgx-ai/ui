@@ -33,12 +33,14 @@ export type QueryContext = {
 type RetryOption = boolean | number | ((failureCount: number, error: unknown) => boolean);
 type RetryDelayOption = number | ((failureCount: number, error: unknown) => number);
 type MaybePromise<T> = T | Promise<T>;
+type RefetchIntervalOption<TData> = false | number | ((data: TData | undefined) => false | number);
 
 export type QueryOptions<TData> = {
   queryKey: QueryKey;
   queryFn: (context: QueryContext) => Promise<TData>;
   enabled?: boolean | (() => boolean);
   gcTime?: number;
+  refetchInterval?: RefetchIntervalOption<TData>;
   refetchOnReconnect?: boolean;
   refetchOnWindowFocus?: boolean;
   retry?: RetryOption;
@@ -49,6 +51,7 @@ export type QueryOptions<TData> = {
 
 export type QueryDefaultOptions = {
   gcTime?: number;
+  refetchInterval?: false | number;
   refetchOnReconnect?: boolean;
   refetchOnWindowFocus?: boolean;
   retry?: RetryOption;
@@ -113,6 +116,7 @@ export type DefineQueryOptions<TData, TArgs extends unknown[]> = SharedDefineQue
   prefix: QueryKey;
   queryFn: (context: QueryContext, ...args: TArgs) => Promise<TData>;
   enabled?: boolean | (() => boolean);
+  refetchInterval?: RefetchIntervalOption<TData>;
 };
 
 export type MutationOptions<TData, TVariables> = {
@@ -222,6 +226,7 @@ type QueryCacheEntry = {
   key: QueryKey;
   options?: PreparedQuery<unknown>;
   promise?: Promise<unknown>;
+  refetchTimer?: ReturnType<typeof setTimeout>;
   requestId: number;
   setData: InternalSetter<unknown>;
   setFetching: InternalSetter<boolean>;
@@ -456,6 +461,7 @@ export function defineQuery<TData, TArgs extends unknown[] = []>(
     queryFn: (context: QueryContext) => config.queryFn(context, ...args),
     enabled: config.enabled,
     gcTime: config.gcTime,
+    refetchInterval: config.refetchInterval,
     refetchOnReconnect: config.refetchOnReconnect,
     refetchOnWindowFocus: config.refetchOnWindowFocus,
     retry: config.retry,
@@ -489,6 +495,7 @@ export class QueryClient {
       ? {
           ...query,
           gcTime: query.gcTime ?? defaults.gcTime,
+          refetchInterval: query.refetchInterval ?? defaults.refetchInterval,
           refetchOnReconnect: query.refetchOnReconnect ?? defaults.refetchOnReconnect,
           refetchOnWindowFocus: query.refetchOnWindowFocus ?? defaults.refetchOnWindowFocus,
           retry: query.retry ?? defaults.retry,
@@ -698,9 +705,11 @@ export class QueryClient {
       entry.gcTimer = undefined;
     }
     entry.sources.set(source, enabled);
+    this.#scheduleRefetch(entry);
 
     return () => {
       entry.sources.delete(source);
+      if (this.#activeSources(entry).length === 0) this.#clearRefetch(entry);
       this.#scheduleGc(entry);
     };
   }
@@ -726,6 +735,7 @@ export class QueryClient {
     entry.controller = controller;
     entry.options = query as PreparedQuery<unknown>;
     entry.gcTime = query.gcTime ?? entry.gcTime;
+    this.#clearRefetch(entry);
     entry.setFetching(true);
 
     const promise = (async () => {
@@ -761,6 +771,7 @@ export class QueryClient {
           entry.promise = undefined;
           entry.controller = undefined;
           entry.setFetching(false);
+          this.#scheduleRefetch(entry);
           this.#scheduleGc(entry);
         }
       });
@@ -850,9 +861,32 @@ export class QueryClient {
     );
   }
 
+  #clearRefetch(entry: QueryCacheEntry): void {
+    if (!entry.refetchTimer) return;
+    clearTimeout(entry.refetchTimer);
+    entry.refetchTimer = undefined;
+  }
+
+  #scheduleRefetch(entry: QueryCacheEntry): void {
+    this.#clearRefetch(entry);
+    if (entry.promise || !entry.options || this.#activeSources(entry).length === 0) return;
+
+    const option = entry.options.refetchInterval;
+    const data = entry.hasData() ? entry.data() : undefined;
+    const interval = typeof option === "function" ? option(data) : option;
+    if (typeof interval !== "number" || interval <= 0) return;
+
+    entry.refetchTimer = setTimeout(() => {
+      entry.refetchTimer = undefined;
+      if (this.#activeSources(entry).length === 0) return;
+      void this.#invalidateEntries(new Set([entry]));
+    }, interval);
+  }
+
   #deleteEntry(entry: QueryCacheEntry): void {
     if (entry.sources.size > 0) return;
     if (entry.gcTimer) clearTimeout(entry.gcTimer);
+    this.#clearRefetch(entry);
     if (entry.staleTimer) clearTimeout(entry.staleTimer);
     entry.controller?.abort(new QueryCancelledError());
     if (this.#cache.get(entry.hash) === entry) this.#cache.delete(entry.hash);
@@ -945,8 +979,8 @@ function createQueryResult<TData>(
       };
     },
     ({ enabled, entry }) => {
-      const stopObserving = client.observe(entry, data, enabled);
-      if (enabled) refresh(data);
+      const stopObserving = untrack(() => client.observe(entry, data, enabled));
+      if (enabled) untrack(() => refresh(data));
       return stopObserving;
     },
   );

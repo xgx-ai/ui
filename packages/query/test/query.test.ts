@@ -392,6 +392,47 @@ test("retry and timeout policies are enforced", async () => {
   ).rejects.toBeInstanceOf(QueryTimeoutError);
 });
 
+test("active queries poll quietly, recover from failure, and stop when disposed", async () => {
+  let calls = 0;
+  const secondStarted = deferred<void>();
+  const releaseSecond = deferred<void>();
+  const thirdSucceeded = deferred<void>();
+
+  await inRoot(async (dispose) => {
+    const query = createValueQuery(() => ({
+      queryKey: ["polling"],
+      queryFn: async () => {
+        calls += 1;
+        if (calls === 2) {
+          secondStarted.resolve();
+          await releaseSecond.promise;
+          throw new Error("temporary");
+        }
+        if (calls === 3) thirdSucceeded.resolve();
+        return calls;
+      },
+      refetchInterval: 1,
+    }));
+
+    expect(await resolve(() => query.data())).toBe(1);
+    await secondStarted.promise;
+    expect(query.latest()).toBe(1);
+    expect(query.fetching()).toBe(true);
+    expect(query.pending()).toBe(false);
+
+    releaseSecond.resolve();
+    await thirdSucceeded.promise;
+    await nextTask();
+    flush();
+    expect(query.latest()).toBe(3);
+
+    dispose();
+    const callsAtDispose = calls;
+    await new Promise((resolveWait) => setTimeout(resolveWait, 5));
+    expect(calls).toBe(callsAtDispose);
+  });
+});
+
 test("inactive query data is garbage collected", async () => {
   const client = new QueryClient();
   await client.fetchQuery({
