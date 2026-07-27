@@ -22,7 +22,22 @@ Then, in the page:
 3. Read the state again.
 4. Click **release fetch** and read the state a third time.
 
-## Result on `solid-js` 2.0.0-beta.25
+## `table.html` — keyed list probe (issue S1)
+
+Renders one infinite query through two keyed `<For>` lists under a single `<Loading>`:
+`#rows-data` reads the suspending `query.data()`, `#rows-retained` reads the non-suspending
+`query.retained()` workaround.
+
+**It does not reproduce S1 on beta.25 or beta.26** — both lists update correctly. The
+failing ingredient lives somewhere in the real table stack, so this probe cannot currently
+answer whether S1 is fixed. Do not delete `retained` on the strength of it; test the
+application instead.
+
+It did confirm S5, and more sharply than the original probe: with a query key built from a
+bare `filter()`, changing the filter produced a second fetch for the **old** key. The key
+must read `latest(filter)` for the query to follow the change at all.
+
+## `index.html` — result on `solid-js` 2.0.0-beta.25
 
 | Stage | `filter()` | `latest(filter)` | fallback | `isPending` | rows |
 | --- | --- | --- | --- | --- | --- |

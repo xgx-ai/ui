@@ -20,4 +20,5 @@
 - `createMemo` is for derived values; do not use it for side effects.
 - Writes inside owned scopes require explicit intent; do not sprinkle ownership overrides through app code.
 - Reimplement any dependency behavior that is not v2-compatible as native SolidJS v2 code. Do not fake missing behavior.
+- Record every SolidJS 2 beta workaround in `docs/solid-2-beta-issues.md` alongside a comment at the site. Read that register before debugging odd reactive behavior — several known beta issues present as library bugs.
 - Do not add compatibility layers or `packages/ui/src/vendor` shims. Shared UI source should read like idiomatic Solid v2.
