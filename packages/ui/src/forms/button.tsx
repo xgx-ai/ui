@@ -14,11 +14,10 @@ import type { JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import { Show } from "solid-js";
+import { omit, Show } from "solid-js";
 import { cn } from "../cn.ts";
 import { Spinner } from "../feedback/spinner.tsx";
 import type { PolymorphicProps } from "../utils/polymorphic";
-import { splitProps } from "../utils/split-props";
 
 const buttonVariants = cva(
   "cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
@@ -65,7 +64,9 @@ type ButtonOwnProps = VariantProps<typeof buttonVariants> & {
 type ButtonProps<T extends ValidComponent = "button"> = PolymorphicProps<T, ButtonOwnProps>;
 
 const Button = <T extends ValidComponent = "button">(props: ButtonProps<T>) => {
-  const [local, others] = splitProps(props as ButtonProps, [
+  const local = props as ButtonProps;
+  const others = omit(
+    props as ButtonProps,
     "as",
     "variant",
     "size",
@@ -75,7 +76,7 @@ const Button = <T extends ValidComponent = "button">(props: ButtonProps<T>) => {
     "disabled",
     "onClick",
     "type",
-  ]);
+  );
 
   const disabled = () => Boolean(local.disabled || local.loading);
   const content = () => (
@@ -119,5 +120,5 @@ const Button = <T extends ValidComponent = "button">(props: ButtonProps<T>) => {
   );
 };
 
-export { Button, buttonVariants };
 export type { ButtonProps };
+export { Button, buttonVariants };

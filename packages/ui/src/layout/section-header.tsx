@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps, Show } from "solid-js";
+import { omit, type ParentProps, Show } from "solid-js";
 import { cn } from "../cn";
 
 export interface SectionHeaderProps extends ParentProps {
@@ -33,15 +32,8 @@ export interface SectionHeaderProps extends ParentProps {
  * ```
  */
 export function SectionHeader(props: SectionHeaderProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "icon",
-    "title",
-    "badge",
-    "action",
-    "compact",
-    "children",
-  ]);
+  const local = props;
+  const rest = omit(props, "class", "icon", "title", "badge", "action", "compact", "children");
 
   return (
     <div
@@ -82,7 +74,8 @@ export interface SectionContentProps extends ParentProps {
  * Content area for sections with consistent padding.
  */
 export function SectionContent(props: SectionContentProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("p-3 flex-1 overflow-auto", local.class)} {...rest}>
       {local.children}
@@ -98,7 +91,8 @@ export interface SectionFooterProps extends ParentProps {
  * Footer for sections with border and centered content.
  */
 export function SectionFooter(props: SectionFooterProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("mt-2 pt-2 border-t text-center", local.class)} {...rest}>
       {local.children}

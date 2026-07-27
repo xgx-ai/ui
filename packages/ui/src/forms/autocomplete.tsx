@@ -9,22 +9,23 @@
  * ```
  */
 import type { ComponentProps } from "@solidjs/web";
+import { omit } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
 import {
   Search as Autocomplete,
+  SearchItemLabel as AutocompleteItemLabel,
   SearchContent,
   SearchControl,
   SearchInput,
   SearchItem,
-  SearchItemLabel as AutocompleteItemLabel,
+  type SearchItemProps,
   SearchListbox,
   SearchNoResult,
-  type SearchItemProps,
 } from "./search";
 
 const AutocompleteControl = <_T,>(props: ComponentProps<"div">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <SearchControl
       class={cn("flex h-9 items-center rounded-md border px-3", local.class)}
@@ -34,7 +35,8 @@ const AutocompleteControl = <_T,>(props: ComponentProps<"div">) => {
 };
 
 const AutocompleteInput = (props: ComponentProps<"input">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <SearchInput
       class={cn(
@@ -47,7 +49,8 @@ const AutocompleteInput = (props: ComponentProps<"input">) => {
 };
 
 const AutocompleteContent = (props: ComponentProps<"div">) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <SearchContent
       class={cn(
@@ -62,14 +65,16 @@ const AutocompleteContent = (props: ComponentProps<"div">) => {
 };
 
 const AutocompleteListbox = (props: ComponentProps<"ul">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return <SearchListbox class={cn("m-0 p-1", local.class)} {...others} />;
 };
 
 type AutocompleteItemProps = SearchItemProps;
 
 const AutocompleteItem = (props: AutocompleteItemProps) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <SearchItem
       class={cn(
@@ -83,6 +88,7 @@ const AutocompleteItem = (props: AutocompleteItemProps) => {
 
 const AutocompleteNoResult = SearchNoResult;
 
+export type { AutocompleteItemProps };
 export {
   Autocomplete,
   AutocompleteContent,
@@ -93,4 +99,3 @@ export {
   AutocompleteListbox,
   AutocompleteNoResult,
 };
-export type { AutocompleteItemProps };

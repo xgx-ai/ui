@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps, Show } from "solid-js";
+import { omit, type ParentProps, Show } from "solid-js";
 import { cn } from "../cn";
 import { Button } from "../forms/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
@@ -37,15 +36,8 @@ export interface FilterPopoverProps extends ParentProps {
  * ```
  */
 export function FilterPopover(props: FilterPopoverProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "activeCount",
-    "onReset",
-    "title",
-    "icon",
-    "width",
-    "children",
-  ]);
+  const local = props;
+  const rest = omit(props, "class", "activeCount", "onReset", "title", "icon", "width", "children");
 
   return (
     <Popover>
@@ -96,7 +88,8 @@ export interface FilterItemProps extends ParentProps {
  * Individual filter item with label.
  */
 export function FilterItem(props: FilterItemProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "label", "direction", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "label", "direction", "children");
 
   const isRow = () => local.direction !== "column";
 
@@ -133,14 +126,8 @@ export interface FilterDateRangeProps {
  * Date range filter with from/to inputs.
  */
 export function FilterDateRange(props: FilterDateRangeProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "label",
-    "fromValue",
-    "toValue",
-    "onFromChange",
-    "onToChange",
-  ]);
+  const local = props;
+  const rest = omit(props, "class", "label", "fromValue", "toValue", "onFromChange", "onToChange");
 
   return (
     <div class={cn("flex flex-col gap-1", local.class)} {...rest}>

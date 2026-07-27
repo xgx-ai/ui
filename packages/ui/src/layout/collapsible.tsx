@@ -12,8 +12,7 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createSignal, Show, useContext } from "solid-js";
-import { splitProps } from "../utils/split-props";
+import { createContext, createSignal, omit, Show, useContext } from "solid-js";
 
 type CollapsibleProps = Omit<ComponentProps<"div">, "onChange"> & {
   open?: boolean;
@@ -33,14 +32,16 @@ const CollapsibleContext = createContext<{
 });
 
 const Collapsible = (props: CollapsibleProps) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "children",
     "open",
     "defaultOpen",
     "disabled",
     "onOpenChange",
     "onChange",
-  ]);
+  );
   const [uncontrolledOpen, setUncontrolledOpen] = createSignal(Boolean(local.defaultOpen));
   const open = () => local.open ?? uncontrolledOpen();
   const setOpen = (next: boolean) => {
@@ -75,7 +76,8 @@ type CollapsibleTriggerProps = ComponentProps<"button"> & {
 
 const CollapsibleTrigger = (props: CollapsibleTriggerProps) => {
   const context = useContext(CollapsibleContext);
-  const [local, others] = splitProps(props, ["children", "disabled", "onClick", "type"]);
+  const local = props;
+  const others = omit(props, "children", "disabled", "onClick", "type");
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
     handler?.(event);
@@ -101,7 +103,8 @@ type CollapsibleContentProps = ComponentProps<"div"> & {
 
 const CollapsibleContent = (props: CollapsibleContentProps) => {
   const context = useContext(CollapsibleContext);
-  const [local, others] = splitProps(props, ["children"]);
+  const local = props;
+  const others = omit(props, "children");
 
   return (
     <Show when={context.open()}>
@@ -112,5 +115,5 @@ const CollapsibleContent = (props: CollapsibleContentProps) => {
   );
 };
 
-export { Collapsible, CollapsibleContent, CollapsibleTrigger };
 export type { CollapsibleContentProps, CollapsibleProps, CollapsibleTriggerProps };
+export { Collapsible, CollapsibleContent, CollapsibleTrigger };

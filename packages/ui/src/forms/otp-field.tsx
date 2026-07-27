@@ -1,10 +1,8 @@
-import type { ComponentProps } from "@solidjs/web";
-import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { Circle } from "../icons.index";
+import type { ComponentProps, JSX } from "@solidjs/web";
 import type { Component } from "solid-js";
-import { createContext, createSignal, Show, useContext } from "solid-js";
+import { createContext, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
+import { Circle } from "../icons.index";
 
 export const REGEXP_ONLY_DIGITS = "^\\d*$";
 export const REGEXP_ONLY_CHARS = "^[a-zA-Z]*$";
@@ -44,7 +42,9 @@ type OTPFieldProps = ComponentProps<"div"> & {
 };
 
 const OTPField: Component<OTPFieldProps> = (props) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "class",
     "maxLength",
     "value",
@@ -54,7 +54,7 @@ const OTPField: Component<OTPFieldProps> = (props) => {
     "disabled",
     "pattern",
     "children",
-  ]);
+  );
 
   const [internalValue, setInternalValue] = createSignal(local.defaultValue || "");
   const [activeIndex, setActiveIndex] = createSignal(-1);
@@ -105,7 +105,8 @@ const OTPField: Component<OTPFieldProps> = (props) => {
 
 const OTPFieldInput: Component<ComponentProps<"input">> = (props) => {
   const ctx = useOTPContext();
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
 
   const handleInput = (e: InputEvent) => {
     const input = e.target as HTMLInputElement;
@@ -154,7 +155,8 @@ const OTPFieldInput: Component<ComponentProps<"input">> = (props) => {
 };
 
 const OTPFieldGroup: Component<ComponentProps<"div">> = (props) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   const ctx = useOTPContext();
 
   const handleClick = () => {
@@ -182,7 +184,8 @@ type OTPFieldSlotProps = ComponentProps<"div"> & {
 };
 
 const OTPFieldSlot: Component<OTPFieldSlotProps> = (props) => {
-  const [local, others] = splitProps(props, ["class", "index"]);
+  const local = props;
+  const others = omit(props, "class", "index");
   const ctx = useOTPContext();
 
   const char = () => ctx.value()[local.index] || "";
@@ -209,7 +212,8 @@ const OTPFieldSlot: Component<OTPFieldSlotProps> = (props) => {
 };
 
 const OTPFieldSeparator: Component<ComponentProps<"div">> = (props) => {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <div class={cn("flex size-6 items-center justify-center", local.class)} {...rest}>
       <Circle aria-hidden="true" class="size-1.5 fill-current" />

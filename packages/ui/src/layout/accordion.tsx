@@ -14,10 +14,9 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createSignal, Show, useContext } from "solid-js";
-import { ChevronDown } from "../icons.index";
+import { createContext, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
+import { ChevronDown } from "../icons.index";
 
 type AccordionValue = string | string[] | undefined;
 
@@ -40,7 +39,9 @@ const AccordionContext = createContext<{
 const AccordionItemContext = createContext<{ value: string }>({ value: "" });
 
 const Accordion = (props: AccordionProps) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "class",
     "children",
     "value",
@@ -48,7 +49,7 @@ const Accordion = (props: AccordionProps) => {
     "multiple",
     "collapsible",
     "onChange",
-  ]);
+  );
   const [uncontrolledValue, setUncontrolledValue] = createSignal<AccordionValue>(
     local.defaultValue,
   );
@@ -87,7 +88,8 @@ type AccordionItemProps = ComponentProps<"div"> & {
 };
 
 const AccordionItem = (props: AccordionItemProps) => {
-  const [local, others] = splitProps(props, ["class", "children", "value"]);
+  const local = props;
+  const others = omit(props, "class", "children", "value");
   return (
     <AccordionItemContext
       value={{
@@ -110,7 +112,8 @@ type AccordionTriggerProps = ComponentProps<"button"> & {
 const AccordionTrigger = (props: AccordionTriggerProps) => {
   const accordion = useContext(AccordionContext);
   const item = useContext(AccordionItemContext);
-  const [local, others] = splitProps(props, ["class", "children", "disabled", "onClick", "type"]);
+  const local = props;
+  const others = omit(props, "class", "children", "disabled", "onClick", "type");
   const expanded = () => accordion.isExpanded(item.value);
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
@@ -146,7 +149,8 @@ type AccordionContentProps = ComponentProps<"div"> & {
 const AccordionContent = (props: AccordionContentProps) => {
   const accordion = useContext(AccordionContext);
   const item = useContext(AccordionItemContext);
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
 
   return (
     <Show when={accordion.isExpanded(item.value)}>
@@ -161,5 +165,5 @@ const AccordionContent = (props: AccordionContentProps) => {
   );
 };
 
-export { Accordion, AccordionContent, AccordionItem, AccordionTrigger };
 export type { AccordionContentProps, AccordionItemProps, AccordionProps, AccordionTriggerProps };
+export { Accordion, AccordionContent, AccordionItem, AccordionTrigger };

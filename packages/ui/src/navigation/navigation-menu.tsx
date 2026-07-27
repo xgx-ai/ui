@@ -16,10 +16,9 @@
  */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
-import { createContext, createSignal, Show, useContext } from "solid-js";
-import { ChevronDown } from "../icons.index";
+import { createContext, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
+import { ChevronDown } from "../icons.index";
 
 type NavigationMenuItemContextValue = {
   open: () => boolean;
@@ -41,7 +40,8 @@ type NavigationMenuProps = ComponentProps<"ul"> & {
 };
 
 const NavigationMenu = (props: NavigationMenuProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <ul
       class={cn(
@@ -61,7 +61,8 @@ type NavigationMenuItemProps = ComponentProps<"li"> & {
 };
 
 const NavigationMenuItem = (props: NavigationMenuItemProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   const [open, setOpen] = createSignal(false);
   return (
     <NavigationMenuItemContext value={{ open, setOpen }}>
@@ -81,14 +82,8 @@ const NavigationMenuTrigger = <T extends ValidComponent = "button">(
   props: NavigationMenuTriggerProps<T>,
 ) => {
   const item = useNavigationMenuItem();
-  const [local, others] = splitProps(props, [
-    "as",
-    "class",
-    "children",
-    "onClick",
-    "onMouseEnter",
-    "type",
-  ]);
+  const local = props;
+  const others = omit(props, "as", "class", "children", "onClick", "onMouseEnter", "type");
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
     handler?.(event);
@@ -131,7 +126,8 @@ const NavigationMenuIcon = () => (
 type NavigationMenuViewportProps = ComponentProps<"li">;
 
 const NavigationMenuViewport = (props: NavigationMenuViewportProps) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <li
       aria-hidden="true"
@@ -149,7 +145,8 @@ const NavigationMenuContent = <T extends ValidComponent = "ul">(
   props: NavigationMenuContentProps<T>,
 ) => {
   const item = useNavigationMenuItem();
-  const [local, others] = splitProps(props, ["as", "class"]);
+  const local = props;
+  const others = omit(props, "as", "class");
   return (
     <Show when={item.open()}>
       <Dynamic
@@ -169,7 +166,8 @@ type NavigationMenuLinkProps<T extends ValidComponent = "a"> = ComponentProps<"a
 };
 
 const NavigationMenuLink = <T extends ValidComponent = "a">(props: NavigationMenuLinkProps<T>) => {
-  const [local, others] = splitProps(props, ["as", "class"]);
+  const local = props;
+  const others = omit(props, "as", "class");
   return (
     <Dynamic
       component={local.as ?? "a"}
@@ -183,15 +181,24 @@ const NavigationMenuLink = <T extends ValidComponent = "a">(props: NavigationMen
 };
 
 const NavigationMenuLabel = (props: ComponentProps<"div">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return <div class={cn("text-sm font-medium leading-none", local.class)} {...others} />;
 };
 
 const NavigationMenuDescription = (props: ComponentProps<"div">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return <div class={cn("text-sm leading-snug text-muted-foreground", local.class)} {...others} />;
 };
 
+export type {
+  NavigationMenuContentProps,
+  NavigationMenuItemProps,
+  NavigationMenuLinkProps,
+  NavigationMenuProps,
+  NavigationMenuTriggerProps,
+};
 export {
   NavigationMenu,
   NavigationMenuContent,
@@ -202,11 +209,4 @@ export {
   NavigationMenuLink,
   NavigationMenuTrigger,
   NavigationMenuViewport,
-};
-export type {
-  NavigationMenuContentProps,
-  NavigationMenuItemProps,
-  NavigationMenuLinkProps,
-  NavigationMenuProps,
-  NavigationMenuTriggerProps,
 };

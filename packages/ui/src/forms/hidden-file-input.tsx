@@ -1,5 +1,5 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
+import { omit } from "solid-js";
 
 export interface HiddenFileInputProps extends Omit<ComponentProps<"input">, "type"> {
   ref?: HTMLInputElement | ((el: HTMLInputElement) => void);
@@ -10,6 +10,7 @@ export interface HiddenFileInputProps extends Omit<ComponentProps<"input">, "typ
  * Use this when you need a simple file picker without the full FileUpload component.
  */
 export function HiddenFileInput(props: HiddenFileInputProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["ref", "class"]);
+  const local = props;
+  const rest = omit(props, "ref", "class");
   return <input ref={local.ref} type="file" class={local.class ?? "hidden"} {...rest} />;
 }

@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps } from "solid-js";
+import { omit, type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface EmptyStateProps extends ParentProps {
@@ -17,7 +16,8 @@ const paddingMap = {
 
 /** Empty state container */
 export function EmptyState(props: EmptyStateProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "padding", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "padding", "children");
   const paddingClass = () => paddingMap[local.padding ?? "lg"];
   return (
     <div class={cn(paddingClass(), "text-center", local.class)} {...rest}>
@@ -40,7 +40,8 @@ const iconSizeMap = {
 
 /** Empty state icon wrapper - icons are automatically sized */
 export function EmptyStateIcon(props: EmptyStateIconProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "size", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "size", "children");
   const sizeClass = () => iconSizeMap[local.size ?? "md"];
   return (
     <div class={cn("mx-auto mb-4 text-muted-foreground/50", sizeClass(), local.class)} {...rest}>
@@ -57,7 +58,8 @@ export interface EmptyStateTitleProps extends ParentProps {
 
 /** Empty state title */
 export function EmptyStateTitle(props: EmptyStateTitleProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "size", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "size", "children");
   return (
     <h3
       class={cn(
@@ -78,7 +80,8 @@ export interface EmptyStateDescriptionProps extends ParentProps {
 
 /** Empty state description */
 export function EmptyStateDescription(props: EmptyStateDescriptionProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <p class={cn("text-muted-foreground mb-4", local.class)} {...rest}>
       {local.children}
@@ -92,7 +95,8 @@ export interface EmptyStateActionsProps extends ParentProps {
 
 /** Empty state actions container */
 export function EmptyStateActions(props: EmptyStateActionsProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("flex items-center justify-center gap-2", local.class)} {...rest}>
       {local.children}
@@ -130,15 +134,7 @@ export interface SimpleEmptyStateProps {
  * ```
  */
 export function SimpleEmptyState(props: SimpleEmptyStateProps): JSX.Element {
-  const [local] = splitProps(props, [
-    "class",
-    "icon",
-    "title",
-    "description",
-    "action",
-    "padding",
-    "titleSize",
-  ]);
+  const local = props;
   return (
     <EmptyState class={local.class} padding={local.padding}>
       {local.icon && <EmptyStateIcon>{local.icon}</EmptyStateIcon>}

@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps, Show } from "solid-js";
+import { omit, type ParentProps, Show } from "solid-js";
 import { cn } from "../cn";
 import { Badge } from "../feedback/badge";
 
@@ -33,7 +32,8 @@ const variantStyles = {
  * ```
  */
 export function GroupHeader(props: GroupHeaderProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "label", "count", "variant", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "label", "count", "variant", "children");
 
   const badgeClass = () => variantStyles[local.variant ?? "default"];
 
@@ -58,7 +58,8 @@ export interface GroupSectionProps extends ParentProps {
  * Container for a group of items with consistent spacing.
  */
 export function GroupSection(props: GroupSectionProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("mb-5 last:mb-0", local.class)} {...rest}>
       {local.children}
@@ -74,7 +75,8 @@ export interface GroupContentProps extends ParentProps {
  * Content container with vertical gap spacing.
  */
 export function GroupContent(props: GroupContentProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("flex flex-col gap-2", local.class)} {...rest}>
       {local.children}

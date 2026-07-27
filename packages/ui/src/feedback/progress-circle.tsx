@@ -1,7 +1,6 @@
 import type { ComponentProps } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
 import type { Component } from "solid-js";
-import { merge as mergeProps } from "solid-js";
+import { merge as mergeProps, omit } from "solid-js";
 
 import { cn } from "../cn";
 
@@ -42,7 +41,9 @@ type ProgressCircleProps = ComponentProps<"div"> & {
 
 const ProgressCircle: Component<ProgressCircleProps> = (rawProps) => {
   const props = mergeProps({ size: "md" as Size, showAnimation: true }, rawProps);
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "class",
     "children",
     "value",
@@ -50,7 +51,7 @@ const ProgressCircle: Component<ProgressCircleProps> = (rawProps) => {
     "radius",
     "strokeWidth",
     "showAnimation",
-  ]);
+  );
 
   const value = () => getLimitedValue(local.value);
   const radius = () => local.radius ?? sizes[local.size].radius;

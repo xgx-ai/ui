@@ -12,18 +12,19 @@
  * ```
  */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
+import { Dynamic } from "@solidjs/web";
 import {
   createContext,
   createMemo,
   createRenderEffect,
   createSignal,
   createUniqueId,
+  omit,
+  untrack,
   useContext,
 } from "solid-js";
-import { Dynamic } from "@solidjs/web";
 
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
 import { ChevronDown, ChevronUp } from "../icons.index";
 
 type ValidationState = "valid" | "invalid";
@@ -159,10 +160,10 @@ const NumberField = <T extends ValidComponent = "div">(props: NumberFieldProps<T
     return props.defaultValue == null ? "" : String(props.defaultValue);
   };
 
-  const [text, setText] = createSignal(initialText(), { ownedWrite: true });
+  const [text, setText] = createSignal(untrack(initialText), { ownedWrite: true });
   const [focused, setFocused] = createSignal(false, { ownedWrite: true });
   const [inputRef, setInputRef] = createSignal<HTMLInputElement>();
-  let lastExternalText: string | undefined = externalText();
+  let lastExternalText: string | undefined = untrack(externalText);
 
   createRenderEffect(
     () => [externalText(), focused()] as const,
@@ -243,7 +244,9 @@ const NumberField = <T extends ValidComponent = "div">(props: NumberFieldProps<T
     varyValue,
   };
 
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "as",
     "children",
     "class",
@@ -267,7 +270,7 @@ const NumberField = <T extends ValidComponent = "div">(props: NumberFieldProps<T
     "readOnly",
     "required",
     "name",
-  ]);
+  );
 
   return (
     <NumberFieldContext value={context}>
@@ -293,7 +296,8 @@ type NumberFieldGroupProps = ComponentProps<"div"> & {
 };
 
 const NumberFieldGroup = (props: NumberFieldGroupProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <div
       class={cn(
@@ -313,7 +317,8 @@ type NumberFieldLabelProps = ComponentProps<"label"> & {
 
 const NumberFieldLabel = (props: NumberFieldLabelProps) => {
   const context = useNumberFieldContext();
-  const [local, others] = splitProps(props, ["class", "children", "for"]);
+  const local = props;
+  const others = omit(props, "class", "children", "for");
   return (
     <label
       for={local.for ?? context.inputId()}
@@ -336,7 +341,9 @@ type NumberFieldInputProps = Omit<ComponentProps<"input">, "onChange"> & {
 
 const NumberFieldInput = (props: NumberFieldInputProps) => {
   const context = useNumberFieldContext();
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "class",
     "onInput",
     "onChange",
@@ -346,7 +353,7 @@ const NumberFieldInput = (props: NumberFieldInputProps) => {
     "onWheel",
     "ref",
     "type",
-  ]);
+  );
   const atMin = () => {
     const min = context.minValue();
     return min !== undefined && context.rawValue() <= min;
@@ -447,14 +454,8 @@ type NumberFieldTriggerProps = ComponentProps<"button"> & {
 
 const NumberFieldIncrementTrigger = (props: NumberFieldTriggerProps) => {
   const context = useNumberFieldContext();
-  const [local, others] = splitProps(props, [
-    "aria-label",
-    "class",
-    "children",
-    "disabled",
-    "onClick",
-    "type",
-  ]);
+  const local = props;
+  const others = omit(props, "aria-label", "class", "children", "disabled", "onClick", "type");
   const disabled = () =>
     Boolean(local.disabled) ||
     context.disabled() ||
@@ -485,14 +486,8 @@ const NumberFieldIncrementTrigger = (props: NumberFieldTriggerProps) => {
 
 const NumberFieldDecrementTrigger = (props: NumberFieldTriggerProps) => {
   const context = useNumberFieldContext();
-  const [local, others] = splitProps(props, [
-    "aria-label",
-    "class",
-    "children",
-    "disabled",
-    "onClick",
-    "type",
-  ]);
+  const local = props;
+  const others = omit(props, "aria-label", "class", "children", "disabled", "onClick", "type");
   const disabled = () =>
     Boolean(local.disabled) ||
     context.disabled() ||
@@ -527,7 +522,8 @@ type NumberFieldDescriptionProps = ComponentProps<"div"> & {
 
 const NumberFieldDescription = (props: NumberFieldDescriptionProps) => {
   const context = useNumberFieldContext();
-  const [local, others] = splitProps(props, ["class", "children", "id"]);
+  const local = props;
+  const others = omit(props, "class", "children", "id");
   return (
     <div
       id={local.id || context.descriptionId()}
@@ -545,7 +541,8 @@ type NumberFieldErrorMessageProps = ComponentProps<"div"> & {
 
 const NumberFieldErrorMessage = (props: NumberFieldErrorMessageProps) => {
   const context = useNumberFieldContext();
-  const [local, others] = splitProps(props, ["class", "children", "id"]);
+  const local = props;
+  const others = omit(props, "class", "children", "id");
   return (
     <div
       id={local.id || context.errorId()}

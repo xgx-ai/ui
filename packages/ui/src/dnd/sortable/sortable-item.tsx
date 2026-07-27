@@ -1,7 +1,6 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../../utils/split-props";
 import type { Accessor, Component } from "solid-js";
-import { Show } from "solid-js";
+import { omit, Show } from "solid-js";
 import { DropIndicatorLine } from "../preview/drag-overlay";
 import { createSortable, type SortableState } from "./use-sortable";
 
@@ -62,7 +61,9 @@ export interface SortableItemProps {
  * ```
  */
 export const SortableItem: Component<SortableItemProps> = (props) => {
-  const [local, _others] = splitProps(props, [
+  const local = props;
+  const _others = omit(
+    props,
     "id",
     "index",
     "disabled",
@@ -70,7 +71,7 @@ export const SortableItem: Component<SortableItemProps> = (props) => {
     "class",
     "children",
     "orientation",
-  ]);
+  );
 
   const { state, setRef, setHandleRef, sortableClass } = createSortable({
     id: local.id,

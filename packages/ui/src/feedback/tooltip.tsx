@@ -18,13 +18,13 @@ import {
   createEffect,
   createSignal,
   createUniqueId,
+  omit,
   Show,
   useContext,
 } from "solid-js";
 import { cn } from "../cn";
 import { assignRef } from "../overlays/floating";
 import { PortalMount } from "../overlays/portal";
-import { splitProps } from "../utils/split-props";
 
 const DynamicAny = Dynamic as any;
 
@@ -103,7 +103,9 @@ type TooltipTriggerProps<T extends ValidComponent = "span"> = Omit<ComponentProp
 
 const TooltipTrigger = <T extends ValidComponent = "span">(props: TooltipTriggerProps<T>) => {
   const tooltip = useTooltip();
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "as",
     "children",
     "onBlur",
@@ -111,7 +113,7 @@ const TooltipTrigger = <T extends ValidComponent = "span">(props: TooltipTrigger
     "onMouseEnter",
     "onMouseLeave",
     "ref",
-  ]);
+  );
   const setRef = (element: HTMLElement) => {
     tooltip.setTrigger(element);
     assignRef(local.ref, element);
@@ -160,7 +162,8 @@ type TooltipContentProps<T extends ValidComponent = "div"> = ComponentProps<"div
 
 const TooltipContent = <T extends ValidComponent = "div">(props: TooltipContentProps<T>) => {
   const tooltip = useTooltip();
-  const [local, others] = splitProps(props, ["as", "class", "children"]);
+  const local = props;
+  const others = omit(props, "as", "class", "children");
   const style = () => {
     const rect = tooltip.trigger()?.getBoundingClientRect();
     if (!rect) return { left: "0px", top: "0px" };
@@ -215,5 +218,5 @@ const TooltipContent = <T extends ValidComponent = "div">(props: TooltipContentP
   );
 };
 
-export { Tooltip, TooltipContent, TooltipTrigger };
 export type { TooltipContentProps, TooltipProps, TooltipTriggerProps };
+export { Tooltip, TooltipContent, TooltipTrigger };

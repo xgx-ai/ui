@@ -1,9 +1,8 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { EllipsisVertical } from "../icons.index";
 import type { Component } from "solid-js";
-
+import { omit } from "solid-js";
 import { cn } from "../cn";
+import { EllipsisVertical } from "../icons.index";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,12 +43,8 @@ interface DropdownMoreItemsProps extends Omit<ComponentProps<"div">, "children">
  * ```
  */
 const DropdownMoreItems: Component<DropdownMoreItemsProps> = (props) => {
-  const [local, rest] = splitProps(props, [
-    "placement",
-    "triggerClass",
-    "contentClass",
-    "children",
-  ]);
+  const local = props;
+  const rest = omit(props, "placement", "triggerClass", "contentClass", "children");
 
   return (
     <DropdownMenu placement={local.placement || "bottom"} {...rest}>
@@ -66,5 +61,5 @@ const DropdownMoreItems: Component<DropdownMoreItemsProps> = (props) => {
   );
 };
 
-export { DropdownMoreItems };
 export type { DropdownMoreItemsProps };
+export { DropdownMoreItems };

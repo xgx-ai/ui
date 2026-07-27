@@ -1,10 +1,9 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import type { TextFieldInputProps } from "./text-field";
 import { type Component, createMemo, createUniqueId, Match, Show, Switch } from "solid-js";
 import { ZodArray, ZodDefault, ZodNullable, ZodObject, ZodOptional } from "zod";
 import { FieldLabel } from "./form-components/field-label";
 import { TextFieldForm } from "./form-components/text-field-form";
+import type { TextFieldInputProps } from "./text-field";
 
 type FormFieldApi = {
   name: string;
@@ -92,22 +91,7 @@ function getZodSchemaAtPath(schema: any, path: string): any {
  * based on the Zod schema definition
  */
 export default function FormField(props: FormFieldProps) {
-  const [local] = splitProps(props, [
-    "field",
-    "label",
-    "placeholder",
-    "prefix",
-    "suffix",
-    "autocomplete",
-    "class",
-    "disabled",
-    "schema",
-    "min",
-    "max",
-    "step",
-    "inputMode",
-    "description",
-  ]);
+  const local = props;
 
   const isRequired = createMemo(() => {
     if (props.notRequired) return false;

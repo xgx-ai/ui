@@ -41,7 +41,9 @@ const result = await Bun.build({
   minify: false,
   outdir: outDir,
   plugins: [SolidPlugin({ hmr: false })],
-  splitting: true,
+  // Bun chunk splitting can evaluate Solid 2's scheduler cycle before GlobalQueue is initialised.
+  // Re-enable this once Bun preserves the module order for that cycle.
+  splitting: false,
   target: "browser",
 });
 

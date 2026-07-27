@@ -1,7 +1,6 @@
 import type { ComponentProps } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
 import type { Component } from "solid-js";
-import { For, Show } from "solid-js";
+import { For, omit, Show } from "solid-js";
 import { cn } from "../cn";
 
 interface AvatarGroupItem {
@@ -38,7 +37,8 @@ function getInitials(name: string): string {
 }
 
 const AvatarGroup: Component<AvatarGroupProps> = (props) => {
-  const [local, others] = splitProps(props, ["items", "max", "size", "class"]);
+  const local = props;
+  const others = omit(props, "items", "max", "size", "class");
 
   const maxVisible = () => local.max ?? 4;
   const size = () => local.size ?? "sm";
@@ -91,6 +91,7 @@ const AvatarGroup: Component<AvatarGroupProps> = (props) => {
   );
 };
 
+export type { AvatarGroupItem, AvatarGroupProps };
 /**
  * # AvatarGroup
  *
@@ -110,4 +111,3 @@ const AvatarGroup: Component<AvatarGroupProps> = (props) => {
  * ```
  */
 export { AvatarGroup };
-export type { AvatarGroupItem, AvatarGroupProps };

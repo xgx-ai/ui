@@ -1,6 +1,6 @@
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
-import { splitProps } from "../../utils/split-props";
+import { omit } from "solid-js";
 import { useSortableItem } from "./context";
 
 export type SortableHandleProps<T extends ValidComponent = "button"> = ComponentProps<"button"> & {
@@ -10,7 +10,8 @@ export type SortableHandleProps<T extends ValidComponent = "button"> = Component
 
 export function SortableHandle<T extends ValidComponent = "button">(props: SortableHandleProps<T>) {
   const item = useSortableItem();
-  const [local, others] = splitProps(props, ["as", "children", "ref", "type"]);
+  const local = props;
+  const others = omit(props, "as", "children", "ref", "type");
 
   const setRef = (element: HTMLElement) => {
     item.setHandleRef(element);

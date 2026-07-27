@@ -22,6 +22,7 @@ import {
   createEffect,
   createSignal,
   createUniqueId,
+  omit,
   Show,
   untrack,
   useContext,
@@ -29,7 +30,6 @@ import {
 
 import { cn } from "../cn";
 import { X } from "../icons.index";
-import { splitProps } from "../utils/split-props";
 import { assignRef } from "./floating";
 import { createModalBehavior } from "./modal-behavior";
 import { PortalMount } from "./portal";
@@ -76,7 +76,9 @@ type DialogProps = ComponentProps<"div"> & {
 };
 
 const Dialog: Component<DialogProps> = (props) => {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "children",
     "class",
     "defaultOpen",
@@ -84,7 +86,7 @@ const Dialog: Component<DialogProps> = (props) => {
     "onOpenChange",
     "open",
     "preventScroll",
-  ]);
+  );
   const [internalOpen, setInternalOpen] = createSignal(local.defaultOpen === true);
   const open = () => local.open ?? internalOpen();
   const modal = () => local.modal ?? true;
@@ -123,7 +125,8 @@ type DialogTriggerProps<T extends ValidComponent = "button"> = ComponentProps<"b
 
 const DialogTrigger = <T extends ValidComponent = "button">(props: DialogTriggerProps<T>) => {
   const dialog = useDialog();
-  const [local, rest] = splitProps(props, ["as", "children", "class", "onClick"]);
+  const local = props;
+  const rest = omit(props, "as", "children", "class", "onClick");
 
   return (
     <Dynamic
@@ -149,7 +152,8 @@ type DialogCloseProps<T extends ValidComponent = "button"> = ComponentProps<"but
 
 const DialogClose = <T extends ValidComponent = "button">(props: DialogCloseProps<T>) => {
   const dialog = useDialog();
-  const [local, rest] = splitProps(props, ["as", "children", "class", "onClick", "type"]);
+  const local = props;
+  const rest = omit(props, "as", "children", "class", "onClick", "type");
 
   return (
     <Dynamic
@@ -193,7 +197,8 @@ type DialogOverlayProps<T extends ValidComponent = "div"> = ComponentProps<"div"
 };
 
 const DialogOverlay = <T extends ValidComponent = "div">(props: DialogOverlayProps<T>) => {
-  const [local, rest] = splitProps(props, ["as", "class", "zIndex", "onClick"]);
+  const local = props;
+  const rest = omit(props, "as", "class", "zIndex", "onClick");
 
   return (
     <Dynamic
@@ -279,7 +284,9 @@ function createDialogPresence(open: () => boolean) {
 
 const DialogContent = <T extends ValidComponent = "div">(props: DialogContentProps<T>) => {
   const dialog = useDialog();
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "as",
     "class",
     "children",
@@ -290,7 +297,7 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
     "aria-labelledby",
     "aria-describedby",
     "ref",
-  ]);
+  );
   const [contentRef, setContentRef] = createSignal<HTMLElement>();
   const presence = createDialogPresence(dialog.open);
   createModalBehavior({
@@ -409,7 +416,9 @@ type DialogTemplateProps = Omit<DialogContentProps, "title"> & {
 };
 
 const DialogTemplate: Component<DialogTemplateProps> = (props) => {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "bodyClass",
     "children",
     "class",
@@ -420,7 +429,7 @@ const DialogTemplate: Component<DialogTemplateProps> = (props) => {
     "headerClass",
     "layoutClass",
     "title",
-  ]);
+  );
 
   return (
     <DialogContent class={local.class} {...rest}>
@@ -454,13 +463,15 @@ const DialogTemplate: Component<DialogTemplateProps> = (props) => {
 };
 
 const DialogHeader: Component<ComponentProps<"div">> = (props) => {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return <div class={cn("flex flex-col gap-4 text-center sm:!text-left", local.class)} {...rest} />;
 };
 
 const DialogFooter: Component<ComponentProps<"div">> = (props) => {
   const template = useContext(DialogTemplateContext);
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <div
       class={cn(
@@ -481,7 +492,8 @@ type DialogTitleProps<T extends ValidComponent = "h2"> = ComponentProps<"h2"> & 
 
 const DialogTitle = <T extends ValidComponent = "h2">(props: DialogTitleProps<T>) => {
   const dialog = useOptionalDialog();
-  const [local, rest] = splitProps(props, ["as", "class", "children", "id"]);
+  const local = props;
+  const rest = omit(props, "as", "class", "children", "id");
   return (
     <Dynamic
       component={local.as ?? "h2"}
@@ -502,7 +514,8 @@ type DialogDescriptionProps<T extends ValidComponent = "p"> = ComponentProps<"p"
 
 const DialogDescription = <T extends ValidComponent = "p">(props: DialogDescriptionProps<T>) => {
   const dialog = useOptionalDialog();
-  const [local, rest] = splitProps(props, ["as", "class", "children", "id"]);
+  const local = props;
+  const rest = omit(props, "as", "class", "children", "id");
   return (
     <Dynamic
       component={local.as ?? "p"}

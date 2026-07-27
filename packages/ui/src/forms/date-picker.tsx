@@ -1,8 +1,7 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createSignal, Show, useContext } from "solid-js";
+import { createContext, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn.ts";
 import { CalendarDays, ChevronLeft, ChevronRight } from "../icons.index";
-import { splitProps } from "../utils/split-props";
 import { buttonVariants } from "./button.tsx";
 
 type DatePickerContextValue = {
@@ -28,14 +27,16 @@ export type DatePickerProps = ComponentProps<"div"> & {
 };
 
 const DatePicker = (props: DatePickerProps) => {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "value",
     "defaultValue",
     "onValueChange",
     "disabled",
     "class",
     "children",
-  ]);
+  );
   const [internalValue, setInternalValue] = createSignal(local.defaultValue ?? "");
   const value = () => local.value ?? internalValue();
   let input: HTMLInputElement | undefined;
@@ -65,7 +66,8 @@ const DatePicker = (props: DatePickerProps) => {
 };
 
 const DatePickerLabel = (props: ComponentProps<"label">) => {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return <label class={cn("text-sm font-medium leading-none", local.class)} {...rest} />;
 };
 
@@ -77,18 +79,21 @@ const DatePickerContext = (props: {
 };
 
 const DatePickerRootProvider = (props: ComponentProps<"div">) => {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return <div class={cn("inline-flex flex-col gap-1.5", local.class)} {...rest} />;
 };
 
 const DatePickerControl = (props: ComponentProps<"div">) => {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return <div class={cn("inline-flex items-center gap-1", local.class)} {...rest} />;
 };
 
 const DatePickerInput = (props: ComponentProps<"input">) => {
   const context = useDatePickerContext();
-  const [local, rest] = splitProps(props, ["class", "onInput", "value"]);
+  const local = props;
+  const rest = omit(props, "class", "onInput", "value");
   return (
     <input
       ref={(input) => context?.setInput(input)}
@@ -110,7 +115,8 @@ const DatePickerInput = (props: ComponentProps<"input">) => {
 
 const DatePickerTrigger = (props: ComponentProps<"button">) => {
   const context = useDatePickerContext();
-  const [local, rest] = splitProps(props, ["class", "children", "onClick"]);
+  const local = props;
+  const rest = omit(props, "class", "children", "onClick");
   return (
     <button
       type="button"
@@ -137,7 +143,8 @@ type DatePickerContentProps = ComponentProps<"div"> & {
 };
 
 const DatePickerContent = (props: DatePickerContentProps) => {
-  const [local, rest] = splitProps(props, ["class", "disableAnimation"]);
+  const local = props;
+  const rest = omit(props, "class", "disableAnimation");
   return (
     <div
       class={cn(
@@ -150,17 +157,20 @@ const DatePickerContent = (props: DatePickerContentProps) => {
 };
 
 const DatePickerView = (props: ComponentProps<"div">) => {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return <div class={cn("space-y-4", local.class)} {...rest} />;
 };
 
 const DatePickerViewControl = (props: ComponentProps<"div">) => {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return <div class={cn("flex items-center justify-between gap-4", local.class)} {...rest} />;
 };
 
 const DatePickerPrevTrigger = (props: ComponentProps<"button">) => {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <button
       type="button"
@@ -179,7 +189,8 @@ const DatePickerPrevTrigger = (props: ComponentProps<"button">) => {
 };
 
 const DatePickerNextTrigger = (props: ComponentProps<"button">) => {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <button
       type="button"
@@ -198,7 +209,8 @@ const DatePickerNextTrigger = (props: ComponentProps<"button">) => {
 };
 
 const DatePickerViewTrigger = (props: ComponentProps<"button">) => {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <button
       type="button"
@@ -210,7 +222,8 @@ const DatePickerViewTrigger = (props: ComponentProps<"button">) => {
 
 const DatePickerRangeText = (props: ComponentProps<"span">) => {
   const context = useDatePickerContext();
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <span class={cn("text-sm font-medium", local.class)} {...rest}>
       {local.children ?? context?.value()}
@@ -221,7 +234,8 @@ const DatePickerRangeText = (props: ComponentProps<"span">) => {
 const passthrough =
   <T extends keyof JSX.IntrinsicElements>(tag: T, className: string) =>
   (props: JSX.IntrinsicElements[T]) => {
-    const [local, rest] = splitProps(props as Record<string, unknown>, ["class"]);
+    const local = props as Record<string, unknown>;
+    const rest = omit(props as Record<string, unknown>, "class");
     const Tag = tag as any;
     return <Tag class={cn(className, local.class as string | undefined)} {...rest} />;
   };

@@ -1,7 +1,6 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps } from "solid-js";
 import { Dynamic } from "@solidjs/web";
+import { omit, type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 /** Common spacing values */
@@ -102,7 +101,9 @@ const stackJustifyClasses = {
 
 /** Vertical stack with gap */
 export function Stack(props: StackProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "class",
     "classList",
     "id",
@@ -116,7 +117,7 @@ export function Stack(props: StackProps): JSX.Element {
     "as",
     "onSubmit",
     "children",
-  ]);
+  );
   return (
     <Dynamic
       component={local.as ?? "div"}
@@ -197,7 +198,9 @@ const wrapClasses = {
 
 /** Horizontal flex container */
 export function Flex(props: FlexProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "class",
     "style",
     "id",
@@ -215,7 +218,7 @@ export function Flex(props: FlexProps): JSX.Element {
     "onMouseLeave",
     "ref",
     "children",
-  ]);
+  );
   return (
     <Dynamic
       component={local.as ?? "div"}
@@ -346,7 +349,9 @@ const xlColClasses: Record<ColValue, string> = {
 
 /** Grid layout */
 export function Grid(props: GridProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "class",
     "style",
     "gap",
@@ -359,7 +364,7 @@ export function Grid(props: GridProps): JSX.Element {
     "onClick",
     "onDblClick",
     "children",
-  ]);
+  );
   return (
     <Dynamic
       component={local.as ?? "div"}
@@ -415,7 +420,8 @@ const bgClasses = {
 
 /** Centered content container */
 export function Center(props: CenterProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "style", "w", "minH", "p", "bg", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "style", "w", "minH", "p", "bg", "children");
   return (
     <div
       class={cn(
@@ -487,7 +493,9 @@ const paddingClasses: Record<SpacingValue, string> = {
 
 /** Generic box container - the basic building block for layouts */
 export function Box(props: BoxProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "class",
     "classList",
     "style",
@@ -503,7 +511,7 @@ export function Box(props: BoxProps): JSX.Element {
     "multiple",
     "value",
     "children",
-  ]);
+  );
   return (
     <Dynamic
       component={local.as ?? "div"}
@@ -583,7 +591,9 @@ const textAlignClasses = {
 
 /** Text component for inline and block text content */
 export function Text(props: TextProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "class",
     "style",
     "size",
@@ -598,7 +608,7 @@ export function Text(props: TextProps): JSX.Element {
     "onPointerLeave",
     "onClick",
     "children",
-  ]);
+  );
   return (
     <Dynamic
       component={local.as ?? "span"}
@@ -646,7 +656,8 @@ const sectionVariantClasses = {
 
 /** Section container for grouping related content */
 export function Section(props: SectionProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "padding", "variant", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "padding", "variant", "children");
   return (
     <div
       class={cn(
@@ -690,7 +701,8 @@ const headingLevelDefaults: Record<number, string> = {
 
 /** Semantic heading component with flexible sizing */
 export function Heading(props: HeadingProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "level", "size", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "level", "size", "children");
   const level = local.level ?? 2;
   const tag = `h${level}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 

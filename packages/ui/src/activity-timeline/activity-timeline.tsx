@@ -1,14 +1,15 @@
-import { splitProps } from "../utils/split-props";
-import { createMountEffect } from "../utils/lifecycle";
-import { For, Show } from "solid-js";
+import { For, omit, Show } from "solid-js";
 import { cn } from "../cn";
+import { Skeleton } from "../feedback/skeleton";
 import { Button } from "../forms/button";
 import { SearchBar } from "../forms/search-bar";
-import { Skeleton } from "../feedback/skeleton";
+import { createMountEffect } from "../utils/lifecycle";
 import type { ActivityTimelineProps } from "./types";
 
 function ActivityTimeline<TItem = unknown>(props: ActivityTimelineProps<TItem>) {
-  const [local, others] = splitProps(props as ActivityTimelineProps, [
+  const local = props as ActivityTimelineProps;
+  const others = omit(
+    props as ActivityTimelineProps,
     "items",
     "hasMore",
     "isFetching",
@@ -24,7 +25,7 @@ function ActivityTimeline<TItem = unknown>(props: ActivityTimelineProps<TItem>) 
     "loadingCount",
     "class",
     "children",
-  ]);
+  );
 
   let sentinelRef: HTMLDivElement | undefined;
 

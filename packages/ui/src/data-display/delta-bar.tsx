@@ -1,6 +1,5 @@
 import type { ComponentProps } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type Component, merge as mergeProps, Show } from "solid-js";
+import { type Component, merge as mergeProps, omit, Show } from "solid-js";
 
 import { cn } from "../cn";
 
@@ -31,7 +30,8 @@ const DeltaBar: Component<DeltaBarProps> = (rawProps) => {
     },
     rawProps,
   );
-  const [local, others] = splitProps(props, ["value", "isIncreasePositive", "class"]);
+  const local = props;
+  const others = omit(props, "value", "isIncreasePositive", "class");
 
   return (
     <div
@@ -71,5 +71,5 @@ const DeltaBar: Component<DeltaBarProps> = (rawProps) => {
   );
 };
 
-export { DeltaBar };
 export type { DeltaBarProps };
+export { DeltaBar };

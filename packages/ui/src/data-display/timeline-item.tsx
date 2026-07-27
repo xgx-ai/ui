@@ -1,6 +1,6 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
 import type { Component } from "solid-js";
+import { omit } from "solid-js";
 
 import { cn } from "../cn";
 
@@ -12,14 +12,8 @@ type TimelineItemProps = ComponentProps<"div"> & {
 };
 
 const TimelineItem: Component<TimelineItemProps> = (props) => {
-  const [local, others] = splitProps(props, [
-    "icon",
-    "iconBg",
-    "iconClass",
-    "showConnector",
-    "children",
-    "class",
-  ]);
+  const local = props;
+  const others = omit(props, "icon", "iconBg", "iconClass", "showConnector", "children", "class");
   return (
     <div class={cn("relative flex w-full", local.class)} {...others}>
       <div class="flex flex-col items-center mr-4">
@@ -41,6 +35,7 @@ const TimelineItem: Component<TimelineItemProps> = (props) => {
   );
 };
 
+export type { TimelineItemProps };
 /**
  * # TimelineItem
  *
@@ -58,4 +53,3 @@ const TimelineItem: Component<TimelineItemProps> = (props) => {
  * ```
  */
 export { TimelineItem };
-export type { TimelineItemProps };

@@ -1,5 +1,4 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
 
 import { cn } from "../cn";
 import { Button } from "../forms/button";
@@ -13,7 +12,7 @@ export interface PaginationProps {
 
 /** Pagination controls */
 export function Pagination(props: PaginationProps): JSX.Element {
-  const [local] = splitProps(props, ["class", "page", "totalPages", "onPageChange"]);
+  const local = props;
 
   return (
     <div class={cn("flex items-center justify-center gap-2", local.class)}>

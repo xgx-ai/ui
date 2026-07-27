@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps } from "solid-js";
+import { omit, type ParentProps } from "solid-js";
 import { cn } from "../cn.ts";
 
 type ShellRegionProps<TElement extends HTMLElement = HTMLDivElement> = ParentProps<
@@ -12,7 +11,8 @@ type ShellRegionProps<TElement extends HTMLElement = HTMLDivElement> = ParentPro
 export type AppShellProps = ShellRegionProps;
 
 export function AppShell(props: AppShellProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div
       data-xgx-theme=""
@@ -27,7 +27,8 @@ export function AppShell(props: AppShellProps): JSX.Element {
 export type AppTopbarProps = ShellRegionProps<HTMLElement>;
 
 export function AppTopbar(props: AppTopbarProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <header
       class={cn(
@@ -44,7 +45,8 @@ export function AppTopbar(props: AppTopbarProps): JSX.Element {
 export type AppMainProps = ShellRegionProps<HTMLElement>;
 
 export function AppMain(props: AppMainProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <main class={cn("min-h-0 flex-1 bg-background", local.class)} {...rest}>
       {local.children}
@@ -55,7 +57,8 @@ export function AppMain(props: AppMainProps): JSX.Element {
 export type AppContentProps = ShellRegionProps;
 
 export function AppContent(props: AppContentProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("mx-auto flex w-full max-w-6xl flex-col gap-4 p-4", local.class)} {...rest}>
       {local.children}
@@ -66,7 +69,8 @@ export function AppContent(props: AppContentProps): JSX.Element {
 export type AppPageHeaderProps = ShellRegionProps<HTMLElement>;
 
 export function AppPageHeader(props: AppPageHeaderProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <section
       class={cn(
@@ -83,7 +87,8 @@ export function AppPageHeader(props: AppPageHeaderProps): JSX.Element {
 export type AppPageHeadingProps = ShellRegionProps<HTMLDivElement>;
 
 export function AppPageHeading(props: AppPageHeadingProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("min-w-0 space-y-1", local.class)} {...rest}>
       {local.children}
@@ -94,7 +99,8 @@ export function AppPageHeading(props: AppPageHeadingProps): JSX.Element {
 export type AppPageActionsProps = ShellRegionProps<HTMLDivElement>;
 
 export function AppPageActions(props: AppPageActionsProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("flex flex-wrap items-center gap-2", local.class)} {...rest}>
       {local.children}
@@ -105,7 +111,8 @@ export function AppPageActions(props: AppPageActionsProps): JSX.Element {
 export type CommandRegionProps = ShellRegionProps<HTMLElement>;
 
 export function CommandRegion(props: CommandRegionProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <section
       class={cn(
@@ -122,7 +129,8 @@ export function CommandRegion(props: CommandRegionProps): JSX.Element {
 export type DetailPanelProps = ShellRegionProps<HTMLElement>;
 
 export function DetailPanel(props: DetailPanelProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <aside
       class={cn(

@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps } from "solid-js";
+import { omit, type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface NotificationItemProps {
@@ -35,15 +34,8 @@ export interface NotificationItemProps {
  * ```
  */
 export function NotificationItem(props: NotificationItemProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "title",
-    "body",
-    "time",
-    "unread",
-    "action",
-    "onClick",
-  ]);
+  const local = props;
+  const rest = omit(props, "class", "title", "body", "time", "unread", "action", "onClick");
 
   return (
     <button
@@ -89,7 +81,8 @@ export interface NotificationActionButtonProps extends ParentProps {
  * Small action button for notification items (e.g., mark as read).
  */
 export function NotificationActionButton(props: NotificationActionButtonProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "onClick", "title", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "onClick", "title", "children");
 
   return (
     <button

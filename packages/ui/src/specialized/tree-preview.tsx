@@ -1,10 +1,8 @@
 import type { ComponentProps } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { FileText, FolderOpen, ListTree } from "../icons.index";
 import type { Component } from "solid-js";
-import { For, Show } from "solid-js";
-
+import { For, omit, Show } from "solid-js";
 import { cn } from "../cn";
+import { FileText, FolderOpen, ListTree } from "../icons.index";
 
 /**
  * # Tree Preview
@@ -54,7 +52,8 @@ const TreeConnector: Component<{ isLast?: boolean }> = (props) => (
 );
 
 export const TreePreview: Component<TreePreviewProps> = (props) => {
-  const [local, others] = splitProps(props, ["nodes", "rootName", "isBuilding", "class"]);
+  const local = props;
+  const others = omit(props, "nodes", "rootName", "isBuilding", "class");
 
   const hasNodes = () => local.nodes.length > 0;
 

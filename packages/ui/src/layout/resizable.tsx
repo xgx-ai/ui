@@ -1,9 +1,8 @@
 import type { ComponentProps } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { GripVertical } from "../icons.index";
 import type { Component } from "solid-js";
-import { createContext, createSignal, onCleanup, Show, useContext } from "solid-js";
+import { createContext, createSignal, omit, onCleanup, Show, useContext } from "solid-js";
 import { cn } from "../cn";
+import { GripVertical } from "../icons.index";
 
 type Orientation = "horizontal" | "vertical";
 
@@ -41,7 +40,8 @@ type ResizableProps = ComponentProps<"div"> & {
 };
 
 const Resizable: Component<ResizableProps> = (props) => {
-  const [local, others] = splitProps(props, ["class", "orientation", "onResize", "children"]);
+  const local = props;
+  const others = omit(props, "class", "orientation", "onResize", "children");
 
   const orientation = () => local.orientation || "horizontal";
   const [panels, setPanels] = createSignal<Map<string, { options: PanelOptions; size: number }>>(
@@ -165,7 +165,9 @@ type ResizablePanelProps = ComponentProps<"div"> & {
 let panelIdCounter = 0;
 
 const ResizablePanel: Component<ResizablePanelProps> = (props) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "class",
     "id",
     "defaultSize",
@@ -174,7 +176,7 @@ const ResizablePanel: Component<ResizablePanelProps> = (props) => {
     "collapsible",
     "children",
     "style",
-  ]);
+  );
 
   const ctx = useResizableContext();
   const panelId = local.id || `panel-${++panelIdCounter}`;
@@ -218,7 +220,8 @@ type ResizableHandleProps = ComponentProps<"div"> & {
 let handleIdCounter = 0;
 
 const ResizableHandle: Component<ResizableHandleProps> = (props) => {
-  const [local, others] = splitProps(props, ["class", "withHandle", "id"]);
+  const local = props;
+  const others = omit(props, "class", "withHandle", "id");
 
   const ctx = useResizableContext();
   const handleId = local.id || `handle-${++handleIdCounter}`;

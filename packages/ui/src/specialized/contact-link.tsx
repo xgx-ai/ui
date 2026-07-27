@@ -1,7 +1,6 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
 import type { ParentProps } from "solid-js";
-import { Show } from "solid-js";
+import { omit, Show } from "solid-js";
 import { cn } from "../cn.ts";
 
 export type ContactLinkType = "phone" | "email";
@@ -21,7 +20,8 @@ export interface ContactLinkProps
  * Automatically formats the href based on the type prop.
  */
 export function ContactLink(props: ContactLinkProps) {
-  const [local, others] = splitProps(props, ["value", "type", "fallback", "class", "children"]);
+  const local = props;
+  const others = omit(props, "value", "type", "fallback", "class", "children");
 
   const getHref = () => {
     if (!local.value) return undefined;

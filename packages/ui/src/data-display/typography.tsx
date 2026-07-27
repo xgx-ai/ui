@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
 import type { ParentProps } from "solid-js";
+import { omit } from "solid-js";
 
 import { cn } from "../cn";
 
@@ -10,7 +10,8 @@ type SpanProps = ParentProps<JSX.HTMLAttributes<HTMLSpanElement>>;
 type DivProps = ParentProps<JSX.HTMLAttributes<HTMLDivElement>>;
 
 const H1 = (props: HeadingProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <h1
       class={cn("xgx-text-page-title font-semibold tracking-tight text-foreground", local.class)}
@@ -22,7 +23,8 @@ const H1 = (props: HeadingProps) => {
 };
 
 const H2 = (props: HeadingProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <h2
       class={cn("xgx-text-title font-semibold tracking-tight text-foreground", local.class)}
@@ -34,7 +36,8 @@ const H2 = (props: HeadingProps) => {
 };
 
 const H3 = (props: HeadingProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <h3 class={cn("xgx-text-body-tight font-medium text-foreground", local.class)} {...others}>
       {local.children}
@@ -43,7 +46,8 @@ const H3 = (props: HeadingProps) => {
 };
 
 const H4 = (props: HeadingProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <h4 class={cn("xgx-text-body-tight font-medium text-foreground", local.class)} {...others}>
       {local.children}
@@ -52,7 +56,8 @@ const H4 = (props: HeadingProps) => {
 };
 
 const P = (props: ParagraphProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <p class={cn("xgx-text-body text-foreground", local.class)} {...others}>
       {local.children}
@@ -61,7 +66,8 @@ const P = (props: ParagraphProps) => {
 };
 
 const Small = (props: SpanProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <span class={cn("xgx-text-caption text-muted-foreground", local.class)} {...others}>
       {local.children}
@@ -70,7 +76,8 @@ const Small = (props: SpanProps) => {
 };
 
 const Muted = (props: ParagraphProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <p class={cn("xgx-text-body text-muted-foreground", local.class)} {...others}>
       {local.children}
@@ -79,7 +86,8 @@ const Muted = (props: ParagraphProps) => {
 };
 
 const Lead = (props: ParagraphProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <p class={cn("xgx-text-title text-muted-foreground", local.class)} {...others}>
       {local.children}
@@ -88,7 +96,8 @@ const Lead = (props: ParagraphProps) => {
 };
 
 const Large = (props: DivProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <div class={cn("xgx-text-title font-semibold text-foreground", local.class)} {...others}>
       {local.children}
@@ -97,7 +106,8 @@ const Large = (props: DivProps) => {
 };
 
 const Label = (props: SpanProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <span
       class={cn("xgx-text-caption uppercase tracking-wide text-muted-foreground", local.class)}

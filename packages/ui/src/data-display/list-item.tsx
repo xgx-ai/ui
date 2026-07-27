@@ -1,7 +1,6 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps, Show } from "solid-js";
 import { Dynamic } from "@solidjs/web";
+import { omit, type ParentProps, Show } from "solid-js";
 import { cn } from "../cn";
 
 export interface ListItemProps extends ParentProps {
@@ -36,7 +35,9 @@ export interface ListItemProps extends ParentProps {
  * ```
  */
 export function ListItem(props: ListItemProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "class",
     "leading",
     "title",
@@ -45,7 +46,7 @@ export function ListItem(props: ListItemProps): JSX.Element {
     "interactive",
     "onClick",
     "children",
-  ]);
+  );
 
   return (
     <Dynamic
@@ -88,7 +89,8 @@ export interface ListItemIconProps extends ParentProps {
  * Icons inside are automatically sized to 3.5 (14px).
  */
 export function ListItemIcon(props: ListItemIconProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div
       class={cn(
@@ -110,7 +112,8 @@ export interface ListProps extends ParentProps {
  * Container for list items with consistent spacing.
  */
 export function List(props: ListProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("space-y-1", local.class)} {...rest}>
       {local.children}

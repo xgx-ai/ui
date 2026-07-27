@@ -12,10 +12,9 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createSignal, useContext } from "solid-js";
+import { createContext, createSignal, omit, useContext } from "solid-js";
 
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
 
 type SwitchContextValue = {
   checked: () => boolean;
@@ -41,17 +40,7 @@ type SwitchProps = Omit<ComponentProps<"label">, "children" | "onChange"> & {
 };
 
 export const Switch = (props: SwitchProps) => {
-  const [local] = splitProps(props, [
-    "class",
-    "children",
-    "checked",
-    "defaultChecked",
-    "disabled",
-    "onChange",
-    "name",
-    "required",
-    "value",
-  ]);
+  const local = props;
   const [internalChecked, setInternalChecked] = createSignal(local.defaultChecked === true);
   const checked = () => local.checked ?? internalChecked();
   const disabled = () => local.disabled === true;
@@ -95,7 +84,8 @@ type SwitchControlProps = ComponentProps<"span"> & {
 
 export const SwitchControl = (props: SwitchControlProps) => {
   const context = useSwitchContextValue();
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
 
   return (
     <span
@@ -119,7 +109,8 @@ type SwitchThumbProps = ComponentProps<"span"> & {
 
 export const SwitchThumb = (props: SwitchThumbProps) => {
   const context = useSwitchContextValue();
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
 
   return (
     <span
@@ -142,7 +133,8 @@ type SwitchLabelProps = ComponentProps<"span"> & {
 
 export const SwitchLabel = (props: SwitchLabelProps) => {
   const context = useSwitchContextValue();
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
 
   return (
     <span
@@ -175,7 +167,8 @@ type SwitchPresetProps = {
 };
 
 export const SwitchPreset = (props: SwitchPresetProps) => {
-  const [local, rest] = splitProps(props, ["class", "onChange", "label"]);
+  const local = props;
+  const rest = omit(props, "class", "onChange", "label");
 
   return (
     <Switch

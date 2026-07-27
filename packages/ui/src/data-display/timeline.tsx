@@ -1,8 +1,7 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { cn } from "../cn";
 import type { ParentComponent } from "solid-js";
-import { type Component, For, merge as mergeProps, Show } from "solid-js";
+import { type Component, For, merge as mergeProps, omit, Show } from "solid-js";
+import { cn } from "../cn";
 
 export type TimelinePropsItem = Omit<
   TimelineItemProps,
@@ -67,7 +66,9 @@ export type TimelineItemProps = {
 };
 
 const TimelineItem: Component<TimelineItemProps> = (props) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "class",
     "bullet",
     "bulletClass",
@@ -78,7 +79,7 @@ const TimelineItem: Component<TimelineItemProps> = (props) => {
     "isActiveBullet",
     "bulletSize",
     "lineSize",
-  ]);
+  );
   return (
     <li
       class={cn(
@@ -142,7 +143,8 @@ const TimelineItemTitle: ParentComponent = (props) => {
 };
 
 const TimelineItemDescription: Component<ComponentProps<"p">> = (props) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <p class={cn("text-sm text-muted-foreground", local.class)} {...others}>
       {local.children}

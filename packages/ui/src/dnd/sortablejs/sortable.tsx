@@ -1,9 +1,8 @@
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
-import { createEffect, createMemo, createSignal, For, onCleanup, untrack } from "solid-js";
-import SortableEngine from "sortablejs";
+import { createEffect, createMemo, createSignal, For, omit, onCleanup, untrack } from "solid-js";
 import type SortableEngineType from "sortablejs";
-import { splitProps } from "../../utils/split-props";
+import SortableEngine from "sortablejs";
 import {
   type SortableItemContextValue,
   SortableItemProvider,
@@ -377,7 +376,9 @@ function SortableRenderedItem<T>(props: RenderedItemProps<T>) {
  * Callback props are captured when SortableJS is initialised; keep callback identity stable.
  */
 export function Sortable<T>(props: SortableProps<T>) {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "items",
     "onChange",
     "onReorder",
@@ -391,7 +392,7 @@ export function Sortable<T>(props: SortableProps<T>) {
     "options",
     "children",
     "ref",
-  ]);
+  );
   const [containerRef, setContainerRefSignal] = createSignal<HTMLElement>();
   const [sortableInstance, setSortableInstance] = createSignal<SortableInstance>();
   const [activeId, setActiveId] = createSignal<string | null>(null);

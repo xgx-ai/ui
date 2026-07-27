@@ -9,8 +9,8 @@
  * ```
  */
 import type { ComponentProps } from "@solidjs/web";
+import { omit } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
 
 type SkeletonProps = ComponentProps<"div"> & {
   animate?: boolean;
@@ -23,14 +23,8 @@ const toCssSize = (value: number | string | undefined) =>
   typeof value === "number" ? `${value}px` : value;
 
 const Skeleton = (props: SkeletonProps) => {
-  const [local, others] = splitProps(props, [
-    "class",
-    "animate",
-    "height",
-    "radius",
-    "style",
-    "width",
-  ]);
+  const local = props;
+  const others = omit(props, "class", "animate", "height", "radius", "style", "width");
 
   return (
     <div
@@ -48,5 +42,5 @@ const Skeleton = (props: SkeletonProps) => {
   );
 };
 
-export { Skeleton };
 export type { SkeletonProps };
+export { Skeleton };

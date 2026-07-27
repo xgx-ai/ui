@@ -9,10 +9,9 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createSignal, Show } from "solid-js";
-import { Check, Minus } from "../icons.index";
+import { createSignal, omit, Show } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
+import { Check, Minus } from "../icons.index";
 
 type CheckboxProps = Omit<ComponentProps<"button">, "onChange"> & {
   checked?: boolean;
@@ -25,7 +24,9 @@ type CheckboxProps = Omit<ComponentProps<"button">, "onChange"> & {
 };
 
 const Checkbox = (props: CheckboxProps) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "class",
     "checked",
     "defaultChecked",
@@ -37,7 +38,7 @@ const Checkbox = (props: CheckboxProps) => {
     "disabled",
     "onClick",
     "type",
-  ]);
+  );
   const [uncontrolledChecked, setUncontrolledChecked] = createSignal(Boolean(local.defaultChecked));
   const checked = () => local.checked ?? uncontrolledChecked();
   const size = () => local.size ?? "md";
@@ -93,5 +94,5 @@ const Checkbox = (props: CheckboxProps) => {
   );
 };
 
-export { Checkbox };
 export type { CheckboxProps };
+export { Checkbox };

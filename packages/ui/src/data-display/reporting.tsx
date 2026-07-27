@@ -1,14 +1,11 @@
-import type { ComponentProps } from "@solidjs/web";
-import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarRange } from "../icons.index";
-import { createUniqueId, type ParentProps, Show } from "solid-js";
-
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { createUniqueId, omit, type ParentProps, Show } from "solid-js";
 import { cn } from "../cn";
-import { Button } from "../forms/button";
-import { ToolbarToggleGroup, ToolbarToggleItem } from "../shell-controls";
 import { Badge } from "../feedback/badge";
 import { Skeleton } from "../feedback/skeleton";
+import { Button } from "../forms/button";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, CalendarRange } from "../icons.index";
+import { ToolbarToggleGroup, ToolbarToggleItem } from "../shell-controls";
 
 type TrendDirection = "up" | "down" | "flat";
 type TrendTone = "positive" | "negative" | "neutral";
@@ -26,7 +23,8 @@ export type TrendIndicatorProps = ComponentProps<"span"> & {
 };
 
 export function TrendIndicator(props: TrendIndicatorProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "direction", "tone", "value"]);
+  const local = props;
+  const rest = omit(props, "class", "direction", "tone", "value");
   const direction = () => local.direction ?? "flat";
   const tone = () => local.tone ?? "neutral";
 
@@ -69,7 +67,9 @@ export type MetricCardProps = ComponentProps<"article"> & {
 };
 
 export function MetricCard(props: MetricCardProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "class",
     "description",
     "footer",
@@ -79,7 +79,7 @@ export function MetricCard(props: MetricCardProps): JSX.Element {
     "trendDirection",
     "trendTone",
     "value",
-  ]);
+  );
 
   return (
     <article
@@ -134,7 +134,8 @@ const metricGridColumns = {
 };
 
 export function MetricGrid(props: MetricGridProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children", "columns"]);
+  const local = props;
+  const rest = omit(props, "class", "children", "columns");
 
   return (
     <div class={cn("grid gap-3", metricGridColumns[local.columns ?? "4"], local.class)} {...rest}>
@@ -154,7 +155,9 @@ export type ReportHeaderProps = ParentProps<
 >;
 
 export function ReportHeader(props: ReportHeaderProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "actions",
     "children",
     "class",
@@ -162,7 +165,7 @@ export function ReportHeader(props: ReportHeaderProps): JSX.Element {
     "eyebrow",
     "meta",
     "title",
-  ]);
+  );
 
   return (
     <section
@@ -195,7 +198,8 @@ export function ReportHeader(props: ReportHeaderProps): JSX.Element {
 export type ReportToolbarProps = ParentProps<ComponentProps<"div">>;
 
 export function ReportToolbar(props: ReportToolbarProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
 
   return (
     <div
@@ -229,7 +233,8 @@ const defaultDateRanges: ReadonlyArray<ReportDateRangeOption> = [
 ];
 
 export function ReportDateRangeControl(props: ReportDateRangeControlProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "label", "onChange", "options", "value"]);
+  const local = props;
+  const rest = omit(props, "class", "label", "onChange", "options", "value");
   const options = () => local.options ?? defaultDateRanges;
   const optionValues = () => new Set(options().map((option) => option.value));
   const normalizeValue = (next: unknown) => {
@@ -281,7 +286,9 @@ export type ChartPanelProps = ParentProps<
 
 export function ChartPanel(props: ChartPanelProps): JSX.Element {
   const id = createUniqueId();
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "actions",
     "children",
     "class",
@@ -293,7 +300,7 @@ export function ChartPanel(props: ChartPanelProps): JSX.Element {
     "state",
     "summary",
     "title",
-  ]);
+  );
   const state = () => local.state ?? "ready";
 
   return (
@@ -372,7 +379,8 @@ export function ChartPanel(props: ChartPanelProps): JSX.Element {
 export type ReportDashboardGridProps = ParentProps<ComponentProps<"div">>;
 
 export function ReportDashboardGrid(props: ReportDashboardGridProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
 
   return (
     <div class={cn("grid gap-4 xl:grid-cols-12", local.class)} {...rest}>
@@ -384,7 +392,8 @@ export function ReportDashboardGrid(props: ReportDashboardGridProps): JSX.Elemen
 export type ReportDrilldownLayoutProps = ParentProps<ComponentProps<"div">>;
 
 export function ReportDrilldownLayout(props: ReportDrilldownLayoutProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
 
   return (
     <div class={cn("grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]", local.class)} {...rest}>

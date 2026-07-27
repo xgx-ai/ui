@@ -14,9 +14,8 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createSignal, createUniqueId, Show, useContext } from "solid-js";
+import { createContext, createSignal, createUniqueId, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
 
 type TabsProps = Omit<ComponentProps<"div">, "onChange"> & {
   value?: string;
@@ -35,13 +34,8 @@ const TabsContext = createContext<{
 });
 
 const Tabs = (props: TabsProps) => {
-  const [local, others] = splitProps(props, [
-    "class",
-    "children",
-    "value",
-    "defaultValue",
-    "onChange",
-  ]);
+  const local = props;
+  const others = omit(props, "class", "children", "value", "defaultValue", "onChange");
   const [uncontrolledValue, setUncontrolledValue] = createSignal(local.defaultValue);
   const baseId = createUniqueId();
   const value = () => local.value ?? uncontrolledValue();
@@ -62,7 +56,8 @@ const Tabs = (props: TabsProps) => {
 type TabsListProps = ComponentProps<"div">;
 
 const TabsList = (props: TabsListProps) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <div
       role="tablist"
@@ -81,14 +76,8 @@ type TabsTriggerProps = Omit<ComponentProps<"button">, "value"> & {
 
 const TabsTrigger = (props: TabsTriggerProps) => {
   const context = useContext(TabsContext);
-  const [local, others] = splitProps(props, [
-    "class",
-    "value",
-    "disabled",
-    "onClick",
-    "onKeyDown",
-    "type",
-  ]);
+  const local = props;
+  const others = omit(props, "class", "value", "disabled", "onClick", "onKeyDown", "type");
   const selected = () => context.value() === local.value;
   const safeValue = () => local.value.replace(/[^a-zA-Z0-9_-]/g, "-");
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
@@ -155,7 +144,8 @@ type TabsContentProps = ComponentProps<"div"> & {
 
 const TabsContent = (props: TabsContentProps) => {
   const context = useContext(TabsContext);
-  const [local, others] = splitProps(props, ["class", "children", "value"]);
+  const local = props;
+  const others = omit(props, "class", "children", "value");
   const safeValue = () => local.value.replace(/[^a-zA-Z0-9_-]/g, "-");
 
   return (
@@ -179,7 +169,8 @@ const TabsContent = (props: TabsContentProps) => {
 type TabsIndicatorProps = ComponentProps<"div">;
 
 const TabsIndicator = (props: TabsIndicatorProps) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <div
       class={cn("absolute h-0.5 rounded-full bg-selected transition-all", local.class)}
@@ -188,5 +179,5 @@ const TabsIndicator = (props: TabsIndicatorProps) => {
   );
 };
 
-export { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger };
 export type { TabsContentProps, TabsListProps, TabsProps, TabsTriggerProps };
+export { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger };

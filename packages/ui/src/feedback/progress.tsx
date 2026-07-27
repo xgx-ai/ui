@@ -9,9 +9,8 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, useContext } from "solid-js";
+import { createContext, omit, useContext } from "solid-js";
 import { Label } from "../forms/label.tsx";
-import { splitProps } from "../utils/split-props";
 
 type ProgressProps = ComponentProps<"div"> & {
   children?: JSX.Element;
@@ -36,7 +35,8 @@ const ProgressContext = createContext<{
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const Progress = (props: ProgressProps) => {
-  const [local, others] = splitProps(props, ["children", "getValueLabel", "max", "min", "value"]);
+  const local = props;
+  const others = omit(props, "children", "getValueLabel", "max", "min", "value");
   const min = () => local.min ?? 0;
   const max = () => local.max ?? 100;
   const value = () => clamp(local.value ?? 0, min(), max());
@@ -70,10 +70,11 @@ type ProgressValueLabelProps = ComponentProps<"span">;
 
 const ProgressValueLabel = (props: ProgressValueLabelProps) => {
   const context = useContext(ProgressContext);
-  const [local, others] = splitProps(props, ["children"]);
+  const local = props;
+  const others = omit(props, "children");
 
   return <span {...others}>{local.children ?? context.valueLabel()}</span>;
 };
 
-export { Progress, ProgressLabel, ProgressValueLabel };
 export type { ProgressLabelProps, ProgressProps, ProgressValueLabelProps };
+export { Progress, ProgressLabel, ProgressValueLabel };

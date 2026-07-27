@@ -3,10 +3,9 @@ import { Dynamic } from "@solidjs/web";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import type { ParentProps } from "solid-js";
-import { createContext, createSignal, Show, useContext } from "solid-js";
+import { createContext, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "./cn.ts";
 import type { PolymorphicProps } from "./utils/polymorphic";
-import { splitProps } from "./utils/split-props";
 
 const iconButtonVariants = cva(
   "inline-flex shrink-0 cursor-pointer items-center justify-center whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:block [&_svg]:pointer-events-none [&_svg]:shrink-0",
@@ -53,7 +52,9 @@ type IconButtonOwnProps = VariantProps<typeof iconButtonVariants> & {
 type IconButtonProps<T extends ValidComponent = "button"> = PolymorphicProps<T, IconButtonOwnProps>;
 
 const IconButton = <T extends ValidComponent = "button">(props: IconButtonProps<T>) => {
-  const [local, others] = splitProps(props as IconButtonProps, [
+  const local = props as IconButtonProps;
+  const others = omit(
+    props as IconButtonProps,
     "as",
     "variant",
     "size",
@@ -64,7 +65,7 @@ const IconButton = <T extends ValidComponent = "button">(props: IconButtonProps<
     "loading",
     "pressed",
     "type",
-  ]);
+  );
   const disabled = () => Boolean(local.disabled || local.loading);
 
   return (
@@ -104,7 +105,8 @@ type ToolbarSurfaceProps = ParentProps<
 >;
 
 const ToolbarSurface = (props: ToolbarSurfaceProps): JSX.Element => {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
 
   return (
     <div
@@ -129,7 +131,8 @@ type ToolbarIconButtonProps<T extends ValidComponent = "button"> = Omit<
 const ToolbarIconButton = <T extends ValidComponent = "button">(
   props: ToolbarIconButtonProps<T>,
 ) => {
-  const [local, others] = splitProps(props as ToolbarIconButtonProps, ["variant", "size"]);
+  const local = props as ToolbarIconButtonProps;
+  const others = omit(props as ToolbarIconButtonProps, "variant", "size");
 
   return (
     <IconButton
@@ -186,7 +189,9 @@ type ToolbarToggleGroupProps<T extends ValidComponent = "div"> = PolymorphicProp
 const ToolbarToggleGroup = <T extends ValidComponent = "div">(
   props: ToolbarToggleGroupProps<T>,
 ) => {
-  const [local, others] = splitProps(props as ToolbarToggleGroupProps, [
+  const local = props as ToolbarToggleGroupProps;
+  const others = omit(
+    props as ToolbarToggleGroupProps,
     "as",
     "class",
     "children",
@@ -196,7 +201,7 @@ const ToolbarToggleGroup = <T extends ValidComponent = "div">(
     "multiple",
     "disabled",
     "onChange",
-  ]);
+  );
   const [uncontrolledValue, setUncontrolledValue] = createSignal<ToggleValue>(local.defaultValue);
   const selected = () => local.value ?? uncontrolledValue();
   const isPressed = (value: string) => {
@@ -262,7 +267,9 @@ type ToolbarToggleItemProps<T extends ValidComponent = "button"> = PolymorphicPr
 const ToolbarToggleItem = <T extends ValidComponent = "button">(
   props: ToolbarToggleItemProps<T>,
 ) => {
-  const [local, others] = splitProps(props as ToolbarToggleItemProps, [
+  const local = props as ToolbarToggleItemProps;
+  const others = omit(
+    props as ToolbarToggleItemProps,
     "as",
     "class",
     "size",
@@ -270,7 +277,7 @@ const ToolbarToggleItem = <T extends ValidComponent = "button">(
     "disabled",
     "onClick",
     "type",
-  ]);
+  );
   const context = useContext(ToolbarToggleGroupContext);
   const disabled = () => Boolean(local.disabled || context.disabled);
   const pressed = () => context.isPressed(local.value);
@@ -302,6 +309,13 @@ const ToolbarToggleItem = <T extends ValidComponent = "button">(
   );
 };
 
+export type {
+  IconButtonProps,
+  ToolbarIconButtonProps,
+  ToolbarSurfaceProps,
+  ToolbarToggleGroupProps,
+  ToolbarToggleItemProps,
+};
 export {
   IconButton,
   iconButtonVariants,
@@ -309,11 +323,4 @@ export {
   ToolbarSurface,
   ToolbarToggleGroup,
   ToolbarToggleItem,
-};
-export type {
-  IconButtonProps,
-  ToolbarIconButtonProps,
-  ToolbarSurfaceProps,
-  ToolbarToggleGroupProps,
-  ToolbarToggleItemProps,
 };

@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { For, type ParentProps, Show } from "solid-js";
+import { For, omit, type ParentProps, Show } from "solid-js";
 import { cn } from "../cn";
 
 export interface DataGridColumn<T> {
@@ -61,7 +60,9 @@ export interface DataGridProps<T> {
  * ```
  */
 export function DataGrid<T>(props: DataGridProps<T>): JSX.Element {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "class",
     "items",
     "columns",
@@ -74,7 +75,7 @@ export function DataGrid<T>(props: DataGridProps<T>): JSX.Element {
     "loadingContent",
     "emptyContent",
     "stickyHeader",
-  ]);
+  );
 
   const gridColsClass = () => {
     const cols = local.gridCols ?? 12;
@@ -155,7 +156,8 @@ export interface DataGridCellProps extends ParentProps {
  * Utility component for data grid cells with common styling.
  */
 export function DataGridCell(props: DataGridCellProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("flex items-center gap-2 min-w-0", local.class)} {...rest}>
       {local.children}
@@ -173,7 +175,8 @@ export interface DataGridTextProps extends ParentProps {
  * Text styling for data grid cells.
  */
 export function DataGridText(props: DataGridTextProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children", "truncate", "muted"]);
+  const local = props;
+  const rest = omit(props, "class", "children", "truncate", "muted");
   return (
     <span
       class={cn(

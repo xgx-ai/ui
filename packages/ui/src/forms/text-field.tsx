@@ -13,10 +13,9 @@
  */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
-import { createContext, createSignal, createUniqueId, useContext } from "solid-js";
+import { createContext, createSignal, createUniqueId, omit, useContext } from "solid-js";
 
 import { cn } from "../cn.ts";
-import { splitProps } from "../utils/split-props";
 
 type ValidationState = "valid" | "invalid";
 
@@ -71,7 +70,9 @@ type TextFieldRootProps<T extends ValidComponent = "div"> = Omit<
 
 const TextField = <T extends ValidComponent = "div">(props: TextFieldRootProps<T>) => {
   const fallbackId = createUniqueId();
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "as",
     "class",
     "children",
@@ -84,7 +85,7 @@ const TextField = <T extends ValidComponent = "div">(props: TextFieldRootProps<T
     "validationState",
     "value",
     "id",
-  ]);
+  );
   const [internalValue, setInternalValue] = createSignal(local.defaultValue);
   const fieldId = () => String(local.id ?? `textfield-${fallbackId}`);
   const inputId = () => `${fieldId()}-input`;
@@ -135,7 +136,9 @@ export type TextFieldInputProps<T extends ValidComponent = "input"> = ComponentP
 
 const TextFieldInput = <T extends ValidComponent = "input">(props: TextFieldInputProps<T>) => {
   const context = useTextFieldContext();
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "as",
     "class",
     "disabled",
@@ -147,7 +150,7 @@ const TextFieldInput = <T extends ValidComponent = "input">(props: TextFieldInpu
     "required",
     "type",
     "value",
-  ]);
+  );
   const invalid = () => context?.invalid() ?? false;
   const describedBy = () => {
     if (!context) return others["aria-describedby"];
@@ -195,7 +198,9 @@ const TextFieldTextArea = <T extends ValidComponent = "textarea">(
   props: TextFieldTextAreaProps<T>,
 ) => {
   const context = useTextFieldContext();
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "as",
     "class",
     "disabled",
@@ -205,7 +210,7 @@ const TextFieldTextArea = <T extends ValidComponent = "textarea">(
     "readOnly",
     "required",
     "value",
-  ]);
+  );
   const invalid = () => context?.invalid() ?? false;
   const describedBy = () => {
     if (!context) return others["aria-describedby"];
@@ -248,7 +253,8 @@ type TextFieldLabelProps<T extends ValidComponent = "label"> = ComponentProps<"l
 
 const TextFieldLabel = <T extends ValidComponent = "label">(props: TextFieldLabelProps<T>) => {
   const context = useTextFieldContext();
-  const [local, others] = splitProps(props, ["as", "class", "children", "for"]);
+  const local = props;
+  const others = omit(props, "as", "class", "children", "for");
   const invalid = () => context?.invalid() ?? false;
 
   return (
@@ -276,7 +282,8 @@ const TextFieldDescription = <T extends ValidComponent = "div">(
   props: TextFieldDescriptionProps<T>,
 ) => {
   const context = useTextFieldContext();
-  const [local, others] = splitProps(props, ["as", "class", "children", "id"]);
+  const local = props;
+  const others = omit(props, "as", "class", "children", "id");
 
   return (
     <Dynamic
@@ -299,7 +306,8 @@ const TextFieldErrorMessage = <T extends ValidComponent = "div">(
   props: TextFieldErrorMessageProps<T>,
 ) => {
   const context = useTextFieldContext();
-  const [local, others] = splitProps(props, ["as", "class", "children", "id"]);
+  const local = props;
+  const others = omit(props, "as", "class", "children", "id");
 
   return (
     <Dynamic

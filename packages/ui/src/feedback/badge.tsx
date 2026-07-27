@@ -2,9 +2,8 @@ import type { ComponentProps, JSX } from "@solidjs/web";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import type { Component } from "solid-js";
-import { children, Show } from "solid-js";
+import { children, omit, Show } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
 
 const badgeVariants = cva(
   "inline-flex items-center gap-1.5 whitespace-nowrap rounded border font-medium transition-colors focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2",
@@ -51,14 +50,8 @@ type BadgeProps = ComponentProps<"div"> &
   };
 
 const Badge: Component<BadgeProps> = (props) => {
-  const [local, others] = splitProps(props, [
-    "children",
-    "class",
-    "variant",
-    "size",
-    "round",
-    "style",
-  ]);
+  const local = props;
+  const others = omit(props, "children", "class", "variant", "size", "round", "style");
   const resolvedChildren = children(() => local.children);
   const borderStyle = "color-mix(in oklch, currentColor 30%, transparent)";
   const style = () => {
@@ -110,7 +103,8 @@ type StatusBadgeProps = BadgeProps & {
 };
 
 const StatusBadge: Component<StatusBadgeProps> = (props) => {
-  const [local, others] = splitProps(props, ["dot", "pulse", "dotColor", "class", "children"]);
+  const local = props;
+  const others = omit(props, "dot", "pulse", "dotColor", "class", "children");
   const dotColorClass = () =>
     statusDotColors[local.dotColor || "default"] || statusDotColors.default;
 

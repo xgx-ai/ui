@@ -1,8 +1,6 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
-import { For } from "solid-js";
-
-import { splitProps } from "../utils/split-props.ts";
+import { For, omit } from "solid-js";
 
 export type IconNode = readonly (readonly [
   keyof JSX.IntrinsicElements,
@@ -60,13 +58,17 @@ function mergeClasses(...values: unknown[]) {
   const classes: string[] = [];
   for (const value of values) collectClasses(value, classes);
   return classes
-    .filter((className, index, array) => className.trim() !== "" && array.indexOf(className) === index)
+    .filter(
+      (className, index, array) => className.trim() !== "" && array.indexOf(className) === index,
+    )
     .join(" ")
     .trim();
 }
 
 export function Icon(props: InternalIconProps) {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "absoluteStrokeWidth",
     "children",
     "class",
@@ -75,7 +77,7 @@ export function Icon(props: InternalIconProps) {
     "name",
     "size",
     "strokeWidth",
-  ] as const);
+  );
 
   const size = () => local.size ?? 24;
   const strokeWidth = () =>

@@ -16,11 +16,10 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";
-import { Check, ChevronRight, Circle } from "../icons.index";
+import { createContext, createEffect, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
+import { Check, ChevronRight, Circle } from "../icons.index";
 import { containsNode } from "../overlays/floating";
-import { splitProps } from "../utils/split-props";
 import { PortalMount } from "../overlays/portal";
 import { createMenuKeyboard, focusFirstMenuItem } from "./menu-behavior";
 
@@ -45,7 +44,8 @@ function useMenubarMenu() {
 type MenubarRootProps = ComponentProps<"div">;
 
 const Menubar = (props: MenubarRootProps) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <div
       role="menubar"
@@ -65,7 +65,8 @@ type MenubarMenuProps = ComponentProps<"div"> & {
 
 const MenubarMenu = (props: MenubarMenuProps) => {
   let root: HTMLDivElement | undefined;
-  const [local, others] = splitProps(props, ["children", "class"]);
+  const local = props;
+  const others = omit(props, "children", "class");
   const [open, setOpen] = createSignal(false);
   const [contentRef, setContentRef] = createSignal<HTMLElement>();
   const [triggerRef, setTriggerRef] = createSignal<HTMLElement>();
@@ -121,7 +122,8 @@ type MenubarTriggerProps = ComponentProps<"button">;
 
 const MenubarTrigger = (props: MenubarTriggerProps) => {
   const menu = useMenubarMenu();
-  const [local, others] = splitProps(props, ["class", "onClick", "onKeyDown", "ref", "type"]);
+  const local = props;
+  const others = omit(props, "class", "onClick", "onKeyDown", "ref", "type");
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
     handler?.(event);
@@ -172,7 +174,8 @@ type MenubarContentProps = ComponentProps<"div">;
 
 const MenubarContent = (props: MenubarContentProps) => {
   const menu = useMenubarMenu();
-  const [local, others] = splitProps(props, ["class", "onKeyDown", "ref"]);
+  const local = props;
+  const others = omit(props, "class", "onKeyDown", "ref");
   const menuKeyboard = createMenuKeyboard({
     close: menu.close,
     root: menu.contentRef,
@@ -220,13 +223,8 @@ type MenubarItemProps = ComponentProps<"div"> & {
 
 const MenubarItem = (props: MenubarItemProps) => {
   const menu = useMenubarMenu();
-  const [local, others] = splitProps(props, [
-    "class",
-    "closeOnSelect",
-    "disabled",
-    "inset",
-    "onClick",
-  ]);
+  const local = props;
+  const others = omit(props, "class", "closeOnSelect", "disabled", "inset", "onClick");
   const onClick: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLDivElement, MouseEvent> | undefined;
     handler?.(event);
@@ -254,7 +252,8 @@ const MenubarItem = (props: MenubarItemProps) => {
 const MenubarSubTrigger = (
   props: ComponentProps<"div"> & { children?: JSX.Element; inset?: boolean },
 ) => {
-  const [local, others] = splitProps(props, ["class", "children", "inset"]);
+  const local = props;
+  const others = omit(props, "class", "children", "inset");
   return (
     <div
       role="menuitem"
@@ -280,14 +279,16 @@ type MenubarCheckboxItemProps = Omit<ComponentProps<"div">, "onChange"> & {
 };
 
 const MenubarCheckboxItem = (props: MenubarCheckboxItemProps) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "checked",
     "children",
     "class",
     "disabled",
     "onChange",
     "onCheckedChange",
-  ]);
+  );
   const onClick = () => {
     if (local.disabled) return;
     const checked = !local.checked;
@@ -319,7 +320,8 @@ type MenubarRadioItemProps = ComponentProps<"div"> & {
 };
 
 const MenubarRadioItem = (props: MenubarRadioItemProps) => {
-  const [local, others] = splitProps(props, ["checked", "children", "class", "disabled"]);
+  const local = props;
+  const others = omit(props, "checked", "children", "class", "disabled");
   return (
     <MenubarItem
       role="menuitemradio"
@@ -339,7 +341,8 @@ const MenubarRadioItem = (props: MenubarRadioItemProps) => {
 };
 
 const MenubarItemLabel = (props: ComponentProps<"div"> & { inset?: boolean }) => {
-  const [local, others] = splitProps(props, ["class", "inset"]);
+  const local = props;
+  const others = omit(props, "class", "inset");
   return (
     <div
       class={cn("px-2 py-1.5 text-sm font-semibold", local.inset && "pl-8", local.class)}
@@ -349,7 +352,8 @@ const MenubarItemLabel = (props: ComponentProps<"div"> & { inset?: boolean }) =>
 };
 
 const MenubarGroupLabel = (props: ComponentProps<"span"> & { inset?: boolean }) => {
-  const [local, others] = splitProps(props, ["class", "inset"]);
+  const local = props;
+  const others = omit(props, "class", "inset");
   return (
     <span
       class={cn("px-2 py-1.5 text-sm font-semibold", local.inset && "pl-8", local.class)}
@@ -359,12 +363,14 @@ const MenubarGroupLabel = (props: ComponentProps<"span"> & { inset?: boolean }) 
 };
 
 const MenubarSeparator = (props: ComponentProps<"hr">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return <hr class={cn("-mx-1 my-1 h-px border-0 bg-muted", local.class)} {...others} />;
 };
 
 const MenubarShortcut = (props: ComponentProps<"span">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <span
       class={cn("ml-auto text-xs tracking-widest text-muted-foreground", local.class)}
@@ -373,6 +379,14 @@ const MenubarShortcut = (props: ComponentProps<"span">) => {
   );
 };
 
+export type {
+  MenubarCheckboxItemProps,
+  MenubarContentProps,
+  MenubarItemProps,
+  MenubarMenuProps,
+  MenubarRootProps,
+  MenubarTriggerProps,
+};
 export {
   Menubar,
   MenubarCheckboxItem,
@@ -391,12 +405,4 @@ export {
   MenubarSubContent,
   MenubarSubTrigger,
   MenubarTrigger,
-};
-export type {
-  MenubarCheckboxItemProps,
-  MenubarContentProps,
-  MenubarItemProps,
-  MenubarMenuProps,
-  MenubarRootProps,
-  MenubarTriggerProps,
 };

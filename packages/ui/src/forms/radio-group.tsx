@@ -11,10 +11,9 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createSignal, useContext } from "solid-js";
-import { Circle } from "../icons.index";
+import { createContext, createSignal, omit, useContext } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
+import { Circle } from "../icons.index";
 
 type RadioGroupProps = Omit<ComponentProps<"div">, "onChange"> & {
   value?: string;
@@ -33,14 +32,8 @@ const RadioGroupContext = createContext<{
 });
 
 const RadioGroup = (props: RadioGroupProps) => {
-  const [local, others] = splitProps(props, [
-    "class",
-    "children",
-    "value",
-    "defaultValue",
-    "disabled",
-    "onChange",
-  ]);
+  const local = props;
+  const others = omit(props, "class", "children", "value", "defaultValue", "disabled", "onChange");
   const [uncontrolledValue, setUncontrolledValue] = createSignal(local.defaultValue);
   const value = () => local.value ?? uncontrolledValue();
   const setValue = (next: string) => {
@@ -76,14 +69,8 @@ type RadioGroupItemProps = Omit<ComponentProps<"button">, "value"> & {
 };
 
 const RadioGroupItem = (props: RadioGroupItemProps) => {
-  const [local, others] = splitProps(props, [
-    "class",
-    "children",
-    "value",
-    "disabled",
-    "onClick",
-    "type",
-  ]);
+  const local = props;
+  const others = omit(props, "class", "children", "value", "disabled", "onClick", "type");
   const context = useContext(RadioGroupContext);
   const checked = () => context.value() === local.value;
   const disabled = () => Boolean(local.disabled || context.disabled);
@@ -121,10 +108,11 @@ const RadioGroupItem = (props: RadioGroupItemProps) => {
 type RadioGroupLabelProps = ComponentProps<"span">;
 
 const RadioGroupItemLabel = (props: RadioGroupLabelProps) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
 
   return <span class={cn("text-sm font-medium leading-none", local.class)} {...others} />;
 };
 
-export { RadioGroup, RadioGroupItem, RadioGroupItemLabel };
 export type { RadioGroupItemProps, RadioGroupLabelProps, RadioGroupProps };
+export { RadioGroup, RadioGroupItem, RadioGroupItemLabel };

@@ -1,7 +1,6 @@
-import { splitProps } from "../utils/split-props";
-import { Check } from "../icons.index";
-import { type Component, For, Show } from "solid-js";
+import { type Component, For, omit, Show } from "solid-js";
 import { cn } from "../cn";
+import { Check } from "../icons.index";
 
 export type StepStatus = "pending" | "current" | "completed";
 
@@ -88,7 +87,8 @@ function getStepStatus(index: number, currentStep: number): StepStatus {
  * ```
  */
 export const Stepper: Component<StepperProps> = (props) => {
-  const [local, _others] = splitProps(props, ["class", "variant", "size", "currentStep"]);
+  const local = props;
+  const _others = omit(props, "class", "variant", "size", "currentStep");
 
   const variant = () => local.variant ?? "dots";
   const size = () => local.size ?? "default";

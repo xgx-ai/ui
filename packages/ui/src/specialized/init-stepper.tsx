@@ -1,7 +1,6 @@
-import { splitProps } from "../utils/split-props";
-import { Check } from "../icons.index";
 import { type Component, For } from "solid-js";
 import { cn } from "../cn";
+import { Check } from "../icons.index";
 
 /**
  * Status of an initialization step
@@ -41,7 +40,7 @@ interface InitStepperProps {
 }
 
 export const InitStepper: Component<InitStepperProps> = (props) => {
-  const [local] = splitProps(props, ["steps", "class"]);
+  const local = props;
 
   return (
     <div class={cn("w-full", local.class)}>

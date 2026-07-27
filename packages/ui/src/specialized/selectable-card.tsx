@@ -1,9 +1,7 @@
 import type { ComponentProps } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
+import { omit, Show } from "solid-js";
 import { cn } from "../cn";
 import { Check } from "../icons.index";
-
-import { Show } from "solid-js";
 
 interface SelectableCardProps extends Omit<ComponentProps<"div">, "onSelect"> {
   selected?: boolean;
@@ -12,13 +10,8 @@ interface SelectableCardProps extends Omit<ComponentProps<"div">, "onSelect"> {
 }
 
 export function SelectableCard(props: SelectableCardProps) {
-  const [local, rest] = splitProps(props, [
-    "selected",
-    "showIndicator",
-    "onSelect",
-    "class",
-    "children",
-  ]);
+  const local = props;
+  const rest = omit(props, "selected", "showIndicator", "onSelect", "class", "children");
 
   return (
     <div

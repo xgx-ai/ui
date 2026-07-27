@@ -12,7 +12,7 @@
 - Use Solid v2 two-phase effects: `createEffect(compute, effect)` and `createRenderEffect(compute, effect)`. Do not use v1 single-callback effects.
 - Put reactive reads in the compute function and DOM/side effects in the effect function.
 - Use `onSettled` for mount-style work where possible; do not add compatibility `onMount` wrappers.
-- Do not destructure reactive props in components. Read `props.foo` or split with the project `splitProps` helper.
+- Do not destructure reactive props in components. Read `props.foo` directly and use Solid 2's `omit(props, ...keys)` when forwarding rest props; do not recreate `splitProps`.
 - Do not pass accessors as prop values unless the receiving API explicitly expects an accessor. In v2 call accessors at the JSX call site.
 - Reads after setters are deferred until flush. Design code around deferred flushes instead of adding compatibility shims.
 - For DOM insertion and prop spreading, prefer native `@solidjs/web` `insert`/`spread`; do not hand-roll reactive DOM binding.

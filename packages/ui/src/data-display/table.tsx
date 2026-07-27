@@ -1,10 +1,10 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { For, Show } from "solid-js";
+import { For, omit, Show } from "solid-js";
 import { cn } from "../cn.ts";
-import { splitProps } from "../utils/split-props";
 
 const TableRoot = (props: ComponentProps<"table">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <div class="relative h-full w-full overflow-x-auto">
       <table class={cn("w-full caption-bottom !bg-none", local.class)} {...others} />
@@ -13,17 +13,20 @@ const TableRoot = (props: ComponentProps<"table">) => {
 };
 
 const TableHeader = (props: ComponentProps<"thead">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return <thead class={cn("[&_tr]:border-b", local.class)} {...others} />;
 };
 
 const TableBody = (props: ComponentProps<"tbody">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return <tbody class={cn("[&_tr:last-child]:border-0", local.class)} {...others} />;
 };
 
 const TableFooter = (props: ComponentProps<"tfoot">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <tfoot
       class={cn("bg-surface-muted font-medium text-surface-muted-foreground", local.class)}
@@ -37,7 +40,8 @@ export type TableRowProps = ComponentProps<"tr"> & {
 };
 
 const TableRow = (props: TableRowProps) => {
-  const [local, others] = splitProps(props, ["class", "interactive"]);
+  const local = props;
+  const others = omit(props, "class", "interactive");
   return (
     <tr
       data-interactive={local.interactive ? "true" : undefined}
@@ -51,7 +55,8 @@ const TableRow = (props: TableRowProps) => {
 };
 
 const TableHead = (props: ComponentProps<"th">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <th
       class={cn(
@@ -64,7 +69,8 @@ const TableHead = (props: ComponentProps<"th">) => {
 };
 
 const TableCell = (props: ComponentProps<"td">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <td
       class={cn(
@@ -83,7 +89,8 @@ export type TableStatusBarProps = ComponentProps<"div"> & {
 };
 
 const TableStatusBar = (props: TableStatusBarProps) => {
-  const [local, others] = splitProps(props, ["class", "totalCount", "totalLabel", "emptyMessage"]);
+  const local = props;
+  const others = omit(props, "class", "totalCount", "totalLabel", "emptyMessage");
   return (
     <div
       class={cn(

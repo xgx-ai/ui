@@ -1,7 +1,6 @@
 import type { ComponentProps } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
 import type { Component } from "solid-js";
-import { merge as mergeProps } from "solid-js";
+import { merge as mergeProps, omit } from "solid-js";
 
 type AspectRatioProps = ComponentProps<"div"> & { ratio?: number };
 
@@ -21,7 +20,8 @@ type AspectRatioProps = ComponentProps<"div"> & { ratio?: number };
  */
 const AspectRatio: Component<AspectRatioProps> = (rawProps) => {
   const props = mergeProps({ ratio: 1 / 1 }, rawProps);
-  const [local, others] = splitProps(props, ["ratio"]);
+  const local = props;
+  const others = omit(props, "ratio");
   return (
     <div
       style={{

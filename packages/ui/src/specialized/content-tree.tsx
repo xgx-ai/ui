@@ -1,11 +1,8 @@
-import type { ComponentProps } from "@solidjs/web";
-import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { ChevronDown, ChevronRight, Loader2 } from "../icons.index";
+import type { ComponentProps, JSX } from "@solidjs/web";
 import type { Component } from "solid-js";
-import { createSignal, For, Show } from "solid-js";
-
+import { createSignal, For, omit, Show } from "solid-js";
 import { cn } from "../cn";
+import { ChevronDown, ChevronRight, Loader2 } from "../icons.index";
 
 /**
  * # Content Tree
@@ -149,7 +146,9 @@ const ContentTreeNode: Component<ContentTreeNodeProps> = (props) => {
 };
 
 const ContentTree: Component<ContentTreeProps> = (props) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "items",
     "header",
     "footer",
@@ -157,7 +156,7 @@ const ContentTree: Component<ContentTreeProps> = (props) => {
     "selectedId",
     "defaultExpandedIds",
     "class",
-  ]);
+  );
 
   return (
     <div

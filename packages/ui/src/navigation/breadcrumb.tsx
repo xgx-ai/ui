@@ -17,17 +17,17 @@
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import type { Component } from "solid-js";
-import { Show } from "solid-js";
-import { ChevronRight, MoreHorizontal } from "../icons.index";
+import { omit, Show } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
+import { ChevronRight, MoreHorizontal } from "../icons.index";
 
 const Breadcrumb: Component<ComponentProps<"nav">> = (props) => (
   <nav aria-label="Breadcrumb" {...props} />
 );
 
 const BreadcrumbList: Component<ComponentProps<"ol">> = (props) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <ol
       class={cn(
@@ -40,7 +40,8 @@ const BreadcrumbList: Component<ComponentProps<"ol">> = (props) => {
 };
 
 const BreadcrumbItem: Component<ComponentProps<"li">> = (props) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return <li class={cn("inline-flex items-center gap-1.5", local.class)} {...others} />;
 };
 
@@ -50,7 +51,8 @@ type BreadcrumbLinkProps<T extends ValidComponent = "a"> = ComponentProps<"a"> &
 };
 
 const BreadcrumbLink = <T extends ValidComponent = "a">(props: BreadcrumbLinkProps<T>) => {
-  const [local, others] = splitProps(props, ["as", "class", "current"]);
+  const local = props;
+  const others = omit(props, "as", "class", "current");
   return (
     <Dynamic
       component={local.as ?? "a"}
@@ -73,7 +75,8 @@ type BreadcrumbSeparatorProps<T extends ValidComponent = "span"> = ComponentProp
 const BreadcrumbSeparator = <T extends ValidComponent = "span">(
   props: BreadcrumbSeparatorProps<T>,
 ) => {
-  const [local, others] = splitProps(props, ["as", "class", "children"]);
+  const local = props;
+  const others = omit(props, "as", "class", "children");
   return (
     <Dynamic
       component={local.as ?? "span"}
@@ -90,7 +93,8 @@ const BreadcrumbSeparator = <T extends ValidComponent = "span">(
 };
 
 const BreadcrumbEllipsis: Component<ComponentProps<"span">> = (props) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <span class={cn("flex size-9 items-center justify-center", local.class)} {...others}>
       <MoreHorizontal aria-hidden="true" class="size-4" />
@@ -99,6 +103,7 @@ const BreadcrumbEllipsis: Component<ComponentProps<"span">> = (props) => {
   );
 };
 
+export type { BreadcrumbLinkProps, BreadcrumbSeparatorProps };
 export {
   Breadcrumb,
   BreadcrumbEllipsis,
@@ -107,4 +112,3 @@ export {
   BreadcrumbList,
   BreadcrumbSeparator,
 };
-export type { BreadcrumbLinkProps, BreadcrumbSeparatorProps };

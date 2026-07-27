@@ -1,6 +1,5 @@
-import { splitProps } from "../utils/split-props";
 import type { Component } from "solid-js";
-import { For, Show } from "solid-js";
+import { For, omit, Show } from "solid-js";
 import { cn } from "../cn";
 import { SidebarRow, SidebarSection } from "../data-display/sidebar-section";
 import { Badge } from "../feedback/badge";
@@ -33,7 +32,9 @@ function SlimIconButton(props: DetailSidebarSlimIcon & { onToggle: () => void })
 }
 
 const DetailSidebar: Component<DetailSidebarProps> = (props) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "isSlim",
     "onToggle",
     "header",
@@ -43,7 +44,7 @@ const DetailSidebar: Component<DetailSidebarProps> = (props) => {
     "extraContent",
     "loading",
     "class",
-  ]);
+  );
 
   const LoadingState = () => (
     <div class="flex items-center justify-center h-full w-full p-4">

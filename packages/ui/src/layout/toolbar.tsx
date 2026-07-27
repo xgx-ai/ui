@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { For, type ParentProps } from "solid-js";
+import { For, omit, type ParentProps } from "solid-js";
 import { cn } from "../cn";
 import { SearchBar } from "../forms/search-bar";
 
@@ -22,7 +21,8 @@ export interface ToolbarProps extends ParentProps {
  * ```
  */
 export function Toolbar(props: ToolbarProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div
       class={cn(
@@ -48,7 +48,8 @@ export interface ToolbarSearchProps {
  * Search input for toolbars. Wraps the shared SearchBar component.
  */
 export function ToolbarSearch(props: ToolbarSearchProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "value", "onInput", "placeholder", "icon"]);
+  const local = props;
+  const rest = omit(props, "class", "value", "onInput", "placeholder", "icon");
   return (
     <SearchBar
       class={cn("flex-1 max-w-xs", local.class)}
@@ -81,7 +82,8 @@ export interface ToolbarGroupProps extends ParentProps {
  * Groups toolbar items together with smaller gap.
  */
 export function ToolbarGroup(props: ToolbarGroupProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("flex items-center gap-1.5", local.class)} {...rest}>
       {local.children}
@@ -101,7 +103,8 @@ export interface ToolbarSortProps<T extends string> {
  * Sort dropdown for toolbars.
  */
 export function ToolbarSort<T extends string>(props: ToolbarSortProps<T>): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "label", "value", "onChange", "options"]);
+  const local = props;
+  const rest = omit(props, "class", "label", "value", "onChange", "options");
   return (
     <div class={cn("flex items-center gap-2", local.class)} {...rest}>
       <label class="flex items-center gap-2">
@@ -147,7 +150,8 @@ export interface ToolbarFilterButtonsProps<T extends string> {
 export function ToolbarFilterButtons<T extends string>(
   props: ToolbarFilterButtonsProps<T>,
 ): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "value", "onChange", "options"]);
+  const local = props;
+  const rest = omit(props, "class", "value", "onChange", "options");
 
   return (
     <div

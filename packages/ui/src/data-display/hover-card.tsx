@@ -14,9 +14,8 @@
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import type { Component } from "solid-js";
-import { createContext, createSignal, Show, useContext } from "solid-js";
+import { createContext, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
 
 const DynamicAny = Dynamic as any;
 
@@ -79,7 +78,9 @@ type HoverCardTriggerProps<T extends ValidComponent = "span"> = Omit<
 
 const HoverCardTrigger = <T extends ValidComponent = "span">(props: HoverCardTriggerProps<T>) => {
   const hoverCard = useHoverCard();
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "as",
     "children",
     "onBlur",
@@ -87,7 +88,7 @@ const HoverCardTrigger = <T extends ValidComponent = "span">(props: HoverCardTri
     "onMouseEnter",
     "onMouseLeave",
     "ref",
-  ]);
+  );
   const setRef = (element: HTMLElement) => {
     hoverCard.setTrigger(element);
     const ref = local.ref as ((element: HTMLElement) => void) | undefined;
@@ -136,13 +137,8 @@ type HoverCardContentProps<T extends ValidComponent = "div"> = ComponentProps<"d
 
 const HoverCardContent = <T extends ValidComponent = "div">(props: HoverCardContentProps<T>) => {
   const hoverCard = useHoverCard();
-  const [local, others] = splitProps(props, [
-    "as",
-    "class",
-    "children",
-    "onMouseEnter",
-    "onMouseLeave",
-  ]);
+  const local = props;
+  const others = omit(props, "as", "class", "children", "onMouseEnter", "onMouseLeave");
   const style = () => {
     const rect = hoverCard.trigger()?.getBoundingClientRect();
     if (!rect) return { left: "0px", top: "0px" };
@@ -181,5 +177,5 @@ const HoverCardContent = <T extends ValidComponent = "div">(props: HoverCardCont
   );
 };
 
-export { HoverCard, HoverCardContent, HoverCardTrigger };
 export type { HoverCardContentProps, HoverCardProps, HoverCardTriggerProps };
+export { HoverCard, HoverCardContent, HoverCardTrigger };

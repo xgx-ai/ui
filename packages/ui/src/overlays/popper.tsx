@@ -3,14 +3,13 @@ import {
   computePosition,
   flip,
   offset,
+  type Placement,
   shift,
   size,
-  type Placement,
 } from "@floating-ui/dom";
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createEffect, createSignal, useContext } from "solid-js";
+import { createContext, createEffect, createSignal, omit, useContext } from "solid-js";
 
-import { splitProps } from "../utils/split-props";
 import { assignRef } from "./floating";
 
 type PopperContextValue = {
@@ -157,7 +156,8 @@ export function PopperRoot(props: PopperRootProps) {
 
 export function PopperPositioner(props: PopperPositionerProps) {
   const context = useContext(PopperContext);
-  const [local, rest] = splitProps(props, ["ref", "style"]);
+  const local = props;
+  const rest = omit(props, "ref", "style");
 
   return (
     <div

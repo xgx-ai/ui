@@ -1,17 +1,16 @@
-import type { ComponentProps } from "@solidjs/web";
-import type { JSX } from "@solidjs/web";
-import { splitProps } from "../../utils/split-props";
 import { dropTargetForExternal } from "@atlaskit/pragmatic-drag-and-drop/external/adapter";
 import { containsFiles, getFiles } from "@atlaskit/pragmatic-drag-and-drop/external/file";
-import { CloudUpload } from "../../icons.index";
+import type { ComponentProps, JSX } from "@solidjs/web";
 import {
   type Accessor,
   type Component,
-  createTrackedEffect,
   createMemo,
   createSignal,
+  createTrackedEffect,
+  omit,
   Show,
 } from "solid-js";
+import { CloudUpload } from "../../icons.index";
 import { dropzoneActiveClasses, dropzoneClasses } from "../animations/presets";
 
 /**
@@ -100,7 +99,9 @@ function matchesAccept(file: File, accept: string[]): boolean {
  * ```
  */
 export const FileDropzone: Component<FileDropzoneProps> = (props) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "onFileDrop",
     "onDragEnter",
     "onDragLeave",
@@ -110,7 +111,7 @@ export const FileDropzone: Component<FileDropzoneProps> = (props) => {
     "disabled",
     "children",
     "class",
-  ]);
+  );
 
   const [state, setState] = createSignal<FileDropzoneState>({
     isOver: false,

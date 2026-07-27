@@ -1,9 +1,8 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { Frown } from "../icons.index";
-import { type ParentProps } from "solid-js";
+import { omit, type ParentProps } from "solid-js";
 import { cn } from "../cn";
 import { Button } from "../forms/button";
+import { Frown } from "../icons.index";
 import { Spinner } from "./spinner";
 
 /**
@@ -26,7 +25,8 @@ export interface PageLoadingProps extends ParentProps {
 }
 
 export function PageLoading(props: PageLoadingProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
 
   return (
     <div
@@ -62,7 +62,8 @@ export interface PageEmptyProps {
 }
 
 export function PageEmpty(props: PageEmptyProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "icon", "title", "description", "action"]);
+  const local = props;
+  const rest = omit(props, "class", "icon", "title", "description", "action");
 
   return (
     <div
@@ -100,7 +101,8 @@ export interface PageErrorProps {
 }
 
 export function PageError(props: PageErrorProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "title", "message", "action"]);
+  const local = props;
+  const rest = omit(props, "class", "title", "message", "action");
 
   return (
     <div
@@ -145,7 +147,8 @@ export interface PageNotFoundProps {
 }
 
 export function PageNotFound(props: PageNotFoundProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "title", "description", "action", "onGoHome"]);
+  const local = props;
+  const rest = omit(props, "class", "title", "description", "action", "onGoHome");
 
   return (
     <div

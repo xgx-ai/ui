@@ -1,5 +1,5 @@
-import { splitProps } from "../../utils/split-props";
 import { cva } from "class-variance-authority";
+import { omit } from "solid-js";
 
 import { cn } from "../../cn.ts";
 
@@ -25,7 +25,8 @@ type LabelProps<_T> = {
 };
 
 export const FieldLabel = <T extends "label">(props: LabelProps<T>) => {
-  const [local, others] = splitProps(props, ["class", "required", "children"]);
+  const local = props;
+  const others = omit(props, "class", "required", "children");
   return (
     <div class={cn(labelVariants(), local.class)} {...others}>
       {local.children} {local.required && <span class="text-error">*</span>}

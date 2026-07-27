@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps } from "solid-js";
+import { omit, type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface IconBoxProps extends ParentProps {
@@ -26,7 +25,8 @@ const variantClasses = {
 
 /** Icon container box */
 export function IconBox(props: IconBoxProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "size", "variant", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "size", "variant", "children");
   return (
     <div
       class={cn(

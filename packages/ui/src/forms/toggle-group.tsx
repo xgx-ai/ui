@@ -13,10 +13,9 @@
 import type { JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import type { VariantProps } from "class-variance-authority";
-import { createContext, createSignal, useContext } from "solid-js";
+import { createContext, createSignal, omit, useContext } from "solid-js";
 import { cn } from "../cn";
 import type { PolymorphicProps } from "../utils/polymorphic";
-import { splitProps } from "../utils/split-props";
 import { toggleVariants } from "./toggle";
 
 type ToggleValue = string | string[] | undefined;
@@ -47,7 +46,9 @@ type ToggleGroupOwnProps = VariantProps<typeof toggleVariants> & {
 type ToggleGroupProps<T extends ValidComponent = "div"> = PolymorphicProps<T, ToggleGroupOwnProps>;
 
 const ToggleGroup = <T extends ValidComponent = "div">(props: ToggleGroupProps<T>) => {
-  const [local, others] = splitProps(props as ToggleGroupProps, [
+  const local = props as ToggleGroupProps;
+  const others = omit(
+    props as ToggleGroupProps,
     "as",
     "class",
     "children",
@@ -58,7 +59,7 @@ const ToggleGroup = <T extends ValidComponent = "div">(props: ToggleGroupProps<T
     "multiple",
     "disabled",
     "onChange",
-  ]);
+  );
   const [uncontrolledValue, setUncontrolledValue] = createSignal<ToggleValue>(local.defaultValue);
   const selected = () => local.value ?? uncontrolledValue();
   const isPressed = (value: string) => {
@@ -123,7 +124,9 @@ type ToggleGroupItemProps<T extends ValidComponent = "button"> = PolymorphicProp
 >;
 
 const ToggleGroupItem = <T extends ValidComponent = "button">(props: ToggleGroupItemProps<T>) => {
-  const [local, others] = splitProps(props as ToggleGroupItemProps, [
+  const local = props as ToggleGroupItemProps;
+  const others = omit(
+    props as ToggleGroupItemProps,
     "as",
     "class",
     "size",
@@ -132,7 +135,7 @@ const ToggleGroupItem = <T extends ValidComponent = "button">(props: ToggleGroup
     "disabled",
     "onClick",
     "type",
-  ]);
+  );
   const context = useContext(ToggleGroupContext);
   const pressed = () => context.isPressed(local.value);
   const disabled = () => Boolean(local.disabled || context.disabled);
@@ -163,5 +166,5 @@ const ToggleGroupItem = <T extends ValidComponent = "button">(props: ToggleGroup
   );
 };
 
-export { ToggleGroup, ToggleGroupItem };
 export type { ToggleGroupItemProps, ToggleGroupProps };
+export { ToggleGroup, ToggleGroupItem };

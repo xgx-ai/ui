@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps } from "solid-js";
+import { omit, type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface AuthPageProps extends ParentProps {
@@ -9,7 +8,8 @@ export interface AuthPageProps extends ParentProps {
 
 /** Full-screen centered container for auth pages */
 export function AuthPage(props: AuthPageProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div
       class={cn(
@@ -29,7 +29,8 @@ export interface AuthCardProps extends ParentProps {
 
 /** Max-width card container for auth forms */
 export function AuthCard(props: AuthCardProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div
       class={cn(
@@ -49,7 +50,8 @@ export interface FullScreenCenterProps extends ParentProps {
 
 /** Full-screen flex center container */
 export function FullScreenCenter(props: FullScreenCenterProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div
       class={cn(

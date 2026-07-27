@@ -1,8 +1,6 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-
-import { For, merge as mergeProps, Show } from "solid-js";
 import { Dynamic } from "@solidjs/web";
+import { For, merge as mergeProps, omit, Show } from "solid-js";
 
 import { cn } from "../cn";
 
@@ -52,7 +50,8 @@ const BarList = <T,>(rawProps: BarListProps<T>) => {
     },
     rawProps,
   );
-  const [local, others] = splitProps(props, ["class", "data", "valueFormatter", "sortOrder"]);
+  const local = props;
+  const others = omit(props, "class", "data", "valueFormatter", "sortOrder");
 
   const sortedData = () => {
     if (local.sortOrder === "none") {

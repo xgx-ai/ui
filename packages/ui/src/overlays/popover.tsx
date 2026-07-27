@@ -13,9 +13,8 @@
  */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
-import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";
+import { createContext, createEffect, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
 import { assignRef, containsNode } from "./floating";
 import { PopperPositioner, PopperRoot } from "./popper";
 import { PortalMount } from "./portal";
@@ -75,7 +74,9 @@ const Popover = (props: PopoverProps) => {
   const [rootRef, setRootRef] = createSignal<HTMLDivElement>();
   const [triggerRef, setTriggerRef] = createSignal<HTMLElement>();
   const [contentRef, setContentRef] = createSignal<HTMLElement>();
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "children",
     "class",
     "defaultOpen",
@@ -85,7 +86,7 @@ const Popover = (props: PopoverProps) => {
     "open",
     "placement",
     "positioning",
-  ]);
+  );
   const [uncontrolledOpen, setUncontrolledOpen] = createSignal(Boolean(local.defaultOpen));
   const open = () => local.open ?? local.isOpen ?? uncontrolledOpen();
   const placement = () => local.placement ?? local.positioning?.placement ?? "bottom-start";
@@ -163,7 +164,8 @@ type PopoverAnchorProps<T extends ValidComponent = "div"> = ComponentProps<"div"
 
 const PopoverAnchor = <T extends ValidComponent = "div">(props: PopoverAnchorProps<T>) => {
   const popover = usePopover();
-  const [local, others] = splitProps(props, ["as", "children", "ref"]);
+  const local = props;
+  const others = omit(props, "as", "children", "ref");
 
   if (!local.as) {
     return (
@@ -195,7 +197,8 @@ const PopoverAnchor = <T extends ValidComponent = "div">(props: PopoverAnchorPro
 
 const PopoverTrigger = <T extends ValidComponent = "button">(props: PopoverTriggerProps<T>) => {
   const popover = usePopover();
-  const [local, others] = splitProps(props, ["as", "children", "onClick", "ref", "type"]);
+  const local = props;
+  const others = omit(props, "as", "children", "onClick", "ref", "type");
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
     handler?.(event);
@@ -247,14 +250,8 @@ type PopoverContentProps<T extends ValidComponent = "div"> = ComponentProps<"div
 
 const PopoverContent = <T extends ValidComponent = "div">(props: PopoverContentProps<T>) => {
   const popover = usePopover();
-  const [local, others] = splitProps(props, [
-    "as",
-    "arrow",
-    "class",
-    "children",
-    "portalled",
-    "ref",
-  ]);
+  const local = props;
+  const others = omit(props, "as", "arrow", "class", "children", "portalled", "ref");
 
   return (
     <Show when={popover.open()}>
@@ -285,7 +282,8 @@ type PopoverCloseProps = ComponentProps<"button">;
 
 const PopoverClose = (props: PopoverCloseProps) => {
   const popover = usePopover();
-  const [local, others] = splitProps(props, ["onClick", "type"]);
+  const local = props;
+  const others = omit(props, "onClick", "type");
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
     handler?.(event);

@@ -1,7 +1,6 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createSignal, For, useContext } from "solid-js";
+import { createContext, createSignal, For, omit, useContext } from "solid-js";
 import { cn } from "../cn.ts";
-import { splitProps } from "../utils/split-props";
 
 type FileUploadState = {
   acceptedFiles: File[];
@@ -65,7 +64,9 @@ export function useFileUpload(props: FileUploadRootProps = {}): UseFileUploadRet
 }
 
 export function FileUploadRoot(props: FileUploadRootProps) {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "accept",
     "disabled",
     "maxFiles",
@@ -73,7 +74,7 @@ export function FileUploadRoot(props: FileUploadRootProps) {
     "onFilesChange",
     "class",
     "children",
-  ]);
+  );
   const upload = useFileUpload(local);
 
   return (
@@ -90,7 +91,8 @@ export type FileUploadRootProviderProps = ComponentProps<"div"> & {
 };
 
 export function FileUploadRootProvider(props: FileUploadRootProviderProps) {
-  const [local, rest] = splitProps(props, ["value", "class", "children"]);
+  const local = props;
+  const rest = omit(props, "value", "class", "children");
   return (
     <FileUploadContextValue value={local.value}>
       <div class={cn("flex flex-col gap-2", local.class)} {...rest}>
@@ -104,7 +106,8 @@ export type FileUploadDropzoneProps = ComponentProps<"div">;
 
 export function FileUploadDropzone(props: FileUploadDropzoneProps) {
   const context = useFileUploadContext();
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
 
   const acceptDrop = (event: DragEvent) => {
     event.preventDefault();
@@ -141,7 +144,8 @@ export type FileUploadTriggerProps = ComponentProps<"button">;
 
 export function FileUploadTrigger(props: FileUploadTriggerProps) {
   const context = useFileUploadContext();
-  const [local, rest] = splitProps(props, ["class", "onClick"]);
+  const local = props;
+  const rest = omit(props, "class", "onClick");
   return (
     <button
       type="button"
@@ -165,7 +169,8 @@ export function FileUploadTrigger(props: FileUploadTriggerProps) {
 export type FileUploadLabelProps = ComponentProps<"label">;
 
 export function FileUploadLabel(props: FileUploadLabelProps) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return <label class={cn("text-sm font-medium leading-none", local.class)} {...rest} />;
 }
 
@@ -193,7 +198,8 @@ export function FileUploadHiddenInput(props: FileUploadHiddenInputProps) {
 export type FileUploadItemGroupProps = ComponentProps<"div">;
 
 export function FileUploadItemGroup(props: FileUploadItemGroupProps) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return <div class={cn("flex flex-col gap-2", local.class)} {...rest} />;
 }
 
@@ -202,7 +208,8 @@ const FileUploadItemContext = createContext<File | undefined>();
 export type FileUploadItemProps = ComponentProps<"div"> & { file?: File };
 
 export function FileUploadItem(props: FileUploadItemProps) {
-  const [local, rest] = splitProps(props, ["file", "class", "children"]);
+  const local = props;
+  const rest = omit(props, "file", "class", "children");
   return (
     <FileUploadItemContext value={local.file}>
       <div
@@ -229,14 +236,16 @@ export type FileUploadItemPreviewImageProps = ComponentProps<"img"> & {
 export function FileUploadItemPreviewImage(props: FileUploadItemPreviewImageProps) {
   const file = () => props.file ?? useContext(FileUploadItemContext);
   const url = () => (file() ? URL.createObjectURL(file()!) : undefined);
-  const [local, rest] = splitProps(props, ["class", "file"]);
+  const local = props;
+  const rest = omit(props, "class", "file");
   return <img src={url()} class={cn("size-10 rounded object-cover", local.class)} {...rest} />;
 }
 
 export type FileUploadItemNameProps = ComponentProps<"span">;
 export function FileUploadItemName(props: FileUploadItemNameProps) {
   const file = useContext(FileUploadItemContext);
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <span class={cn("flex-1 truncate font-medium", local.class)} {...rest}>
       {local.children ?? file?.name}
@@ -247,7 +256,8 @@ export function FileUploadItemName(props: FileUploadItemNameProps) {
 export type FileUploadItemSizeTextProps = ComponentProps<"span">;
 export function FileUploadItemSizeText(props: FileUploadItemSizeTextProps) {
   const file = useContext(FileUploadItemContext);
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   const size = () => (file ? `${Math.max(1, Math.round(file.size / 1024))} KB` : undefined);
   return (
     <span class={cn("text-muted-foreground", local.class)} {...rest}>
@@ -260,7 +270,8 @@ export type FileUploadItemDeleteTriggerProps = ComponentProps<"button">;
 export function FileUploadItemDeleteTrigger(props: FileUploadItemDeleteTriggerProps) {
   const context = useFileUploadContext();
   const file = useContext(FileUploadItemContext);
-  const [local, rest] = splitProps(props, ["class", "onClick"]);
+  const local = props;
+  const rest = omit(props, "class", "onClick");
   return (
     <button
       type="button"

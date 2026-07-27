@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { For, Show } from "solid-js";
+import { For, omit, Show } from "solid-js";
 import { cn } from "../cn";
 import { Button } from "../forms/button";
 
@@ -50,7 +49,9 @@ export interface BreadcrumbNavProps {
  * ```
  */
 export function BreadcrumbNav(props: BreadcrumbNavProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "class",
     "items",
     "onNavigate",
@@ -61,7 +62,7 @@ export function BreadcrumbNav(props: BreadcrumbNavProps): JSX.Element {
     "backIcon",
     "homeIcon",
     "separatorIcon",
-  ]);
+  );
 
   const canNav = () => local.canNavigate ?? true;
 

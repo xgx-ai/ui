@@ -14,20 +14,19 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { Show } from "solid-js";
-import { Check, ChevronsUpDown } from "../icons.index";
+import { omit, Show } from "solid-js";
 import { cn } from "../cn";
+import { Check, ChevronsUpDown } from "../icons.index";
 import { assignRef } from "../overlays/floating";
-import { splitProps } from "../utils/split-props";
 import {
-  Search as Select,
   SearchContent,
   SearchItem,
   SearchItemLabel,
+  type SearchItemProps,
   SearchListbox,
+  Search as Select,
   useSearchContext,
   useSearchItemContext,
-  type SearchItemProps,
 } from "./search";
 
 const SelectHiddenSelect = (props: ComponentProps<"select">) => (
@@ -47,7 +46,8 @@ type SelectValueProps<T = unknown> = Omit<ComponentProps<"span">, "children"> & 
 
 const SelectValue = <T,>(props: SelectValueProps<T>) => {
   const context = useSearchContext();
-  const [local, others] = splitProps(props, ["children"]);
+  const local = props;
+  const others = omit(props, "children");
   const selectedOption = () => context.selectedOption() as T | undefined;
   const selectedOptions = () => {
     const selected = context.selectedOption();
@@ -74,14 +74,8 @@ type SelectTriggerProps = ComponentProps<"button"> & {
 
 const SelectTrigger = (props: SelectTriggerProps) => {
   const context = useSearchContext();
-  const [local, others] = splitProps(props, [
-    "class",
-    "children",
-    "onClick",
-    "onKeyDown",
-    "ref",
-    "type",
-  ]);
+  const local = props;
+  const others = omit(props, "class", "children", "onClick", "onKeyDown", "ref", "type");
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
     handler?.(event);
@@ -123,7 +117,8 @@ const SelectTrigger = (props: SelectTriggerProps) => {
 };
 
 const SelectContent = (props: ComponentProps<"div">) => {
-  const [local, others] = splitProps(props, ["children", "class"]);
+  const local = props;
+  const others = omit(props, "children", "class");
   return (
     <SearchContent
       class={cn(
@@ -143,7 +138,8 @@ type SelectItemProps = SearchItemProps & {
 };
 
 const SelectItem = (props: SelectItemProps) => {
-  const [local, others] = splitProps(props, ["class", "children", "item"]);
+  const local = props;
+  const others = omit(props, "class", "children", "item");
   const item = () => local.item;
   return (
     <SearchItem
@@ -172,5 +168,5 @@ const SelectItemIndicator = () => {
   );
 };
 
-export { Select, SelectContent, SelectHiddenSelect, SelectItem, SelectTrigger, SelectValue };
 export type { SelectItemProps, SelectTriggerProps, SelectValueProps, SelectValueState };
+export { Select, SelectContent, SelectHiddenSelect, SelectItem, SelectTrigger, SelectValue };

@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps } from "solid-js";
+import { omit, type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface PageProps extends ParentProps {
@@ -19,7 +18,8 @@ const sizeClasses = {
 
 /** Centered page container with padding */
 export function Page(props: PageProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "size", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "size", "children");
   return (
     <div class={cn("p-2 sm:p-6 w-full", sizeClasses[local.size ?? "lg"], local.class)} {...rest}>
       {local.children}
@@ -33,7 +33,8 @@ export interface PageHeaderProps extends ParentProps {
 
 /** Page header with title area and actions slot */
 export function PageHeader(props: PageHeaderProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("flex items-center justify-between mb-2", local.class)} {...rest}>
       {local.children}
@@ -47,7 +48,8 @@ export interface PageTitleProps extends ParentProps {
 
 /** Page title (H1 style) */
 export function PageTitle(props: PageTitleProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <h1
       class={cn("scroll-m-20 text-lg text-primary font-bold tracking-tight", local.class)}
@@ -64,7 +66,8 @@ export interface PageDescriptionProps extends ParentProps {
 
 /** Page description text */
 export function PageDescription(props: PageDescriptionProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <p class={cn("text-muted-foreground", local.class)} {...rest}>
       {local.children}

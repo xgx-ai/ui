@@ -9,22 +9,21 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { Show } from "solid-js";
-import { Check, ChevronsUpDown } from "../icons.index";
+import { omit, Show } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
+import { Check, ChevronsUpDown } from "../icons.index";
 import {
   Search as Combobox,
+  SearchItemLabel as ComboboxItemLabel,
+  SearchSection as ComboboxSection,
   SearchContent,
   SearchControl,
   SearchInput,
   SearchItem,
-  SearchItemLabel as ComboboxItemLabel,
+  type SearchItemProps,
   SearchListbox,
-  SearchSection as ComboboxSection,
   useSearchContext,
   useSearchItemContext,
-  type SearchItemProps,
 } from "./search";
 
 const ComboboxHiddenSelect = (props: ComponentProps<"select">) => (
@@ -42,7 +41,8 @@ type ComboboxItemIndicatorProps = ComponentProps<"span"> & {
 const ComboboxItemIndicator = (props: ComboboxItemIndicatorProps) => {
   const item = useSearchItemContext();
   const context = useSearchContext();
-  const [local, others] = splitProps(props, ["children"]);
+  const local = props;
+  const others = omit(props, "children");
   return (
     <Show when={item && context.isSelected(item)}>
       <span {...others}>{local.children ?? <Check aria-hidden="true" class="size-4" />}</span>
@@ -51,7 +51,8 @@ const ComboboxItemIndicator = (props: ComboboxItemIndicatorProps) => {
 };
 
 const ComboboxControl = <_T,>(props: ComponentProps<"div">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <SearchControl
       class={cn("flex h-10 items-center rounded-md border px-3", local.class)}
@@ -61,7 +62,8 @@ const ComboboxControl = <_T,>(props: ComponentProps<"div">) => {
 };
 
 const ComboboxInput = (props: ComponentProps<"input">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <SearchInput
       class={cn(
@@ -75,7 +77,8 @@ const ComboboxInput = (props: ComponentProps<"input">) => {
 
 const ComboboxTrigger = (props: ComponentProps<"button">) => {
   const context = useSearchContext();
-  const [local, others] = splitProps(props, ["class", "children", "onClick", "type"]);
+  const local = props;
+  const others = omit(props, "class", "children", "onClick", "type");
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
     handler?.(event);
@@ -94,7 +97,8 @@ const ComboboxTrigger = (props: ComponentProps<"button">) => {
 };
 
 const ComboboxContent = (props: ComponentProps<"div">) => {
-  const [local, others] = splitProps(props, ["children", "class"]);
+  const local = props;
+  const others = omit(props, "children", "class");
   return (
     <SearchContent
       class={cn(
@@ -109,6 +113,7 @@ const ComboboxContent = (props: ComponentProps<"div">) => {
   );
 };
 
+export type { ComboboxItemProps };
 export {
   Combobox,
   ComboboxContent,
@@ -121,4 +126,3 @@ export {
   ComboboxSection,
   ComboboxTrigger,
 };
-export type { ComboboxItemProps };

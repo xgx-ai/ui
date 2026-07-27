@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps } from "solid-js";
+import { omit, type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface ActionLinkProps extends ParentProps {
@@ -23,14 +22,8 @@ export interface ActionLinkProps extends ParentProps {
  * ```
  */
 export function ActionLink(props: ActionLinkProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "onClick",
-    "disabled",
-    "title",
-    "icon",
-    "children",
-  ]);
+  const local = props;
+  const rest = omit(props, "class", "onClick", "disabled", "title", "icon", "children");
 
   return (
     <button

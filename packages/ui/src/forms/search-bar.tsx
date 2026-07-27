@@ -1,9 +1,9 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import { Search } from "../icons.index";
+import { omit } from "solid-js";
 import { cn } from "../cn.ts";
-import { splitProps } from "../utils/split-props";
+import { Search } from "../icons.index";
 
 const searchBarVariants = cva(
   "xgx-control-text-md flex items-center rounded-full border border-border-subtle bg-surface-muted ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
@@ -32,7 +32,9 @@ type SearchBarProps = Omit<ComponentProps<"div">, "onChange"> &
   };
 
 const SearchBar = (props: SearchBarProps) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "class",
     "icon",
     "inputClass",
@@ -41,7 +43,7 @@ const SearchBar = (props: SearchBarProps) => {
     "placeholder",
     "size",
     "value",
-  ]);
+  );
   const onInput: JSX.EventHandler<HTMLInputElement, InputEvent> = (event) => {
     local.onChange?.(event.currentTarget.value);
     const handler = local.onInput as JSX.EventHandler<HTMLInputElement, InputEvent> | undefined;
@@ -69,5 +71,5 @@ const SearchBar = (props: SearchBarProps) => {
   );
 };
 
-export { SearchBar, searchBarVariants };
 export type { SearchBarProps };
+export { SearchBar, searchBarVariants };

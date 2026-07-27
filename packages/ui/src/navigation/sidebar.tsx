@@ -1,7 +1,6 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type Component, type ParentProps } from "solid-js";
 import { Dynamic } from "@solidjs/web";
+import { type Component, omit, type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 // ---------------------------------------------------------------------------
@@ -18,7 +17,8 @@ export type SidebarProps = ParentProps<
 
 /** Fixed sidebar container with a vertical flex layout spanning the full viewport height. */
 export function Sidebar(props: SidebarProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children", "width"]);
+  const local = props;
+  const rest = omit(props, "class", "children", "width");
   return (
     <aside
       class={cn(
@@ -45,7 +45,8 @@ export type SidebarHeaderProps = ParentProps<
 
 /** Top section of the sidebar. */
 export function SidebarHeader(props: SidebarHeaderProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("flex shrink-0 items-center justify-center p-2", local.class)} {...rest}>
       {local.children}
@@ -65,7 +66,8 @@ export type SidebarNavProps = ParentProps<
 
 /** Scrollable middle section for navigation items. Grows to fill available space. */
 export function SidebarNav(props: SidebarNavProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <nav
       class={cn("flex flex-1 flex-col items-center gap-1 overflow-y-auto p-2", local.class)}
@@ -96,16 +98,8 @@ export type SidebarNavItemProps = ParentProps<
 
 /** A single navigation link. Renders as a centred icon button by default. */
 export function SidebarNavItem(props: SidebarNavItemProps): JSX.Element {
-  const [local, rest] = splitProps(props, [
-    "as",
-    "href",
-    "to",
-    "class",
-    "active",
-    "children",
-    "title",
-    "shape",
-  ]);
+  const local = props;
+  const rest = omit(props, "as", "href", "to", "class", "active", "children", "title", "shape");
   return (
     <Dynamic
       component={local.as ?? "a"}
@@ -140,7 +134,8 @@ export type SidebarFooterProps = ParentProps<
 
 /** Bottom-pinned section for user controls, notifications, and other actions. */
 export function SidebarFooter(props: SidebarFooterProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("flex shrink-0 flex-col items-center gap-1 p-2", local.class)} {...rest}>
       {local.children}
@@ -164,7 +159,8 @@ const sidebarAccountStatusClass: Record<NonNullable<SidebarAccountProps["status"
 
 /** Account/session presence control for icon-rail sidebars. */
 export function SidebarAccount(props: SidebarAccountProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "initials", "status", "title", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "initials", "status", "title", "children");
   const status = () => local.status ?? "online";
 
   return (
@@ -203,7 +199,8 @@ export type SidebarLayoutProps = ParentProps<
 
 /** Full-height flex container for a sidebar + main content layout. */
 export function SidebarLayout(props: SidebarLayoutProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div class={cn("flex min-h-screen", local.class)} {...rest}>
       {local.children}
@@ -225,7 +222,8 @@ export type SidebarMainProps = ParentProps<
 
 /** Main content area. Applies a left offset to clear the fixed sidebar. */
 export function SidebarMain(props: SidebarMainProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "children", "offset"]);
+  const local = props;
+  const rest = omit(props, "class", "children", "offset");
   return (
     <main class={cn("flex-1", local.offset ?? "pl-14", local.class)} {...rest}>
       {local.children}

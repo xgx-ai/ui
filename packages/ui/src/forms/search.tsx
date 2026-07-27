@@ -22,6 +22,7 @@ import {
   createSignal,
   createUniqueId,
   For,
+  omit,
   Show,
   useContext,
 } from "solid-js";
@@ -29,7 +30,6 @@ import { cn } from "../cn";
 import { assignRef, containsNode } from "../overlays/floating";
 import { PopperPositioner, PopperRoot } from "../overlays/popper";
 import { PortalMount } from "../overlays/portal";
-import { splitProps } from "../utils/split-props";
 
 type OptionGetter<T, TValue> = keyof T | ((option: T) => TValue);
 
@@ -130,7 +130,9 @@ const valueKey = <T,>(option: T | null | undefined, props: SearchRootProps<T>) =
   option == null ? undefined : String(getOptionValue(option, props.optionValue) ?? "");
 
 const Search = <T,>(props: SearchRootProps<T>) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "children",
     "class",
     "debounceOptionsMillisecond",
@@ -154,7 +156,7 @@ const Search = <T,>(props: SearchRootProps<T>) => {
     "sectionComponent",
     "triggerMode",
     "value",
-  ]);
+  );
   const [inputValue, setInputValueSignal] = createSignal("");
   const [filterValue, setFilterValueSignal] = createSignal("");
   const [highlightedIndex, setHighlightedIndex] = createSignal(-1);
@@ -464,7 +466,8 @@ type SearchItemProps = ComponentProps<"li"> & {
 
 const SearchItem = (props: SearchItemProps) => {
   const context = useSearchContext();
-  const [local, others] = splitProps(props, ["class", "children", "item"]);
+  const local = props;
+  const others = omit(props, "class", "children", "item");
   const selected = () => context.isSelected(local.item);
   const onPointerDown: JSX.EventHandler<HTMLLIElement, PointerEvent> = (event) => {
     if (event.button !== 0) return;
@@ -501,14 +504,16 @@ const SearchItem = (props: SearchItemProps) => {
 
 const SearchItemLabel = (props: ComponentProps<"span">) => {
   const item = useContext(SearchItemContext);
-  const [local, others] = splitProps(props, ["children"]);
+  const local = props;
+  const others = omit(props, "children");
   return <span {...others}>{local.children ?? item?.label}</span>;
 };
 
 const SearchDescription = (props: ComponentProps<"div">) => <div {...props} />;
 
 const SearchSection = (props: ComponentProps<"li">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <li
       class={cn(
@@ -525,7 +530,8 @@ type SearchIndicatorProps = ComponentProps<"div"> & {
 };
 
 const SearchIndicator = (props: SearchIndicatorProps) => {
-  const [local, others] = splitProps(props, ["children", "class", "loadingComponent"]);
+  const local = props;
+  const others = omit(props, "children", "class", "loadingComponent");
   return (
     <div class={cn("flex items-center justify-center", local.class)} {...others}>
       {local.children}
@@ -534,13 +540,15 @@ const SearchIndicator = (props: SearchIndicatorProps) => {
 };
 
 const SearchIcon = (props: ComponentProps<"span">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return <span class={cn("size-4", local.class)} {...others} />;
 };
 
 const SearchControl = <_T,>(props: ComponentProps<"div">) => {
   const context = useSearchContext();
-  const [local, others] = splitProps(props, ["class", "onClick", "onKeyDown", "ref"]);
+  const local = props;
+  const others = omit(props, "class", "onClick", "onKeyDown", "ref");
   const onClick: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLDivElement, MouseEvent> | undefined;
     handler?.(event);
@@ -570,7 +578,8 @@ const SearchControl = <_T,>(props: ComponentProps<"div">) => {
 
 const SearchInput = (props: ComponentProps<"input">) => {
   const context = useSearchContext();
-  const [local, others] = splitProps(props, ["class", "onKeyDown", "onFocus", "onInput", "value"]);
+  const local = props;
+  const others = omit(props, "class", "onKeyDown", "onFocus", "onInput", "value");
   const onInput: JSX.EventHandler<HTMLInputElement, InputEvent> = (event) => {
     context.setInputValue(event.currentTarget.value);
     const handler = local.onInput as JSX.EventHandler<HTMLInputElement, InputEvent> | undefined;
@@ -622,7 +631,8 @@ const SearchContent = (
   props: ComponentProps<"div"> & { onCloseAutoFocus?: (event: Event) => void },
 ) => {
   const context = useSearchContext();
-  const [local, others] = splitProps(props, ["class", "children", "onCloseAutoFocus", "ref"]);
+  const local = props;
+  const others = omit(props, "class", "children", "onCloseAutoFocus", "ref");
   return (
     <Show when={context.open()}>
       <PopperPositioner>
@@ -646,7 +656,8 @@ const SearchContent = (
 
 const SearchListbox = (props: ComponentProps<"ul">) => {
   const context = useSearchContext();
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   const renderItem = () => context.itemComponent();
   return (
     <ul id={context.listboxId} role="listbox" class={cn("m-0 p-1", local.class)} {...others}>
@@ -673,7 +684,8 @@ type SearchNoResultProps = {
 
 const SearchNoResult = (props: SearchNoResultProps) => {
   const context = useSearchContext();
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   return (
     <Show when={context.filteredOptions().length === 0}>
       <div class={cn("px-2 py-1.5 text-sm text-muted-foreground", local.class)} {...others}>

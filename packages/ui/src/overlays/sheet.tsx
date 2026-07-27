@@ -18,10 +18,9 @@ import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { Component } from "solid-js";
-import { createContext, createSignal, createUniqueId, Show, useContext } from "solid-js";
+import { createContext, createSignal, createUniqueId, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
 import { X } from "../icons.index";
-import { splitProps } from "../utils/split-props";
 import { assignRef } from "./floating";
 import { createModalBehavior } from "./modal-behavior";
 import { PortalMount } from "./portal";
@@ -54,14 +53,16 @@ type SheetProps = Omit<ComponentProps<"div">, "onChange"> & {
 };
 
 const Sheet: Component<SheetProps> = (props) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "children",
     "defaultOpen",
     "modal",
     "onOpenChange",
     "open",
     "preventScroll",
-  ]);
+  );
   const [uncontrolledOpen, setUncontrolledOpen] = createSignal(Boolean(local.defaultOpen));
   const open = () => local.open ?? uncontrolledOpen();
   const modal = () => local.modal ?? true;
@@ -99,7 +100,8 @@ type SheetTriggerProps<T extends ValidComponent = "button"> = ComponentProps<"bu
 
 const SheetTrigger = <T extends ValidComponent = "button">(props: SheetTriggerProps<T>) => {
   const sheet = useSheet();
-  const [local, others] = splitProps(props, ["as", "children", "onClick", "type"]);
+  const local = props;
+  const others = omit(props, "as", "children", "onClick", "type");
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
     handler?.(event);
@@ -122,7 +124,8 @@ type SheetCloseProps = ComponentProps<"button">;
 
 const SheetClose = (props: SheetCloseProps) => {
   const sheet = useSheet();
-  const [local, others] = splitProps(props, ["onClick", "type"]);
+  const local = props;
+  const others = omit(props, "onClick", "type");
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
     handler?.(event);
@@ -147,7 +150,8 @@ const portalVariants = cva("fixed inset-0 z-50 flex", {
 type SheetPortalProps = ComponentProps<"div"> & VariantProps<typeof portalVariants>;
 
 const SheetPortal: Component<SheetPortalProps> = (props) => {
-  const [local, others] = splitProps(props, ["position", "children", "class"]);
+  const local = props;
+  const others = omit(props, "position", "children", "class");
   return (
     <PortalMount>
       <div class={cn(portalVariants({ position: local.position }), local.class)} {...others}>
@@ -161,7 +165,8 @@ type SheetOverlayProps = ComponentProps<"div">;
 
 const SheetOverlay = (props: SheetOverlayProps) => {
   const sheet = useSheet();
-  const [local, others] = splitProps(props, ["class", "onClick"]);
+  const local = props;
+  const others = omit(props, "class", "onClick");
   const onClick: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLDivElement, MouseEvent> | undefined;
     handler?.(event);
@@ -203,7 +208,9 @@ type SheetContentProps<T extends ValidComponent = "div"> = ComponentProps<"div">
 
 const SheetContent = <T extends ValidComponent = "div">(props: SheetContentProps<T>) => {
   const sheet = useSheet();
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "as",
     "position",
     "class",
@@ -212,7 +219,7 @@ const SheetContent = <T extends ValidComponent = "div">(props: SheetContentProps
     "aria-labelledby",
     "aria-describedby",
     "ref",
-  ]);
+  );
   const showOverlay = () => local.overlay !== false;
   const [contentRef, setContentRef] = createSignal<HTMLElement>();
   createModalBehavior({
@@ -257,14 +264,16 @@ const SheetContent = <T extends ValidComponent = "div">(props: SheetContentProps
 };
 
 const SheetHeader: Component<ComponentProps<"div">> = (props) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <div class={cn("flex flex-col space-y-2 text-center sm:text-left", local.class)} {...others} />
   );
 };
 
 const SheetFooter: Component<ComponentProps<"div">> = (props) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return (
     <div
       class={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", local.class)}
@@ -279,7 +288,8 @@ type SheetTitleProps<T extends ValidComponent = "h2"> = ComponentProps<"h2"> & {
 
 const SheetTitle = <T extends ValidComponent = "h2">(props: SheetTitleProps<T>) => {
   const sheet = useSheet();
-  const [local, others] = splitProps(props, ["as", "class", "id"]);
+  const local = props;
+  const others = omit(props, "as", "class", "id");
   return (
     <Dynamic
       component={local.as ?? "h2"}
@@ -296,7 +306,8 @@ type SheetDescriptionProps<T extends ValidComponent = "p"> = ComponentProps<"p">
 
 const SheetDescription = <T extends ValidComponent = "p">(props: SheetDescriptionProps<T>) => {
   const sheet = useSheet();
-  const [local, others] = splitProps(props, ["as", "class", "id"]);
+  const local = props;
+  const others = omit(props, "as", "class", "id");
   return (
     <Dynamic
       component={local.as ?? "p"}
@@ -307,6 +318,13 @@ const SheetDescription = <T extends ValidComponent = "p">(props: SheetDescriptio
   );
 };
 
+export type {
+  SheetContentProps,
+  SheetDescriptionProps,
+  SheetProps,
+  SheetTitleProps,
+  SheetTriggerProps,
+};
 export {
   Sheet,
   SheetClose,
@@ -316,11 +334,4 @@ export {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-};
-export type {
-  SheetContentProps,
-  SheetDescriptionProps,
-  SheetProps,
-  SheetTitleProps,
-  SheetTriggerProps,
 };

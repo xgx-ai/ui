@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps } from "solid-js";
+import { omit, type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface LinkProps extends ParentProps {
@@ -18,7 +17,8 @@ const variantClasses = {
 
 /** Styled link component */
 export function Link(props: LinkProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["href", "class", "variant", "children"]);
+  const local = props;
+  const rest = omit(props, "href", "class", "variant", "children");
   return (
     <a
       href={local.href}
@@ -37,7 +37,8 @@ export interface CardLinkProps extends ParentProps {
 
 /** Link wrapper for cards with hover effects */
 export function CardLink(props: CardLinkProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["href", "class", "children"]);
+  const local = props;
+  const rest = omit(props, "href", "class", "children");
   return (
     <a href={local.href} class={cn("block group", local.class)} {...rest}>
       {local.children}
@@ -53,7 +54,8 @@ export interface BackLinkProps {
 
 /** Back navigation link */
 export function BackLink(props: BackLinkProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["href", "class", "children"]);
+  const local = props;
+  const rest = omit(props, "href", "class", "children");
   return (
     <a
       href={local.href}

@@ -1,10 +1,8 @@
 import type { ComponentProps } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { Check } from "../icons.index";
 import type { Component } from "solid-js";
-import { For, Show } from "solid-js";
-
+import { For, omit, Show } from "solid-js";
 import { cn } from "../cn";
+import { Check } from "../icons.index";
 
 /**
  * # Step Card
@@ -38,7 +36,9 @@ export interface StepCardProps extends Omit<ComponentProps<"div">, "children"> {
 }
 
 export const StepCard: Component<StepCardProps> = (props) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "stepNumber",
     "label",
     "value",
@@ -46,7 +46,7 @@ export const StepCard: Component<StepCardProps> = (props) => {
     "editable",
     "onEdit",
     "class",
-  ]);
+  );
 
   return (
     <div

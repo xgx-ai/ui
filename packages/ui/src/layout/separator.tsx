@@ -9,15 +9,16 @@
  * ```
  */
 import type { ComponentProps } from "@solidjs/web";
+import { omit } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
 
 type SeparatorProps = ComponentProps<"hr"> & {
   orientation?: "horizontal" | "vertical";
 };
 
 const Separator = (props: SeparatorProps) => {
-  const [local, others] = splitProps(props, ["class", "orientation"]);
+  const local = props;
+  const others = omit(props, "class", "orientation");
   const orientation = () => local.orientation ?? "horizontal";
 
   return (
@@ -33,5 +34,5 @@ const Separator = (props: SeparatorProps) => {
   );
 };
 
-export { Separator };
 export type { SeparatorProps };
+export { Separator };

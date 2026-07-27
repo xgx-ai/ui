@@ -1,9 +1,8 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
 import { cva } from "class-variance-authority";
-import { Download, Edit, Plus, Save, X, ZoomIn, ZoomOut } from "../icons.index";
 import { type Component, createMemo, Show } from "solid-js";
 import { Button } from "../forms/button.tsx";
+import { Download, Edit, Plus, Save, X, ZoomIn, ZoomOut } from "../icons.index";
 
 /**
  * # Document Toolbar
@@ -53,25 +52,7 @@ const barVariants = cva(
 );
 
 export const DocumentToolbar: Component<DocumentToolbarProps> = (props) => {
-  const [local] = splitProps(props, [
-    "class",
-    "title",
-    "subtitle",
-    "leftSlot",
-    "onNew",
-    "onEdit",
-    "onSave",
-    "onCancel",
-    "onDownload",
-    "isEditing",
-    "isSaving",
-    "canEdit",
-    "canDownload",
-    "zoom",
-    "onZoomIn",
-    "onZoomOut",
-    "onZoomReset",
-  ]);
+  const local = props;
 
   const zoomPct = createMemo(() => Math.round(local.zoom * 100));
 

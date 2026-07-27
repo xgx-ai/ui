@@ -15,7 +15,6 @@ type SolidPluginOptions = {
 
 const rendererImportPattern = /(["'])solid-js\/web\1/g;
 const pluginDir = dirname(fileURLToPath(import.meta.url));
-const uiSrcDir = dirname(pluginDir);
 
 function localImport(fromPath: string, target: string): string {
   let specifier = relative(dirname(fromPath), target).replaceAll("\\", "/");
@@ -25,10 +24,6 @@ function localImport(fromPath: string, target: string): string {
 
 function refreshRuntimeImport(fromPath: string): string {
   return localImport(fromPath, `${pluginDir}/solid-refresh-runtime.ts`);
-}
-
-function splitPropsImport(fromPath: string): string {
-  return localImport(fromPath, `${uiSrcDir}/utils/split-props.ts`);
 }
 
 function isSolidOneDependencyImport(importer: string): boolean {
@@ -55,11 +50,18 @@ function upgradeRendererImports(code: string): string {
   return code.replace(rendererImportPattern, `"@solidjs/web"`);
 }
 
-function upgradeLucideImports(code: string, fromPath: string): string {
-  return upgradeRendererImports(code).replace(
-    /import\s+\{\s*splitProps\s*,\s*For\s*\}\s+from\s+["']solid-js["'];/g,
-    `import { For } from "solid-js";\nimport { splitProps } from "${splitPropsImport(fromPath)}";`,
-  );
+function upgradeLucideImports(code: string): string {
+  // lucide-solid is still compiled against Solid 1. Remove this transform once it publishes Solid 2 output.
+  return upgradeRendererImports(code)
+    .replace(
+      /import\s+\{\s*splitProps\s*,\s*For\s*\}\s+from\s+["']solid-js["'];/g,
+      'import { For, omit } from "solid-js";',
+    )
+    .replace(
+      /const\s+\[([A-Za-z_$][\w$]*),\s*([A-Za-z_$][\w$]*)\]\s*=\s*splitProps\(([^,\n]+),\s*\[([^\]]*)\]\);/g,
+      (_match, local, rest, props, keys) =>
+        `const ${local} = ${props};\nconst ${rest} = omit(${props}, ${keys});`,
+    );
 }
 
 const componentNamePattern = /^[A-Z][A-Za-z0-9_$]*$/;
@@ -445,7 +447,7 @@ export function SolidPlugin(options: SolidPluginOptions = {}): Bun.BunPlugin {
       }));
 
       build.onLoad({ filter: /node_modules\/lucide-solid\/.*\.js$/ }, async ({ path }) => ({
-        contents: upgradeLucideImports(await Bun.file(path).text(), path),
+        contents: upgradeLucideImports(await Bun.file(path).text()),
         loader: "js",
       }));
 

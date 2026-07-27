@@ -14,10 +14,9 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";
-import { Check, ChevronRight, Circle } from "../icons.index";
+import { createContext, createEffect, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
+import { Check, ChevronRight, Circle } from "../icons.index";
 import { PortalMount } from "../overlays/portal";
 import { createMenuKeyboard, focusFirstMenuItem } from "./menu-behavior";
 
@@ -47,7 +46,8 @@ type ContextMenuRootProps = ComponentProps<"div"> & {
 };
 
 const ContextMenu = (props: ContextMenuRootProps) => {
-  const [local, others] = splitProps(props, ["children", "defaultOpen", "onOpenChange", "open"]);
+  const local = props;
+  const others = omit(props, "children", "defaultOpen", "onOpenChange", "open");
   const [uncontrolledOpen, setUncontrolledOpen] = createSignal(Boolean(local.defaultOpen));
   const [position, setPosition] = createSignal({ x: 0, y: 0 });
   const [contentRef, setContentRef] = createSignal<HTMLElement>();
@@ -93,7 +93,8 @@ const ContextMenu = (props: ContextMenuRootProps) => {
 
 const ContextMenuTrigger = (props: ComponentProps<"div">) => {
   const menu = useContextMenu();
-  const [local, others] = splitProps(props, ["onContextMenu"]);
+  const local = props;
+  const others = omit(props, "onContextMenu");
   const onContextMenu: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
     const handler = local.onContextMenu as JSX.EventHandler<HTMLDivElement, MouseEvent> | undefined;
     handler?.(event);
@@ -117,7 +118,8 @@ type ContextMenuContentProps = ComponentProps<"div">;
 
 const ContextMenuContent = (props: ContextMenuContentProps) => {
   const menu = useContextMenu();
-  const [local, others] = splitProps(props, ["class", "onKeyDown", "onPointerDown", "ref"]);
+  const local = props;
+  const others = omit(props, "class", "onKeyDown", "onPointerDown", "ref");
   const menuKeyboard = createMenuKeyboard({
     close: menu.close,
     root: menu.contentRef,
@@ -173,7 +175,8 @@ type ContextMenuItemProps = ComponentProps<"div"> & {
 
 const ContextMenuItem = (props: ContextMenuItemProps) => {
   const menu = useContextMenu();
-  const [local, others] = splitProps(props, ["class", "closeOnSelect", "disabled", "onClick"]);
+  const local = props;
+  const others = omit(props, "class", "closeOnSelect", "disabled", "onClick");
   const onClick: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLDivElement, MouseEvent> | undefined;
     handler?.(event);
@@ -198,19 +201,22 @@ const ContextMenuItem = (props: ContextMenuItemProps) => {
 };
 
 const ContextMenuShortcut = (props: ComponentProps<"span">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return <span class={cn("ml-auto text-xs tracking-widest opacity-60", local.class)} {...others} />;
 };
 
 const ContextMenuSeparator = (props: ComponentProps<"hr">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return <hr class={cn("-mx-1 my-1 h-px border-0 bg-muted", local.class)} {...others} />;
 };
 
 const ContextMenuSubTrigger = (
   props: ComponentProps<"div"> & { children?: JSX.Element; inset?: boolean },
 ) => {
-  const [local, others] = splitProps(props, ["class", "children", "inset"]);
+  const local = props;
+  const others = omit(props, "class", "children", "inset");
   return (
     <div
       role="menuitem"
@@ -239,7 +245,9 @@ type ContextMenuCheckboxItemProps = Omit<ComponentProps<"div">, "onChange"> & {
 };
 
 const ContextMenuCheckboxItem = (props: ContextMenuCheckboxItemProps) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "checked",
     "children",
     "class",
@@ -247,7 +255,7 @@ const ContextMenuCheckboxItem = (props: ContextMenuCheckboxItemProps) => {
     "disabled",
     "onChange",
     "onCheckedChange",
-  ]);
+  );
   const onClick = () => {
     if (local.disabled) return;
     const checked = !local.checked;
@@ -277,7 +285,8 @@ const ContextMenuCheckboxItem = (props: ContextMenuCheckboxItemProps) => {
 };
 
 const ContextMenuGroupLabel = (props: ComponentProps<"span">) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
   return <span class={cn("px-2 py-1.5 text-sm font-semibold", local.class)} {...others} />;
 };
 
@@ -287,7 +296,8 @@ type ContextMenuRadioItemProps = ComponentProps<"div"> & {
 };
 
 const ContextMenuRadioItem = (props: ContextMenuRadioItemProps) => {
-  const [local, others] = splitProps(props, ["checked", "children", "class", "disabled"]);
+  const local = props;
+  const others = omit(props, "checked", "children", "class", "disabled");
 
   return (
     <ContextMenuItem
@@ -308,6 +318,12 @@ const ContextMenuRadioItem = (props: ContextMenuRadioItemProps) => {
   );
 };
 
+export type {
+  ContextMenuCheckboxItemProps,
+  ContextMenuContentProps,
+  ContextMenuItemProps,
+  ContextMenuRootProps,
+};
 export {
   ContextMenu,
   ContextMenuCheckboxItem,
@@ -324,10 +340,4 @@ export {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
   ContextMenuTrigger,
-};
-export type {
-  ContextMenuCheckboxItemProps,
-  ContextMenuContentProps,
-  ContextMenuItemProps,
-  ContextMenuRootProps,
 };

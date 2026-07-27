@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { type ParentProps } from "solid-js";
+import { omit, type ParentProps } from "solid-js";
 import { cn } from "../cn";
 
 export interface ScrollAreaProps extends ParentProps {
@@ -29,7 +28,8 @@ const maxHeightMap = {
  * ```
  */
 export function ScrollArea(props: ScrollAreaProps): JSX.Element {
-  const [local, rest] = splitProps(props, ["class", "maxHeight", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "maxHeight", "children");
 
   return (
     <div

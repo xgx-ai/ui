@@ -15,10 +15,9 @@
  */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
-import { createContext, createSignal, useContext } from "solid-js";
+import { createContext, createSignal, omit, useContext } from "solid-js";
 
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
 
 type SliderContextValue = {
   disabled: () => boolean;
@@ -60,7 +59,9 @@ const firstValue = (value: number | number[] | undefined, fallback: number) =>
   Array.isArray(value) ? (value[0] ?? fallback) : (value ?? fallback);
 
 const Slider = <T extends ValidComponent = "div">(props: SliderRootProps<T>) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "as",
     "class",
     "children",
@@ -71,7 +72,7 @@ const Slider = <T extends ValidComponent = "div">(props: SliderRootProps<T>) => 
     "onChange",
     "step",
     "value",
-  ]);
+  );
   const min = () => local.minValue ?? 0;
   const max = () => local.maxValue ?? 100;
   const step = () => local.step ?? 1;
@@ -119,7 +120,8 @@ type SliderTrackProps<T extends ValidComponent = "div"> = ComponentProps<"div"> 
 };
 
 const SliderTrack = <T extends ValidComponent = "div">(props: SliderTrackProps<T>) => {
-  const [local, others] = splitProps(props, ["as", "class", "children"]);
+  const local = props;
+  const others = omit(props, "as", "class", "children");
   return (
     <Dynamic
       component={local.as ?? "div"}
@@ -138,7 +140,8 @@ type SliderFillProps<T extends ValidComponent = "div"> = ComponentProps<"div"> &
 
 const SliderFill = <T extends ValidComponent = "div">(props: SliderFillProps<T>) => {
   const context = useSliderContextValue();
-  const [local, others] = splitProps(props, ["as", "class", "style"]);
+  const local = props;
+  const others = omit(props, "as", "class", "style");
   return (
     <Dynamic
       component={local.as ?? "div"}
@@ -160,13 +163,8 @@ type SliderThumbProps<T extends ValidComponent = "span"> = ComponentProps<"span"
 
 const SliderThumb = <T extends ValidComponent = "span">(props: SliderThumbProps<T>) => {
   const context = useSliderContextValue();
-  const [local, others] = splitProps(props, [
-    "aria-label",
-    "aria-labelledby",
-    "as",
-    "class",
-    "children",
-  ]);
+  const local = props;
+  const others = omit(props, "aria-label", "aria-labelledby", "as", "class", "children");
 
   return (
     <>
@@ -200,7 +198,8 @@ const SliderThumb = <T extends ValidComponent = "span">(props: SliderThumbProps<
 const SliderLabel = <T extends ValidComponent = "label">(
   props: ComponentProps<"label"> & { as?: T; class?: string },
 ) => {
-  const [local, others] = splitProps(props, ["as", "class", "children"]);
+  const local = props;
+  const others = omit(props, "as", "class", "children");
   return (
     <Dynamic
       component={local.as ?? "label"}
@@ -219,7 +218,8 @@ const SliderValueLabel = <T extends ValidComponent = "label">(
   props: ComponentProps<"label"> & { as?: T; class?: string },
 ) => {
   const context = useSliderContextValue();
-  const [local, others] = splitProps(props, ["as", "class", "children"]);
+  const local = props;
+  const others = omit(props, "as", "class", "children");
   return (
     <Dynamic
       component={local.as ?? "label"}

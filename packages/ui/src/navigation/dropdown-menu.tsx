@@ -13,13 +13,20 @@
  * </DropdownMenu>
  * ```
  */
-import { Dynamic } from "@solidjs/web";
-import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
-import { createContext, createEffect, createSignal, Show, useContext } from "solid-js";
-import { splitProps } from "../utils/split-props";
-import { Check, ChevronRight, Circle } from "../icons.index";
 
+import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
+import { Dynamic } from "@solidjs/web";
+import {
+  createContext,
+  createEffect,
+  createSignal,
+  omit,
+  Show,
+  untrack,
+  useContext,
+} from "solid-js";
 import { cn } from "../cn";
+import { Check, ChevronRight, Circle } from "../icons.index";
 import { assignRef, containsNode } from "../overlays/floating";
 import { PopperPositioner, PopperRoot } from "../overlays/popper";
 import { PortalMount } from "../overlays/portal";
@@ -73,7 +80,9 @@ function useDropdownMenu() {
 }
 
 const DropdownMenu = (props: DropdownMenuProps) => {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "children",
     "class",
     "defaultOpen",
@@ -82,8 +91,10 @@ const DropdownMenu = (props: DropdownMenuProps) => {
     "open",
     "placement",
     "positioning",
-  ]);
-  const [uncontrolledOpen, setUncontrolledOpen] = createSignal(local.defaultOpen ?? false);
+  );
+  const [uncontrolledOpen, setUncontrolledOpen] = createSignal(
+    untrack(() => local.defaultOpen ?? false),
+  );
   const [triggerRef, setTriggerRef] = createSignal<HTMLElement>();
   const [contentRef, setContentRef] = createSignal<HTMLElement>();
   const isOpen = () => local.open ?? uncontrolledOpen();
@@ -185,11 +196,10 @@ const DropdownMenuTrigger = <T extends ValidComponent = "button">(
   props: DropdownMenuTriggerProps<T>,
 ) => {
   const menu = useDropdownMenu();
-  const [local, rest] = splitProps(props, ["as", "class", "onKeyDown", "ref", "type"]);
+  const local = props;
+  const rest = omit(props, "as", "class", "onKeyDown", "ref", "type");
   const onKeyDown: JSX.EventHandler<HTMLElement, KeyboardEvent> = (event) => {
-    const handler = local.onKeyDown as
-      | JSX.EventHandler<HTMLElement, KeyboardEvent>
-      | undefined;
+    const handler = local.onKeyDown as JSX.EventHandler<HTMLElement, KeyboardEvent> | undefined;
     handler?.(event);
     if (event.defaultPrevented) return;
 
@@ -231,7 +241,8 @@ type DropdownMenuContentProps = ComponentProps<"div"> & {
 
 const DropdownMenuContent = (props: DropdownMenuContentProps) => {
   const menu = useDropdownMenu();
-  const [local, rest] = splitProps(props, ["class", "onKeyDown", "ref"]);
+  const local = props;
+  const rest = omit(props, "class", "onKeyDown", "ref");
   const menuKeyboard = createMenuKeyboard({
     close: () => menu.setOpen(false),
     root: menu.contentRef,
@@ -278,7 +289,8 @@ type DropdownMenuItemProps = ComponentProps<"div"> & {
 };
 
 const DropdownMenuItem = (props: DropdownMenuItemProps) => {
-  const [local, rest] = splitProps(props, ["class", "closeOnSelect", "disabled", "value"]);
+  const local = props;
+  const rest = omit(props, "class", "closeOnSelect", "disabled", "value");
 
   return (
     <div
@@ -307,7 +319,9 @@ type DropdownMenuCheckboxItemProps = Omit<ComponentProps<"div">, "onChange"> & {
 };
 
 const DropdownMenuCheckboxItem = (props: DropdownMenuCheckboxItemProps) => {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "checked",
     "children",
     "class",
@@ -316,7 +330,7 @@ const DropdownMenuCheckboxItem = (props: DropdownMenuCheckboxItemProps) => {
     "onChange",
     "onCheckedChange",
     "value",
-  ]);
+  );
 
   const onClick = () => {
     if (local.disabled) return;
@@ -360,7 +374,8 @@ type DropdownMenuRadioItemProps = ComponentProps<"div"> & {
 };
 
 const DropdownMenuRadioItem = (props: DropdownMenuRadioItemProps) => {
-  const [local, rest] = splitProps(props, ["checked", "children", "class", "disabled", "value"]);
+  const local = props;
+  const rest = omit(props, "checked", "children", "class", "disabled", "value");
 
   return (
     <div
@@ -388,7 +403,8 @@ const DropdownMenuRadioItem = (props: DropdownMenuRadioItemProps) => {
 };
 
 const DropdownMenuLabel = (props: ComponentProps<"div"> & { inset?: boolean }) => {
-  const [local, rest] = splitProps(props, ["class", "inset"]);
+  const local = props;
+  const rest = omit(props, "class", "inset");
   return (
     <div
       class={cn("px-2 py-1.5 text-sm font-semibold", local.inset && "pl-8", local.class)}
@@ -398,24 +414,28 @@ const DropdownMenuLabel = (props: ComponentProps<"div"> & { inset?: boolean }) =
 };
 
 const DropdownMenuSeparator = (props: ComponentProps<"hr">) => {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
 
   return <hr class={cn("-mx-1 my-1 h-px bg-muted", local.class)} {...rest} />;
 };
 
 const DropdownMenuShortcut = (props: ComponentProps<"span">) => {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return <span class={cn("ml-auto text-xs tracking-widest opacity-60", local.class)} {...rest} />;
 };
 
 const DropdownMenuGroupLabel = (props: ComponentProps<"span">) => {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
 
   return <span class={cn("px-2 py-1.5 text-sm font-semibold", local.class)} {...rest} />;
 };
 
 const DropdownMenuSubTrigger = (props: ComponentProps<"div"> & { children?: JSX.Element }) => {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div
       data-xgx-dropdown-item

@@ -1,12 +1,10 @@
-import { Dynamic, type ComponentProps } from "@solidjs/web";
 import type { JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
-import { ArrowUp, Sparkles } from "../icons.index";
+import { type ComponentProps, Dynamic } from "@solidjs/web";
 import MarkdownIt from "markdown-it";
 import type { Component } from "solid-js";
-import { createTrackedEffect, createSignal, For, Show } from "solid-js";
-
+import { createSignal, createTrackedEffect, For, omit, Show } from "solid-js";
 import { cn } from "../cn";
+import { ArrowUp, Sparkles } from "../icons.index";
 
 /**
  * # Chat
@@ -542,7 +540,9 @@ export const ChatInput: Component<{
 };
 
 export const Chat: Component<ChatProps> = (props) => {
-  const [local, others] = splitProps(props, [
+  const local = props;
+  const others = omit(
+    props,
     "messages",
     "onSendMessage",
     "placeholder",
@@ -558,7 +558,7 @@ export const Chat: Component<ChatProps> = (props) => {
     "centered",
     "transparentInput",
     "postProcessHtml",
-  ]);
+  );
 
   const [internalInputValue, setInternalInputValue] = createSignal("");
 

@@ -12,10 +12,9 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { Component } from "solid-js";
-import { createContext, createSignal, For, onCleanup, Show, useContext } from "solid-js";
-import { CheckCircle2, Info, TriangleAlert, X, XCircle } from "../icons.index";
+import { createContext, createSignal, For, omit, onCleanup, Show, useContext } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
+import { CheckCircle2, Info, TriangleAlert, X, XCircle } from "../icons.index";
 
 const toastVariants = cva(
   "group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-lg border border-border-subtle bg-surface-raised px-4 py-3 text-surface-raised-foreground shadow-elevation-medium",
@@ -53,13 +52,8 @@ type ToastRootProps = Omit<ComponentProps<"li">, "id"> &
 const ToastContext = createContext<{ close: () => void }>({ close: () => {} });
 
 const Toast: Component<ToastRootProps> = (props) => {
-  const [local, others] = splitProps(props, [
-    "class",
-    "children",
-    "variant",
-    "onOpenChange",
-    "toastId",
-  ]);
+  const local = props;
+  const others = omit(props, "class", "children", "variant", "onOpenChange", "toastId");
 
   const close = () => {
     if (local.toastId !== undefined) toast.dismiss(local.toastId);
@@ -83,7 +77,8 @@ const Toast: Component<ToastRootProps> = (props) => {
 type ToastRegionProps = ComponentProps<"section">;
 
 const ToastRegion: Component<ToastRegionProps> = (props) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
 
   return (
     <section
@@ -102,7 +97,8 @@ const ToastRegion: Component<ToastRegionProps> = (props) => {
 type ToastTitleProps = ComponentProps<"div">;
 
 const ToastTitle: Component<ToastTitleProps> = (props) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
 
   return (
     <div
@@ -115,7 +111,8 @@ const ToastTitle: Component<ToastTitleProps> = (props) => {
 type ToastDescriptionProps = ComponentProps<"div">;
 
 const ToastDescription: Component<ToastDescriptionProps> = (props) => {
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
 
   return <div class={cn("text-sm text-surface-muted-foreground", local.class)} {...others} />;
 };
@@ -124,7 +121,8 @@ type ToastCloseButtonProps = ComponentProps<"button">;
 
 const ToastCloseButton: Component<ToastCloseButtonProps> = (props) => {
   const context = useContext(ToastContext);
-  const [local, others] = splitProps(props, ["class", "children", "onClick"]);
+  const local = props;
+  const others = omit(props, "class", "children", "onClick");
 
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
     const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
@@ -151,7 +149,8 @@ const ToastCloseButton: Component<ToastCloseButtonProps> = (props) => {
 };
 
 const ToastAction: Component<ComponentProps<"button"> & { altText: string }> = (props) => {
-  const [local, others] = splitProps(props, ["class", "altText"]);
+  const local = props;
+  const others = omit(props, "class", "altText");
 
   return (
     <button
@@ -270,6 +269,7 @@ const Toaster: Component = () => {
   );
 };
 
+export type { ToastData };
 export {
   Toast,
   ToastAction,
@@ -281,4 +281,3 @@ export {
   toast,
   toastVariants,
 };
-export type { ToastData };

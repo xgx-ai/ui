@@ -1,7 +1,6 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
 import type { Component } from "solid-js";
-import { Show } from "solid-js";
+import { omit, Show } from "solid-js";
 import { cn } from "../cn";
 
 type SidebarSectionProps = ComponentProps<"div"> & {
@@ -10,7 +9,8 @@ type SidebarSectionProps = ComponentProps<"div"> & {
 };
 
 const SidebarSection: Component<SidebarSectionProps> = (props) => {
-  const [local, others] = splitProps(props, ["title", "action", "children", "class"]);
+  const local = props;
+  const others = omit(props, "title", "action", "children", "class");
   return (
     <div class={cn("px-4 py-3", local.class)} {...others}>
       <div class="flex items-center justify-between mb-1.5">
@@ -29,7 +29,8 @@ type SidebarRowProps = ComponentProps<"div"> & {
 };
 
 const SidebarRow: Component<SidebarRowProps> = (props) => {
-  const [local, others] = splitProps(props, ["label", "children", "class"]);
+  const local = props;
+  const others = omit(props, "label", "children", "class");
   return (
     <div class={cn("flex items-center justify-between py-1 text-xs", local.class)} {...others}>
       <span class="text-muted-foreground shrink-0">{local.label}</span>
@@ -38,6 +39,7 @@ const SidebarRow: Component<SidebarRowProps> = (props) => {
   );
 };
 
+export type { SidebarRowProps, SidebarSectionProps };
 /**
  * # SidebarSection / SidebarRow
  *
@@ -52,4 +54,3 @@ const SidebarRow: Component<SidebarRowProps> = (props) => {
  * ```
  */
 export { SidebarRow, SidebarSection };
-export type { SidebarRowProps, SidebarSectionProps };

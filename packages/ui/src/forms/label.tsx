@@ -1,7 +1,6 @@
 import type { ComponentProps } from "@solidjs/web";
-import { splitProps } from "../utils/split-props";
 import type { Component } from "solid-js";
-import { Show } from "solid-js";
+import { omit, Show } from "solid-js";
 
 import { cn } from "../cn";
 
@@ -24,7 +23,8 @@ type LabelProps = ComponentProps<"label"> & {
  * ```
  */
 const Label: Component<LabelProps> = (props) => {
-  const [local, others] = splitProps(props, ["class", "required", "children"]);
+  const local = props;
+  const others = omit(props, "class", "required", "children");
   return (
     <label
       class={cn(

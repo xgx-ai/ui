@@ -12,9 +12,8 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createSignal, Show, useContext } from "solid-js";
+import { createContext, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
-import { splitProps } from "../utils/split-props";
 
 type AvatarRootProps = ComponentProps<"span"> & {
   children?: JSX.Element;
@@ -33,7 +32,8 @@ const AvatarContext = createContext<{
 });
 
 const Avatar = (props: AvatarRootProps) => {
-  const [local, others] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const others = omit(props, "class", "children");
   const [loaded, setLoaded] = createSignal(false);
   const [failed, setFailed] = createSignal(false);
 
@@ -53,7 +53,8 @@ type AvatarImageProps = ComponentProps<"img">;
 
 const AvatarImage = (props: AvatarImageProps) => {
   const context = useContext(AvatarContext);
-  const [local, others] = splitProps(props, ["class", "onError", "onLoad"]);
+  const local = props;
+  const others = omit(props, "class", "onError", "onLoad");
 
   const onLoad: JSX.EventHandler<HTMLImageElement, Event> = (event) => {
     context.setLoaded(true);
@@ -84,7 +85,8 @@ type AvatarFallbackProps = ComponentProps<"span">;
 
 const AvatarFallback = (props: AvatarFallbackProps) => {
   const context = useContext(AvatarContext);
-  const [local, others] = splitProps(props, ["class"]);
+  const local = props;
+  const others = omit(props, "class");
 
   return (
     <Show when={!context.loaded() || context.failed()}>
@@ -99,5 +101,5 @@ const AvatarFallback = (props: AvatarFallbackProps) => {
   );
 };
 
-export { Avatar, AvatarFallback, AvatarImage };
 export type { AvatarFallbackProps, AvatarImageProps, AvatarRootProps };
+export { Avatar, AvatarFallback, AvatarImage };
