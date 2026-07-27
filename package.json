@@ -34,7 +34,7 @@
     "lint": "biome lint .",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "test": "bun run solid:typecheck && bun run solid:test && bun run query:typecheck && bun run query:test && bun run typecheck && bun run prefabs:typecheck && bun run demo:typecheck && bun run demo:build && bun run test:static",
+    "test": "bun run solid:typecheck && bun run solid:test && bun run query:typecheck && bun run query:test && bun run typecheck && bun run prefabs:typecheck && bun run prefabs:test && bun run demo:typecheck && bun run demo:build && bun run test:static",
     "test:static": "bun ./apps/demo/test.ts",
     "test:browser": "env -u FORCE_COLOR -u NO_COLOR playwright test",
     "test:aria": "env -u FORCE_COLOR -u NO_COLOR playwright test tests/aria.spec.ts",
@@ -50,6 +50,7 @@
     "query:typecheck": "tsgo -p packages/query/tsconfig.json --noEmit",
     "query:test": "bun test --conditions=browser --preload ./packages/query/test/preload.ts packages/query/test",
     "prefabs:typecheck": "tsgo -p packages/prefabs/tsconfig.json --noEmit",
+    "prefabs:test": "bun test --conditions=browser --preload ./packages/query/test/preload.ts packages/prefabs/test",
     "demo:typecheck": "tsgo -p apps/demo/tsconfig.json --noEmit"
   },
   "dependencies": {

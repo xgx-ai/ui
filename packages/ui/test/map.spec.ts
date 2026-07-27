@@ -45,7 +45,7 @@ function assertClose(actual: number, expected: number, precision: number, messag
 }
 
 function withRoot<T>(setup: () => T, run: (value: T) => void) {
-  let dispose = () => undefined;
+  let dispose: () => void = () => undefined;
   const value = createRoot((rootDispose) => {
     dispose = rootDispose;
     return setup();

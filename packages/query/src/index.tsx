@@ -20,7 +20,32 @@ import {
   useContext,
 } from "solid-js";
 
-export type QueryKey = readonly unknown[];
+export {
+  type AnyDescriptor,
+  type InfiniteDescriptor,
+  type InfiniteFetchContext,
+  type InvalidationTarget,
+  infiniteQuery,
+  isInfiniteDescriptor,
+  isQueryScope,
+  type QueryDescriptor,
+  type QueryEntryOptions,
+  type QueryFetchContext,
+  type QueryKeyObject,
+  type QueryScope,
+  query,
+  queryGroup,
+  targetPrefix,
+} from "./identity.ts";
+export { type QueryKey, queryKey, stableQueryKey } from "./keys.ts";
+
+import {
+  type InfiniteDescriptor,
+  type InvalidationTarget,
+  type QueryDescriptor,
+  targetPrefix,
+} from "./identity.ts";
+import { type QueryKey, queryKeyStartsWith, stableQueryKey } from "./keys.ts";
 
 export type QueryContext = {
   queryKey: QueryKey;
@@ -225,6 +250,21 @@ type InternalSetter<T> = (value: T | ((previous: T) => T)) => T;
 type QueryCacheEntry = {
   controller?: AbortController;
   data: Accessor<unknown>;
+  /**
+   * The committed value, mirrored outside the signal.
+   *
+   * Solid defers signal writes until the microtask flush, so `entry.data()` still reports
+   * the previous value in the tick a write happens. Reactive reads want that; an imperative
+   * `cache.read` immediately after `cache.write` does not.
+   */
+  value?: unknown;
+  /**
+   * Whether `value` holds a committed answer.
+   *
+   * Separate from the value because a query may legitimately resolve to `undefined`, which
+   * must stay distinguishable from "nothing cached".
+   */
+  hasValue: boolean;
   dispose: () => void;
   error?: unknown;
   fetching: Accessor<boolean>;
@@ -250,70 +290,6 @@ type QueryCacheEntry = {
 const DEFAULT_GC_TIME = 5 * 60_000;
 const disabledQueryPromise = new Promise<never>(() => {});
 const internalWritableOptions = { ownedWrite: true } as const;
-
-export function queryKey(...parts: unknown[]): QueryKey {
-  return parts;
-}
-
-function serialiseQueryKeyPart(value: unknown, seen = new WeakSet<object>()): string {
-  if (value === null) return "null";
-
-  switch (typeof value) {
-    case "undefined":
-      return "undefined";
-    case "boolean":
-      return value ? "boolean:true" : "boolean:false";
-    case "number":
-      if (Number.isNaN(value)) return "number:NaN";
-      if (Object.is(value, -0)) return "number:-0";
-      return `number:${value}`;
-    case "bigint":
-      return `bigint:${value}`;
-    case "string":
-      return `string:${JSON.stringify(value)}`;
-    case "function":
-    case "symbol":
-      throw new TypeError("Query keys must contain serialisable values.");
-    case "object": {
-      if (seen.has(value)) throw new TypeError("Query keys cannot contain circular values.");
-      seen.add(value);
-
-      let result: string;
-      if (Array.isArray(value)) {
-        result = `[${value.map((item) => serialiseQueryKeyPart(item, seen)).join(",")}]`;
-      } else if (value instanceof Date) {
-        result = `date:${value.toISOString()}`;
-      } else {
-        const prototype = Object.getPrototypeOf(value);
-        if (prototype !== Object.prototype && prototype !== null) {
-          throw new TypeError("Query keys may only contain arrays, dates, and plain objects.");
-        }
-        const record = value as Record<string, unknown>;
-        const body = Object.keys(record)
-          .sort()
-          .map((key) => `${JSON.stringify(key)}:${serialiseQueryKeyPart(record[key], seen)}`)
-          .join(",");
-        result = `{${body}}`;
-      }
-
-      seen.delete(value);
-      return result;
-    }
-  }
-
-  throw new TypeError("Unsupported query key value.");
-}
-
-function stableQueryKey(key: QueryKey): string {
-  return serialiseQueryKeyPart(key);
-}
-
-function queryKeyStartsWith(key: QueryKey, prefix: QueryKey): boolean {
-  if (prefix.length > key.length) return false;
-  return prefix.every(
-    (part, index) => serialiseQueryKeyPart(part) === serialiseQueryKeyPart(key[index]),
-  );
-}
 
 function isEnabled(value: boolean | (() => boolean) | undefined): boolean {
   return typeof value === "function" ? value() : (value ?? true);
@@ -556,6 +532,7 @@ export class QueryClient {
           fetching,
           gcTime: query.gcTime ?? this.#config.defaultOptions?.queries?.gcTime ?? DEFAULT_GC_TIME,
           hasData,
+          hasValue: false,
           hash: query.hash,
           invalidationVersion: 0,
           key: query.queryKey,
@@ -643,6 +620,8 @@ export class QueryClient {
         queryFn: () => Promise.resolve(data),
       });
 
+    entry.value = data;
+    entry.hasValue = true;
     entry.setData(() => data);
     entry.setHasData(true);
     entry.error = undefined;
@@ -653,6 +632,127 @@ export class QueryClient {
       if (enabled) refresh(source);
     }
     this.#scheduleGc(entry);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Descriptor cache surface.
+  //
+  // Deliberately not named `getQueryData` / `setQueryData`: an agent reaching for TanStack
+  // muscle memory gets a compile error instead of a silent write to an untyped raw key.
+  // `read` and `write` take exact descriptors only — a scope will not type-check.
+  // ---------------------------------------------------------------------------
+
+  /** Non-suspending peek at one exact entry. */
+  read<TData>(descriptor: QueryDescriptor<TData>): TData | undefined {
+    const entry = this.#cache.get(stableQueryKey(descriptor.key));
+    return entry?.hasValue ? (entry.value as TData) : undefined;
+  }
+
+  /**
+   * Writes one exact entry.
+   *
+   * An updater returning `undefined` means "there is no cached entry to update, do
+   * nothing" — the shape a read-modify-write on a possibly-absent list needs.
+   *
+   * When the entry has never fetched, it **adopts the descriptor's `fetch`**, so a later
+   * invalidation re-asks the real question. The legacy `setQueryData` fabricates a
+   * `queryFn` that resolves the written value forever, which silently freezes the entry.
+   */
+  write<TData>(
+    descriptor: QueryDescriptor<TData>,
+    value: TData | ((previous: TData | undefined) => TData | undefined),
+  ): void {
+    const hash = stableQueryKey(descriptor.key);
+    const existing = this.#cache.get(hash);
+    const previous = existing?.hasValue ? (existing.value as TData) : undefined;
+    const next =
+      typeof value === "function"
+        ? (value as (previous: TData | undefined) => TData | undefined)(previous)
+        : value;
+
+    if (next === undefined) return;
+
+    const entry =
+      existing ?? this.getOrCreateEntry(this.prepareQuery(optionsFromDescriptor(descriptor)));
+
+    entry.value = next;
+    entry.hasValue = true;
+    entry.setData(() => next);
+    entry.setHasData(true);
+    entry.error = undefined;
+    entry.stale = false;
+    entry.updatedAt = Date.now();
+    this.#scheduleStale(entry, entry.options?.staleTime);
+    for (const [source, enabled] of entry.sources) {
+      if (enabled) refresh(source);
+    }
+    this.#scheduleGc(entry);
+  }
+
+  /**
+   * Marks every match stale, refetches the ones with active observers, and leaves the rest
+   * to refresh when next observed. Never removes data and never blanks the screen.
+   *
+   * A scope matches by prefix; a descriptor matches that one entry.
+   */
+  invalidate(...targets: InvalidationTarget[]): Promise<void> {
+    if (targets.length === 0) return Promise.resolve();
+    return this.invalidateQueriesMany(targets.map(targetPrefix));
+  }
+
+  /** Deletes every match outright. Separate from `invalidate` on purpose. */
+  remove(...targets: InvalidationTarget[]): void {
+    for (const target of targets) this.removeQueries(targetPrefix(target));
+  }
+
+  /**
+   * Aborts in-flight requests for every match.
+   *
+   * This is the answer to cache-cardinality pressure from search-driven key churn, together
+   * with debouncing and `staleTime` — not dropping request-affecting values from the key.
+   */
+  cancel(...targets: InvalidationTarget[]): void {
+    for (const target of targets) {
+      const prefix = targetPrefix(target);
+      for (const entry of this.#matchingEntries(prefix)) this.#cancelEntry(entry);
+    }
+  }
+
+  /**
+   * `invalidate`, minus entries a mutation has just written.
+   *
+   * A canonical write followed by an overlapping family invalidation would otherwise throw
+   * the freshly-written value away and re-ask for it.
+   */
+  invalidateExcept(targets: InvalidationTarget[], exclude: ReadonlySet<string>): Promise<void> {
+    if (targets.length === 0) return Promise.resolve();
+    const prefixes = targets.map(targetPrefix);
+    const entries = new Set<QueryCacheEntry>();
+    for (const entry of this.#cache.values()) {
+      if (exclude.has(entry.hash)) continue;
+      if (prefixes.some((prefix) => queryKeyStartsWith(entry.key, prefix))) entries.add(entry);
+    }
+    return this.#invalidateEntries(entries).then(() => undefined);
+  }
+
+  /** Declares a coming change on every match, so `pending()` reflects it. */
+  affectTargets(targets: InvalidationTarget[]): void {
+    if (targets.length === 0) return;
+    this.affectQueriesMany(targets.map(targetPrefix) as QueryKey[]);
+  }
+
+  /** How many requests are currently in flight. For tests and network indicators. */
+  inFlightCount(): number {
+    let count = 0;
+    for (const entry of this.#cache.values()) {
+      if (entry.promise) count += 1;
+    }
+    return count;
+  }
+
+  /** The only warming operation. Resolves the cached value if it is already fresh. */
+  prefetch<TData>(descriptor: QueryDescriptor<TData>): Promise<TData> {
+    return this.fetchQuery(optionsFromDescriptor(descriptor));
   }
 
   removeQueries(input?: QueryKey | { queryKey?: QueryKey }): void {
@@ -666,6 +766,8 @@ export class QueryClient {
 
       entry.invalidationVersion += 1;
       entry.stale = true;
+      entry.value = undefined;
+      entry.hasValue = false;
       entry.setData(undefined);
       entry.setHasData(false);
       this.#cancelEntry(entry);
@@ -763,6 +865,8 @@ export class QueryClient {
     })()
       .then((data) => {
         if (requestId === entry.requestId) {
+          entry.value = data;
+          entry.hasValue = true;
           entry.setData(() => data);
           entry.setHasData(true);
           entry.error = undefined;
@@ -937,6 +1041,14 @@ export function QueryClientProvider(props: { client?: QueryClient; children?: JS
   return <QueryClientContext value={client()}>{props.children}</QueryClientContext>;
 }
 
+/**
+ * The descriptor cache surface. Same object as `useQueryClient`, named for what Phase 5
+ * call sites actually use it for.
+ */
+export function useQueryCache(queryClient?: QueryClient): QueryClient {
+  return useQueryClient(queryClient);
+}
+
 export function useQueryClient(queryClient?: QueryClient) {
   return queryClient ?? useContext(QueryClientContext);
 }
@@ -998,7 +1110,10 @@ function createQueryResult<TData>(
 
   const cached = () => {
     const entry = state().entry;
-    return entry.hasData() ? (entry.data() as TData) : undefined;
+    // Subscribe to the signal so reactive consumers still re-run, but read the mirror so a
+    // handler that writes and then peeks in the same tick does not see the previous value.
+    entry.hasData();
+    return entry.hasValue ? (entry.value as TData) : undefined;
   };
   const fetching = () => state().enabled && state().entry.fetching();
 
@@ -1019,14 +1134,231 @@ export function useQuery<TData>(
   return createQueryResult(options, queryClient);
 }
 
-export const createQuery = useQuery;
 export const createValueQuery = useQuery;
+
+/** The sentinel entry a `null` descriptor parks on. It never fetches. */
+const absentQueryKey: QueryKey = ["__xgx_query_absent__"];
+
+function optionsFromDescriptor<TData>(descriptor: QueryDescriptor<TData>): QueryOptions<TData> {
+  return {
+    queryKey: descriptor.key,
+    queryFn: (context) => descriptor.fetch(context),
+    ...descriptor.options,
+  };
+}
+
+/**
+ * Observes one exact descriptor.
+ *
+ * Returning `null` means "there is no question to ask yet" — the same shape as "the id is
+ * not available". A `null` query never fetches and its `data()` stays not-ready, so it
+ * participates in `<Loading>` exactly as an unresolved read does. This replaces `enabled`,
+ * which needed a key to be built from inputs that were not there yet and so polluted the
+ * cache with placeholder entries.
+ *
+ * @example
+ * ```ts
+ * const site = createQuery(() => (props.siteId ? siteQueries.detail(props.siteId) : null));
+ * ```
+ */
+export function createQuery<TData>(
+  source: () => QueryDescriptor<TData> | null,
+  queryClient?: QueryClient,
+): QueryResult<TData> {
+  return createQueryResult<TData>(() => {
+    const descriptor = source();
+    if (!descriptor) {
+      return {
+        queryKey: absentQueryKey,
+        queryFn: () => disabledQueryPromise,
+        enabled: false,
+      };
+    }
+    return optionsFromDescriptor(descriptor);
+  }, queryClient);
+}
 
 function infinitePageKey<TPageParam>(key: QueryKey, pageParam: TPageParam): QueryKey {
   return [...key, { $page: pageParam }];
 }
 
+/**
+ * Observes one exact infinite descriptor, holding every loaded page in a SINGLE cache entry.
+ *
+ * The legacy path caches the first page as its own entry and mirrors it into a separate
+ * pages store, with later pages under synthetic `{ $page: n }` keys. That split is why a
+ * refetch kept pages the server no longer had, and why invalidating a list family silently
+ * collapsed every scrolled table back to its first page: invalidation refetched only the
+ * first-page entry, and the mirror effect then spliced the store down to it.
+ *
+ * Here the entry's value *is* the `InfiniteData`, and its `queryFn` re-asks for every
+ * currently-loaded page. Invalidation therefore refreshes all of them and keeps the user's
+ * scroll position, and a shrunken collection drops the pages that no longer exist because
+ * the walk stops as soon as `getNextPageParam` says there is nothing after the page it just
+ * received.
+ */
+function createInfiniteDescriptorQuery<TPage, TPageParam>(
+  source: () => InfiniteDescriptor<TPage, TPageParam> | null,
+  suppliedClient?: QueryClient,
+): InfiniteQueryResult<TPage, TPageParam> {
+  const client = useQueryClient(suppliedClient);
+  const descriptor = createMemo(source);
+
+  const readEntry = (target: InfiniteDescriptor<TPage, TPageParam>) =>
+    client.getQueryData<InfiniteData<TPage, TPageParam>>(target.key);
+
+  /** Re-asks for every page the entry currently holds, dropping any the server has lost. */
+  const reloadPages = async (
+    target: InfiniteDescriptor<TPage, TPageParam>,
+    context: QueryContext,
+  ): Promise<InfiniteData<TPage, TPageParam>> => {
+    const held = readEntry(target);
+    const wanted =
+      held && held.pageParams.length > 0 ? [...held.pageParams] : [target.initialPageParam];
+
+    const pages: TPage[] = [];
+    const pageParams: TPageParam[] = [];
+    for (const pageParam of wanted) {
+      const page = await target.fetch({
+        pageParam,
+        queryKey: context.queryKey,
+        signal: context.signal,
+      });
+      pages.push(page);
+      pageParams.push(pageParam);
+      if (!target.getNextPageParam) break;
+      if (target.getNextPageParam(page, pages, pageParam) === undefined) break;
+    }
+    return { pageParams, pages };
+  };
+
+  const options = (): QueryOptions<InfiniteData<TPage, TPageParam>> => {
+    const target = descriptor();
+    if (!target) {
+      return {
+        enabled: false,
+        queryFn: () => disabledQueryPromise,
+        queryKey: absentQueryKey,
+      };
+    }
+    return {
+      queryFn: (context) => reloadPages(target, context),
+      queryKey: target.key,
+      ...target.options,
+    };
+  };
+
+  const query = createQueryResult<InfiniteData<TPage, TPageParam>>(options, client);
+
+  // Instance-scoped, cross-key, non-suspending. Not cache state: this exists solely for
+  // issue S1 (a keyed `<For>` under `<Loading>` keeps stale children after its source
+  // resolves). See docs/solid-2-beta-issues.md.
+  const [retained, setRetained] = createSignal<InfiniteData<TPage, TPageParam> | undefined>(
+    undefined,
+    internalWritableOptions,
+  );
+  createEffect(
+    () => query.cached(),
+    (value) => {
+      if (value !== undefined) setRetained(() => value);
+    },
+  );
+
+  const nextPageParam = (value: InfiniteData<TPage, TPageParam> | undefined) => {
+    const target = untrack(descriptor);
+    if (!target?.getNextPageParam || !value || value.pages.length === 0) return undefined;
+    const lastPage = value.pages[value.pages.length - 1] as TPage;
+    const lastPageParam = value.pageParams[value.pageParams.length - 1] as TPageParam;
+    return target.getNextPageParam(lastPage, value.pages, lastPageParam);
+  };
+
+  const [fetchingNextPage, setFetchingNextPage] = createOptimistic(false);
+  let activeNextPage: { hash: string; promise: Promise<void> } | undefined;
+
+  const runNextPage = action(function* (
+    target: InfiniteDescriptor<TPage, TPageParam>,
+    pageParam: TPageParam,
+  ) {
+    setFetchingNextPage(true);
+    const controller = new AbortController();
+    const page = yield target.fetch({
+      pageParam,
+      queryKey: target.key,
+      signal: controller.signal,
+    });
+
+    const current = readEntry(target);
+    if (!current) return;
+    client.setQueryData<InfiniteData<TPage, TPageParam>>(target.key, {
+      pageParams: [...current.pageParams, pageParam],
+      pages: [...current.pages, page as TPage],
+    });
+  });
+
+  const fetchNextPage = () => {
+    const target = untrack(descriptor);
+    if (!target) return Promise.resolve();
+    const hash = stableQueryKey(target.key);
+    if (activeNextPage?.hash === hash) return activeNextPage.promise;
+
+    const pageParam = nextPageParam(readEntry(target));
+    if (pageParam === undefined) return Promise.resolve();
+
+    const promise = runNextPage(target, pageParam).finally(() => {
+      if (activeNextPage?.promise === promise) activeNextPage = undefined;
+    });
+    activeNextPage = { hash, promise };
+    return promise;
+  };
+
+  return {
+    cached: query.cached,
+    data: query.data,
+    fetching: query.fetching,
+    fetchingNextPage,
+    fetchNextPage,
+    hasNextPage: () => nextPageParam(query.cached()) !== undefined,
+    pending: query.pending,
+    refetch: query.refetch,
+    refresh: query.refresh,
+    retained,
+  };
+}
+
+// Legacy overload first: it is the one existing call sites match, and putting the
+// descriptor overload ahead of it makes TypeScript try (and fail) to infer TPage from a
+// descriptor, degrading every legacy callback parameter to `unknown`.
 export function createInfiniteQuery<TPage, TPageParam = unknown>(
+  options: () => InfiniteQueryOptions<TPage, TPageParam>,
+  queryClient?: QueryClient,
+): InfiniteQueryResult<TPage, TPageParam>;
+export function createInfiniteQuery<TPage, TPageParam>(
+  source: () => InfiniteDescriptor<TPage, TPageParam> | null,
+  queryClient?: QueryClient,
+): InfiniteQueryResult<TPage, TPageParam>;
+export function createInfiniteQuery<TPage, TPageParam>(
+  source: () =>
+    | InfiniteDescriptor<TPage, TPageParam>
+    | InfiniteQueryOptions<TPage, TPageParam>
+    | null,
+  queryClient?: QueryClient,
+): InfiniteQueryResult<TPage, TPageParam> {
+  // Dispatch on shape. A descriptor carries `key`; legacy options carry `queryKey`. This
+  // branch is scaffolding: Phase 5 deletes the legacy path and its overload with it.
+  const first = untrack(source);
+  if (first === null || (first !== undefined && "key" in first)) {
+    return createInfiniteDescriptorQuery(
+      source as () => InfiniteDescriptor<TPage, TPageParam> | null,
+      queryClient,
+    );
+  }
+  return createLegacyInfiniteQuery(
+    source as () => InfiniteQueryOptions<TPage, TPageParam>,
+    queryClient,
+  );
+}
+
+function createLegacyInfiniteQuery<TPage, TPageParam = unknown>(
   options: () => InfiniteQueryOptions<TPage, TPageParam>,
   suppliedClient?: QueryClient,
 ): InfiniteQueryResult<TPage, TPageParam> {
@@ -1223,7 +1555,189 @@ function invalidationPrefixes(invalidations: Array<QueryFactory | QueryKey> | un
   return prefixes;
 }
 
+/**
+ * What a mutation does to the cache.
+ *
+ * `invalidates` is **required**, and `"nothing"` is a real answer. A forgotten invalidation
+ * is the most common and least visible failure in this codebase — the mutation succeeds,
+ * the screen keeps showing stale data, and nothing throws. An optional field is exactly the
+ * thing an agent generating the minimum that type-checks will leave out, so it is not
+ * optional. `"nothing"` is greppable in review and distinguishable from an oversight in a
+ * way `invalidates: []` would not be.
+ */
+export type CacheMutationOptions<TData, TVariables> = {
+  mutationFn: (variables: TVariables) => Promise<TData>;
+  invalidates:
+    | "nothing"
+    | ((result: { data: TData; variables: TVariables }) => InvalidationTarget[]);
+  /**
+   * Whether the mutation stays pending until its declared invalidations settle. Default
+   * `true`, so "saved" means "the screen agrees". Opt out when a broad sweep would make the
+   * button hang — expected for wide archive/restore invalidations.
+   */
+  awaitInvalidation?: boolean;
+  /** Exact cache writes. Runs BEFORE invalidation; entries written here are not swept. */
+  onSuccess?: (data: TData, variables: TVariables, cache: QueryClient) => MaybePromise<unknown>;
+  onError?: (error: Error, variables: TVariables) => MaybePromise<unknown>;
+  onSettled?: (
+    data: TData | undefined,
+    error: Error | undefined,
+    variables: TVariables,
+  ) => MaybePromise<unknown>;
+};
+
+/** Records which exact entries a mutation wrote, so the sweep can skip them. */
+function recordingCache(client: QueryClient, written: Set<string>): QueryClient {
+  return new Proxy(client, {
+    get(target, property, receiver) {
+      if (property === "write") {
+        return function write<TData>(
+          descriptor: QueryDescriptor<TData>,
+          value: TData | ((previous: TData | undefined) => TData | undefined),
+        ): void {
+          written.add(stableQueryKey(descriptor.key));
+          target.write(descriptor, value);
+        };
+      }
+      const value = Reflect.get(target, property, receiver);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+
+function createCacheMutation<TData, TVariables>(
+  options: () => CacheMutationOptions<TData, TVariables>,
+  suppliedClient?: QueryClient,
+): UseMutationResult<TData, TVariables> {
+  const client = useQueryClient(suppliedClient);
+  const [state, setState] = createStore<MutationState<TData>>({
+    data: undefined,
+    error: undefined,
+    isError: false,
+    isSuccess: false,
+  });
+  const [pending, setPending] = createOptimistic(false);
+  let mutationId = 0;
+
+  const mutateAsync = action(function* (variables?: TVariables) {
+    const resolvedVariables = variables as TVariables;
+    const mutation = untrack(options);
+    const currentMutationId = ++mutationId;
+    setPending(true);
+    setState((draft) => {
+      draft.data = undefined;
+      draft.error = undefined;
+      draft.isError = false;
+      draft.isSuccess = false;
+    });
+    let settledCallbackStarted = false;
+
+    try {
+      const data: TData = yield mutation.mutationFn(resolvedVariables);
+
+      // Order is fixed: exact writes first, then invalidation. The legacy path invalidated
+      // before `onSuccess`, so a canonical write only survived by accident of timing.
+      const written = new Set<string>();
+      if (mutation.onSuccess) {
+        yield mutation.onSuccess(data, resolvedVariables, recordingCache(client, written));
+      }
+
+      const targets =
+        mutation.invalidates === "nothing"
+          ? []
+          : mutation.invalidates({ data, variables: resolvedVariables });
+
+      if (targets.length > 0) {
+        // Declared, not quiet: this change is user-visible, so affected queries read as
+        // pending for the duration rather than swapping values silently.
+        client.affectTargets(targets);
+        // A failed refetch never fails a mutation the server already accepted — reporting
+        // failure invites a duplicate write. The failure still reaches the query's own
+        // <Errored>.
+        const sweep = client.invalidateExcept(targets, written).catch(() => undefined);
+        if (mutation.awaitInvalidation !== false) yield sweep;
+      }
+
+      if (mutation.onSettled) {
+        settledCallbackStarted = true;
+        yield mutation.onSettled(data, undefined, resolvedVariables);
+      }
+      if (currentMutationId === mutationId) {
+        setState((draft) => {
+          draft.data = data;
+          draft.error = undefined;
+          draft.isError = false;
+          draft.isSuccess = true;
+        });
+      }
+      return data;
+    } catch (cause) {
+      const error = cause instanceof Error ? cause : new Error(String(cause));
+      client.notifyMutationError(error);
+      if (mutation.onError) yield mutation.onError(error, resolvedVariables);
+      if (mutation.onSettled && !settledCallbackStarted) {
+        yield mutation.onSettled(undefined, error, resolvedVariables);
+      }
+      if (currentMutationId === mutationId) {
+        setState((draft) => {
+          draft.data = undefined;
+          draft.error = error;
+          draft.isError = true;
+          draft.isSuccess = false;
+        });
+      }
+      throw error;
+    }
+  });
+
+  return resultProxy<UseMutationResult<TData, TVariables>>(() => ({
+    data: state.data,
+    error: state.error,
+    isError: state.isError,
+    isPending: pending(),
+    isSuccess: state.isSuccess,
+    mutate: (variables?: TVariables) => {
+      void mutateAsync(variables).catch(() => {});
+    },
+    mutateAsync,
+    reset() {
+      setState((draft) => {
+        draft.data = undefined;
+        draft.error = undefined;
+        draft.isError = false;
+        draft.isSuccess = false;
+      });
+    },
+  }));
+}
+
+// Legacy overload first, for the same inference reason as `createInfiniteQuery`.
 export function createMutation<TData, TVariables>(
+  options: () => MutationOptions<TData, TVariables>,
+  queryClient?: QueryClient,
+): UseMutationResult<TData, TVariables>;
+export function createMutation<TData, TVariables>(
+  options: () => CacheMutationOptions<TData, TVariables>,
+  queryClient?: QueryClient,
+): UseMutationResult<TData, TVariables>;
+export function createMutation<TData, TVariables>(
+  options: () => MutationOptions<TData, TVariables> | CacheMutationOptions<TData, TVariables>,
+  queryClient?: QueryClient,
+): UseMutationResult<TData, TVariables> {
+  // Dispatch on the shape of `invalidates`: the legacy field is an optional array of
+  // factories or raw keys, the new one is required and is either a function or "nothing".
+  // Scaffolding — Phase 5 deletes the legacy path.
+  const declared = untrack(options).invalidates;
+  if (declared === "nothing" || typeof declared === "function") {
+    return createCacheMutation(
+      options as () => CacheMutationOptions<TData, TVariables>,
+      queryClient,
+    );
+  }
+  return createLegacyMutation(options as () => MutationOptions<TData, TVariables>, queryClient);
+}
+
+function createLegacyMutation<TData, TVariables>(
   options: () => MutationOptions<TData, TVariables>,
   suppliedClient?: QueryClient,
 ): UseMutationResult<TData, TVariables> {

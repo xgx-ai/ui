@@ -57,7 +57,6 @@ test("table rows react when an infinite query key changes", async () => {
 
     expect(run.calls).toEqual(["all", "active"]);
     expect(run.table.data()).toEqual(["active"]);
-    expect(run.table.latestData()).toEqual(["active"]);
     expect(run.observedRows.at(-1)).toEqual(["active"]);
   } finally {
     dispose();

@@ -92,7 +92,7 @@ test("cache ownership survives the component that first observed it", async () =
     expect(await resolve(() => query.data())).toBe("cached");
   });
 
-  expect(client.getQueryData(["owned-cache"])).toBe("cached");
+  expect(client.getQueryData<string>(["owned-cache"])).toBe("cached");
   await inRoot(async () => {
     const query = createValueQuery(options, client);
     expect(await resolve(() => query.data())).toBe("cached");
@@ -444,5 +444,5 @@ test("inactive query data is garbage collected", async () => {
   });
   await nextTask();
 
-  expect(client.getQueryData(["temporary"])).toBeUndefined();
+  expect(client.getQueryData<string>(["temporary"])).toBeUndefined();
 });

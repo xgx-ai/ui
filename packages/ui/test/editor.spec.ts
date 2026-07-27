@@ -31,7 +31,7 @@ export default function runEditorSpec() {
   const renderText = ParameterNode.config.renderText;
   assert(renderText, "Parameter node does not define a text renderer");
   assertEqual(
-    renderText({
+    renderText.call(undefined as never, {
       node: { attrs: { paramName: "doc.title" } },
     } as never),
     "{{doc.title}}",

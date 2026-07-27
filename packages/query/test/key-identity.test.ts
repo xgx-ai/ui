@@ -4,9 +4,11 @@ import { QueryClient } from "../src/index.tsx";
 /**
  * Characterisation tests for query key identity.
  *
- * These lock the CURRENT behaviour so the descriptor rewrite can show exactly what it
- * changes. Cases marked "changes in Phase 4" assert today's behaviour deliberately and
- * are expected to be inverted by the rewrite — see docs/solidjs2-query-contract-plan.md.
+ * Identity decides whether a request is deduplicated, cached, invalidated or orphaned, so
+ * every rule is pinned here rather than left to the serialiser's implementation.
+ *
+ * Phase 4 changed one rule: an `undefined` object property is now equivalent to an omitted
+ * one. Everything else was characterised in Phase 1 and is unchanged.
  */
 
 function countingClient() {
@@ -61,17 +63,34 @@ test("an explicit default is a different question from an omitted value", async 
   expect(calls).toEqual(["explicit", "omitted"]);
 });
 
-test("an undefined property is currently distinct from an omitted property", async () => {
-  // Changes in Phase 4: the descriptor rewrite adopts TanStack semantics, where an
-  // `undefined` object property is equivalent to an omitted property. Today they are two
-  // cache entries, which is why a normaliser that emits `{ clientId: undefined }` splits
-  // the cache against one that omits the key.
+test("an undefined property is equivalent to an omitted property", async () => {
+  // Changed in Phase 4 to match TanStack semantics. A normaliser that emits
+  // `{ clientId: undefined }` for "no client filter" now asks the same question as one that
+  // omits the key, instead of splitting the cache in two.
   const { calls, fetch } = countingClient();
 
   await fetch(["records", { clientId: undefined, search: "north" }], "undefined-property");
   await fetch(["records", { search: "north" }], "omitted-property");
 
-  expect(calls).toEqual(["undefined-property", "omitted-property"]);
+  expect(calls).toEqual(["undefined-property"]);
+});
+
+test("a nested undefined property is also equivalent to an omitted one", async () => {
+  const { calls, fetch } = countingClient();
+
+  await fetch(["records", { filters: { a: 1, b: undefined } }], "nested-undefined");
+  await fetch(["records", { filters: { a: 1 } }], "nested-omitted");
+
+  expect(calls).toEqual(["nested-undefined"]);
+});
+
+test("an undefined property is still distinct from an explicit null", async () => {
+  const { calls, fetch } = countingClient();
+
+  await fetch(["records", { status: undefined }], "undefined-property");
+  await fetch(["records", { status: null }], "null-property");
+
+  expect(calls).toEqual(["undefined-property", "null-property"]);
 });
 
 test("an undefined positional key part is distinct from a missing part", async () => {
@@ -142,16 +161,16 @@ test("the cache hash snapshots the key, but the retained key stays live", async 
   filters.status = "archived";
 
   // The hash was taken at prepare time, so the original value still finds the entry.
-  expect(client.getQueryData(["records", { status: "active" }])).toBe(1);
-  expect(client.getQueryData(["records", { status: "archived" }])).toBeUndefined();
+  expect(client.getQueryData<number>(["records", { status: "active" }])).toBe(1);
+  expect(client.getQueryData<number>(["records", { status: "archived" }])).toBeUndefined();
 
   // But prefix matching walks the retained live object, so the entry no longer matches
   // the value it was cached under. `removeQueries` is the discriminating probe: it
   // deletes every match, so a surviving entry proves the match failed.
   client.removeQueries(["records", { status: "active" }]);
-  expect(client.getQueryData(["records", { status: "active" }])).toBe(1);
+  expect(client.getQueryData<number>(["records", { status: "active" }])).toBe(1);
 
   // It matches the mutated value instead — identity has silently moved.
   client.removeQueries(["records", { status: "archived" }]);
-  expect(client.getQueryData(["records", { status: "active" }])).toBeUndefined();
+  expect(client.getQueryData<number>(["records", { status: "active" }])).toBeUndefined();
 });

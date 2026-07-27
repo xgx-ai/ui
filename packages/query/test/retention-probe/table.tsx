@@ -1,6 +1,6 @@
 import { render } from "@solidjs/web";
 import { createInfiniteQuery, QueryClient, QueryClientProvider } from "@xgx/query";
-import { createMemo, For, Loading, createSignal, isPending, latest } from "solid-js";
+import { createMemo, createSignal, For, isPending, Loading, latest } from "solid-js";
 
 /**
  * Probe for issue S1 in docs/solid-2-beta-issues.md.
@@ -45,8 +45,7 @@ function App() {
     // just refresh the old question. See docs/solid-2-beta-issues.md.
     queryKey: ["rows", latest(filter)],
     initialPageParam: 0,
-    queryFn: ({ pageParam }: { pageParam: number }) =>
-      fetchPage(latest(filter), pageParam),
+    queryFn: ({ pageParam }: { pageParam: number }) => fetchPage(latest(filter), pageParam),
     getNextPageParam: () => undefined,
   }));
 

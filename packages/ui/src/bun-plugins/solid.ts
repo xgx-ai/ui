@@ -131,6 +131,8 @@ function createSolidHmrPlugin(runtimeImport: string, moduleId: string) {
         const registerImport = path.scope.generateUidIdentifier("$$register");
         const refreshImport = path.scope.generateUidIdentifier("$$refresh");
         const signalImport = path.scope.generateUidIdentifier("$$signal");
+        const rootImport = path.scope.generateUidIdentifier("$$root");
+        const disposeRootImport = path.scope.generateUidIdentifier("$$disposeRoot");
         const registry = path.scope.generateUidIdentifier("xgxSolidHmrRegistry");
         const nextBody: any[] = [];
         const assignments: any[] = [];
@@ -145,6 +147,15 @@ function createSolidHmrPlugin(runtimeImport: string, moduleId: string) {
             t.blockStatement([
               t.expressionStatement(
                 t.callExpression(t.memberExpression(importMetaHot(), t.identifier("accept")), []),
+              ),
+            ]),
+          );
+        const disposeRootStatement = () =>
+          t.ifStatement(
+            importMetaHot(),
+            t.blockStatement([
+              t.expressionStatement(
+                t.callExpression(disposeRootImport, [t.stringLiteral(moduleId)]),
               ),
             ]),
           );
@@ -219,6 +230,12 @@ function createSolidHmrPlugin(runtimeImport: string, moduleId: string) {
                 renderBindings.has(callPath.node.callee.name)
               ) {
                 hasRootRender = true;
+                // Hand the dispose handle to the refresh runtime so the next
+                // evaluation of this module can tear the previous root down.
+                callPath.replaceWith(
+                  t.callExpression(rootImport, [t.stringLiteral(moduleId), callPath.node]),
+                );
+                callPath.skip();
               }
             },
           });
@@ -333,8 +350,27 @@ function createSolidHmrPlugin(runtimeImport: string, moduleId: string) {
           nextBody.push(statement);
         }
 
+        const rootImportSpecifiers = hasRootRender
+          ? [
+              t.importSpecifier(rootImport, t.identifier("$$root")),
+              t.importSpecifier(disposeRootImport, t.identifier("$$disposeRoot")),
+            ]
+          : [];
+
         if (!hasComponents) {
           if (hasRootRender) {
+            const rootOnlyFirstNonImport = nextBody.findIndex(
+              (statement) => !t.isImportDeclaration(statement),
+            );
+
+            nextBody.unshift(
+              t.importDeclaration(rootImportSpecifiers, t.stringLiteral(runtimeImport)),
+            );
+            nextBody.splice(
+              rootOnlyFirstNonImport === -1 ? nextBody.length : rootOnlyFirstNonImport + 1,
+              0,
+              disposeRootStatement(),
+            );
             nextBody.push(hotAcceptStatement());
             path.node.body = nextBody;
           }
@@ -357,11 +393,13 @@ function createSolidHmrPlugin(runtimeImport: string, moduleId: string) {
               t.importSpecifier(registerImport, t.identifier("$$register")),
               t.importSpecifier(refreshImport, t.identifier("$$refresh")),
               ...(hasSignals ? [t.importSpecifier(signalImport, t.identifier("$$signal"))] : []),
+              ...rootImportSpecifiers,
             ],
             t.stringLiteral(runtimeImport),
           ),
         );
         nextBody.splice(insertIndex + 1, 0, registryDeclaration);
+        if (hasRootRender) nextBody.splice(insertIndex + 2, 0, disposeRootStatement());
         nextBody.push(...assignments);
         nextBody.push(
           ...defaultExports.map((name) =>

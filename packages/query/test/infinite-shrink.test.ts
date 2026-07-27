@@ -5,13 +5,16 @@ import { createInfiniteQuery, QueryClient } from "../src/index.tsx";
 /**
  * Regression coverage for the infinite-query page mirror.
  *
- * The current implementation caches the first page as its own entry and mirrors it into a
- * separate pages store, with later pages held under synthetic `{ $page: n }` keys. Three
- * of these tests describe behaviour the current implementation does not have, so they are
- * marked `test.failing`: they keep the suite green today and turn red the moment the
- * rewrite fixes them, which is the signal to drop the marker. Collapsing infinite state
- * into one `InfiniteData` cache entry is what fixes them — see
- * docs/solidjs2-query-contract-plan.md.
+ * The legacy implementation caches the first page as its own entry and mirrors it into a
+ * separate pages store, with later pages held under synthetic `{ $page: n }` keys. The two
+ * behaviours it still gets wrong are marked `test.failing`: they keep the suite green and
+ * turn red the moment the legacy path is fixed or deleted, which is the signal to drop the
+ * marker. The descriptor path already has all of these — see `infinite-descriptor.test.ts`.
+ *
+ * "Invalidation preserves already-loaded pages" was the worst of them, and it was fixed
+ * here rather than by the rewrite: making `cached()` read the value mirror instead of the
+ * deferred signal stopped the sync effect observing a half-updated first page. That matters
+ * because the application still runs the legacy path until the Phase 5 cutover.
  *
  * Measured against the current implementation:
  *
@@ -20,7 +23,7 @@ import { createInfiniteQuery, QueryClient } from "../src/index.tsx";
  * | Refetch after a shrink drops absent rows              | passes |
  * | Refetch after a shrink drops absent pages/pageParams  | FAILS  |
  * | Refetch after a shrink withdraws `hasNextPage`        | passes |
- * | Invalidation preserves already-loaded pages           | FAILS  |
+ * | Invalidation preserves already-loaded pages           | passes |
  * | Invalidation refetches every loaded page              | FAILS  |
  */
 
@@ -132,7 +135,7 @@ test("a shrunken collection stops offering a next page", async () => {
   });
 });
 
-test.failing("invalidating the family preserves already-loaded pages", async () => {
+test("invalidating the family preserves already-loaded pages", async () => {
   await inRoot(async () => {
     const client = new QueryClient();
     const source = server(6);
@@ -141,10 +144,11 @@ test.failing("invalidating the family preserves already-loaded pages", async () 
     await client.invalidateQueries(["rows"]);
     flush();
 
-    // Today invalidation refetches only the first-page entry, and the mirror effect
-    // splices the store back down to that single page — silently discarding the pages the
-    // user had already scrolled through. Any mutation that invalidates a list family
-    // resets every scrolled table in the application to its first page.
+    // This was the worst of the mirror's failures: invalidation refetched only the
+    // first-page entry and the sync effect then spliced the store down to it, throwing every
+    // scrolled table back to its first page on any list-family invalidation. Fixed as a
+    // side effect of making `cached()` read the value mirror rather than the deferred
+    // signal, so the sync effect no longer observes a half-updated first page.
     expect({
       pageCount: query.data().pages.length,
       rows: rowIds(query.data().pages),

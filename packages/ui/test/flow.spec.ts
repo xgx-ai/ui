@@ -25,13 +25,18 @@ function assertEqual<T>(actual: T, expected: T, message: string) {
 
 function withStore(run: (store: ReturnType<typeof createFlowStore>) => void | Promise<void>) {
   return createRoot(async (dispose) => {
+    // Annotated, not `satisfies`: `satisfies` keeps the narrow literal type, so the store
+    // is inferred as `SolidFlowStore<{ …literal union }>` and no longer matches
+    // `SolidFlowStore<Node, Edge>` at the call below.
+    const edges: Edge[] = [{ id: "edge-a-b", source: "a", target: "b" }];
+    const nodes: Node[] = [
+      { data: {}, id: "a", position: { x: 0, y: 0 }, selected: true },
+      { data: {}, id: "b", position: { x: 100, y: 100 } },
+    ];
     const store = createFlowStore({
-      edges: [{ id: "edge-a-b", source: "a", target: "b" }] satisfies Edge[],
+      edges,
       height: 600,
-      nodes: [
-        { data: {}, id: "a", position: { x: 0, y: 0 }, selected: true },
-        { data: {}, id: "b", position: { x: 100, y: 100 } },
-      ] satisfies Node[],
+      nodes,
       props: {},
       viewport: { x: 0, y: 0, zoom: 1 },
       width: 800,
