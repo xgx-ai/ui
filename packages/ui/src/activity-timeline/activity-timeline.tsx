@@ -1,9 +1,8 @@
-import { For, omit, Show } from "solid-js";
+import { For, omit, onSettled, Show } from "solid-js";
 import { cn } from "../cn";
 import { Skeleton } from "../feedback/skeleton";
 import { Button } from "../forms/button";
 import { SearchBar } from "../forms/search-bar";
-import { createMountEffect } from "../utils/lifecycle";
 import type { ActivityTimelineProps } from "./types";
 
 function ActivityTimeline<TItem = unknown>(props: ActivityTimelineProps<TItem>) {
@@ -29,7 +28,7 @@ function ActivityTimeline<TItem = unknown>(props: ActivityTimelineProps<TItem>) 
 
   let sentinelRef: HTMLDivElement | undefined;
 
-  createMountEffect(() => {
+  onSettled(() => {
     const observer = new IntersectionObserver((entries) => {
       if (entries[0]?.isIntersecting && !local.isFetching && local.hasMore) {
         local.onFetchMore();

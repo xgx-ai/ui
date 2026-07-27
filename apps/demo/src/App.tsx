@@ -22,8 +22,7 @@ import {
   ToolbarSurface,
 } from "@xgx/ui";
 import { ChevronRight, Database, Home, Moon, Settings, Sun } from "@xgx/ui/icons";
-import { createMemo, createRenderEffect, createSignal, For } from "solid-js";
-import { createMountEffect } from "../../../packages/ui/src/utils/lifecycle";
+import { createMemo, createRenderEffect, createSignal, For, onSettled } from "solid-js";
 import {
   primarySections,
   records,
@@ -264,7 +263,7 @@ export default function App() {
     setSection(getSectionFromHash());
   };
 
-  createMountEffect(() => {
+  onSettled(() => {
     syncSectionFromHash();
     window.addEventListener("hashchange", syncSectionFromHash);
     return () => window.removeEventListener("hashchange", syncSectionFromHash);

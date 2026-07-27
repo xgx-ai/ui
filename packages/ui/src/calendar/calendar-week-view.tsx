@@ -1,9 +1,7 @@
 import type { JSX } from "@solidjs/web";
-import { createMountEffect } from "../utils/lifecycle";
-import { Index } from "../utils/indexed";
 import { format, isSameDay } from "date-fns";
 
-import { createMemo, createSignal, For, onCleanup, Show } from "solid-js";
+import { createMemo, createSignal, For, onCleanup, onSettled, Show } from "solid-js";
 import { useCalendarContext } from "./calendar-context";
 import { CalendarEntry, type CalendarEntryContext } from "./calendar-entry";
 import { CalendarHeaderEntry } from "./calendar-header-entry";
@@ -38,7 +36,7 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
   const timer = setInterval(() => setNow(new Date()), 60_000);
   onCleanup(() => clearInterval(timer));
 
-  createMountEffect(() => {
+  onSettled(() => {
     if (START_HOUR() === 0) {
       scrollRef?.scrollTo({ top: 8 * PIXELS_PER_HOUR });
     }
@@ -104,7 +102,7 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
       >
         {/* Header row — sticky, includes all-day events */}
         <div class="sticky top-0 z-20 bg-card border-b" />
-        <Index each={weekDays()}>
+        <For each={weekDays()} keyed={false}>
           {(day, dayIndex) => {
             const isToday = isSameDay(day(), new Date());
             const dayData = () => weekLayoutData()[dayIndex];
@@ -145,11 +143,11 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
               </div>
             );
           }}
-        </Index>
+        </For>
 
         {/* Time labels column */}
         <div class="sticky left-0 bg-card z-10">
-          <Index each={hours()}>
+          <For each={hours()} keyed={false}>
             {(hour) => (
               <div class="h-12 pr-3 flex items-start justify-end">
                 <span class="text-[11px] text-muted-foreground -mt-1.5">
@@ -157,11 +155,11 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
                 </span>
               </div>
             )}
-          </Index>
+          </For>
         </div>
 
         {/* Day columns — regular events only */}
-        <Index each={weekDays()}>
+        <For each={weekDays()} keyed={false}>
           {(day, dayIndex) => {
             const dayData = () => weekLayoutData()[dayIndex];
             const isLastDay = dayIndex === 6;
@@ -189,9 +187,9 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
               >
                 {/* Hour grid lines */}
                 <div>
-                  <Index each={hours()}>
+                  <For each={hours()} keyed={false}>
                     {() => <div class="h-12 border-b border-border-subtle hover:bg-hover" />}
-                  </Index>
+                  </For>
                 </div>
 
                 {/* Regular events only */}
@@ -225,7 +223,7 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
               </div>
             );
           }}
-        </Index>
+        </For>
       </div>
     </div>
   );

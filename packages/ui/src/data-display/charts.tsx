@@ -1,6 +1,4 @@
-import { createMountEffect } from "../utils/lifecycle";
-import type { Ref } from "../utils/refs";
-import { mergeRefs } from "../utils/refs";
+import type { JSX } from "@solidjs/web";
 import type {
   ChartComponent,
   ChartData,
@@ -34,14 +32,19 @@ import {
   Tooltip,
 } from "chart.js";
 import type { Component } from "solid-js";
-import { createRenderEffect, createSignal, merge as mergeProps, onCleanup } from "solid-js";
-import { snapshot as unwrap } from "solid-js";
+import {
+  createRenderEffect,
+  createSignal,
+  merge as mergeProps,
+  onSettled,
+  snapshot as unwrap,
+} from "solid-js";
 
 type TypedChartProps = {
   data: ChartData;
   options?: ChartOptions;
   plugins?: ChartPlugin[];
-  ref?: Ref<HTMLCanvasElement | null>;
+  ref?: JSX.RefCallback<HTMLCanvasElement>;
   width?: number | undefined;
   height?: number | undefined;
 };
@@ -70,8 +73,9 @@ function readChartToken(name: string, fallback: string) {
 }
 
 const BaseChart: Component<ChartProps> = (rawProps) => {
-  const [canvasRef, setCanvasRef] = createSignal<HTMLCanvasElement | null>();
   const [chart, setChart] = createSignal<Chart>();
+  let canvasRef: HTMLCanvasElement | undefined;
+  let currentChart: Chart | undefined;
 
   const props = mergeProps(
     {
@@ -83,66 +87,73 @@ const BaseChart: Component<ChartProps> = (rawProps) => {
     rawProps,
   );
 
-  const init = () => {
-    ensureChartRegistered(props.type, props.components);
-    const ctx = canvasRef()?.getContext("2d") as ChartItem;
-    const config = unwrap(props);
-    const chart = new Chart(ctx, {
+  const init = (config: ChartProps) => {
+    ensureChartRegistered(config.type, config.components);
+    const ctx = canvasRef?.getContext("2d") as ChartItem;
+    const nextChart = new Chart(ctx, {
       type: config.type,
       data: config.data,
       options: config.options,
       plugins: config.plugins,
     });
-    setChart(chart);
+    currentChart = nextChart;
+    setChart(nextChart);
+    return nextChart;
   };
 
-  createMountEffect(() => init());
-
-  createRenderEffect(
-    () => props.data,
-    () => {
-      chart()!.data = props.data;
-      chart()!.update();
-    },
-    { defer: true },
-  );
-
-  createRenderEffect(
-    () => props.options,
-    () => {
-      chart()!.options = props.options;
-      chart()!.update();
-    },
-    { defer: true },
-  );
-
-  createRenderEffect(
-    () => [props.width, props.height] as const,
-    () => {
-      chart()!.resize(props.width, props.height);
-    },
-    { defer: true },
-  );
-
-  createRenderEffect(
-    () => props.type,
-    () => {
-      const dimensions = [chart()!.width, chart()!.height] as const;
-      chart()!.destroy();
-      init();
-      chart()!.resize(...dimensions);
-    },
-    { defer: true },
-  );
-
-  onCleanup(() => {
-    chart()?.destroy();
-    mergeRefs(props.ref, null);
+  onSettled(() => {
+    init(unwrap(props));
+    return () => currentChart?.destroy();
   });
+
+  const captureCanvasRef: JSX.RefCallback<HTMLCanvasElement> = (element) => {
+    canvasRef = element;
+  };
+
+  createRenderEffect(
+    () => ({ chart: chart(), data: props.data }),
+    ({ chart, data }) => {
+      if (!chart) return;
+      chart.data = data;
+      chart.update();
+    },
+    { defer: true },
+  );
+
+  createRenderEffect(
+    () => ({ chart: chart(), options: props.options }),
+    ({ chart, options }) => {
+      if (!chart) return;
+      chart.options = options ?? {};
+      chart.update();
+    },
+    { defer: true },
+  );
+
+  createRenderEffect(
+    () => ({ chart: chart(), height: props.height, width: props.width }),
+    ({ chart, height, width }) => {
+      if (!chart) return;
+      chart.resize(width, height);
+    },
+    { defer: true },
+  );
+
+  createRenderEffect(
+    () => ({ config: unwrap(props), type: props.type }),
+    ({ config }) => {
+      const chart = currentChart;
+      if (!chart) return;
+      const dimensions = [chart.width, chart.height] as const;
+      chart.destroy();
+      init(config).resize(...dimensions);
+    },
+    { defer: true },
+  );
 
   return (
     <canvas
-      ref={mergeRefs(props.ref, (el) => setCanvasRef(el))}
+      ref={props.ref ? [props.ref, captureCanvasRef] : captureCanvasRef}
       height={props.height}
       width={props.width}
     />

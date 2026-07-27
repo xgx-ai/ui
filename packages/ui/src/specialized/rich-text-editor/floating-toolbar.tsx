@@ -1,4 +1,4 @@
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, onSettled, Show } from "solid-js";
 import { cn } from "../../cn.ts";
 import { Button } from "../../forms/button.tsx";
 import {
@@ -19,7 +19,6 @@ import {
   Underline,
 } from "../../icons.index";
 import { Popover, PopoverContent, PopoverTrigger } from "../../overlays/popover.tsx";
-import { createMountEffect } from "../../utils/lifecycle";
 import type { FloatingToolbarProps, ToolbarConfig } from "./types";
 
 interface ToolbarButtonProps {
@@ -64,7 +63,7 @@ export function FloatingToolbar(props: FloatingToolbarProps) {
     setCurrentFontSize(typeof fontSize === "string" ? fontSize : "");
   };
 
-  createMountEffect(() => {
+  onSettled(() => {
     const editor = props.editor;
     if (!editor || editor.isDestroyed) return;
 

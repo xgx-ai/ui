@@ -1,9 +1,7 @@
 import type { JSX } from "@solidjs/web";
-import { createMountEffect } from "../utils/lifecycle";
-import { Index } from "../utils/indexed";
 import { format, isSameDay } from "date-fns";
 
-import { createMemo, createSignal, For, onCleanup, Show } from "solid-js";
+import { createMemo, createSignal, For, onCleanup, onSettled, Show } from "solid-js";
 import { useCalendarContext } from "./calendar-context";
 import { CalendarEntry, type CalendarEntryContext } from "./calendar-entry";
 import { CalendarHeaderEntry } from "./calendar-header-entry";
@@ -39,7 +37,7 @@ export function CalendarDayView(props: CalendarDayViewProps) {
   const timer = setInterval(() => setNow(new Date()), 60_000);
   onCleanup(() => clearInterval(timer));
 
-  createMountEffect(() => {
+  onSettled(() => {
     if (START_HOUR() === 0) {
       requestAnimationFrame(() => {
         const now = new Date();
@@ -118,7 +116,7 @@ export function CalendarDayView(props: CalendarDayViewProps) {
 
         {/* Time labels column */}
         <div class="sticky left-0 bg-card z-10">
-          <Index each={hours()}>
+          <For each={hours()} keyed={false}>
             {(hour) => (
               <div class="h-12 pr-3 flex items-start justify-end">
                 <span class="text-[11px] text-muted-foreground -mt-1.5">
@@ -126,7 +124,7 @@ export function CalendarDayView(props: CalendarDayViewProps) {
                 </span>
               </div>
             )}
-          </Index>
+          </For>
         </div>
 
         {/* Day column */}
@@ -148,9 +146,9 @@ export function CalendarDayView(props: CalendarDayViewProps) {
         >
           {/* Hour grid lines */}
           <div>
-            <Index each={hours()}>
+            <For each={hours()} keyed={false}>
               {() => <div class="h-12 border-b border-border-subtle hover:bg-hover" />}
-            </Index>
+            </For>
           </div>
 
           {/* Regular event entries */}

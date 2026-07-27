@@ -1,7 +1,6 @@
 import type { Editor } from "@tiptap/core";
-import { createSignal, Show } from "solid-js";
+import { createSignal, onSettled, Show } from "solid-js";
 import { containsNode } from "../../overlays/floating";
-import { createMountEffect } from "../../utils/lifecycle";
 import { FloatingToolbar } from "./floating-toolbar";
 import type { ToolbarConfig } from "./types";
 
@@ -17,7 +16,7 @@ export function BubbleMenuPortal(props: BubbleMenuPortalProps) {
   const [hasSelection, setHasSelection] = createSignal(false);
   const [isDismissed, setIsDismissed] = createSignal(false);
 
-  createMountEffect(() => {
+  onSettled(() => {
     const editor = props.editor;
     if (!editor || editor.isDestroyed) return;
 
@@ -72,7 +71,7 @@ export function BubbleMenuPortal(props: BubbleMenuPortalProps) {
   });
 
   // Dismiss the menu when focus leaves the editor and menu
-  createMountEffect(() => {
+  onSettled(() => {
     const editor = props.editor;
     if (!editor || editor.isDestroyed) return;
 

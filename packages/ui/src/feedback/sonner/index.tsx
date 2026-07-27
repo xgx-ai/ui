@@ -1,4 +1,3 @@
-import { createMountEffect } from "../../utils/lifecycle";
 /*!
  * Original code by Emil Kowalski
  * MIT Licensed, Copyright 2023 Emil Kowalski, see https://github.com/emilkowalski/sonner/blob/main/LICENSE.md for details
@@ -6,11 +5,19 @@ import { createMountEffect } from "../../utils/lifecycle";
  * Credits:
  * https://github.com/emilkowalski/sonner/blob/main/src/index.tsx
  */
+
+import type { Component } from "solid-js";
+import {
+  createRenderEffect,
+  createSignal,
+  createStore,
+  For,
+  merge as mergeProps,
+  onSettled,
+  Show,
+} from "solid-js";
 import { X } from "../../icons.index";
 import { containsNode } from "../../overlays/floating";
-import type { Component } from "solid-js";
-import { createRenderEffect, createSignal, For, merge as mergeProps, Show } from "solid-js";
-import { createStore } from "solid-js";
 import { getAsset, Loader } from "./assets";
 import { useIsDocumentHidden } from "./primitives";
 import { ToastState, toast } from "./state";
@@ -105,11 +112,11 @@ const Toast: Component<ToastProps> = (props) => {
     return <Loader visible={toastType() === "loading"} />;
   }
 
-  createMountEffect(() => {
+  onSettled(() => {
     setMounted(true);
   });
 
-  createMountEffect(() => {
+  onSettled(() => {
     const toastNode = toastRef;
     const originalHeight = toastNode.style.height;
     toastNode.style.height = "auto";
@@ -482,7 +489,7 @@ const Toaster: Component<ToasterProps> = (props) => {
       state.toasts = state.toasts.filter(({ id }) => id !== toast.id);
     });
 
-  createMountEffect(() => {
+  onSettled(() => {
     const unsub = ToastState.subscribe((toast) => {
       if ((toast as ToastToDismiss).dismiss) {
         setToastsStore((state) => {
@@ -542,7 +549,7 @@ const Toaster: Component<ToasterProps> = (props) => {
     },
   );
 
-  createMountEffect(() => {
+  onSettled(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const isHotkeyPressed = propsWithDefaults.hotkey.every(
         (key) => (event as any)[key] || event.code === key,
@@ -688,5 +695,5 @@ const Toaster: Component<ToasterProps> = (props) => {
   );
 };
 
-export { toast, Toaster };
-export type { ToastT, ExternalToast };
+export type { ExternalToast, ToastT };
+export { Toaster, toast };
