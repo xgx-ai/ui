@@ -5,7 +5,9 @@
   "sideEffects": false,
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./biome": "./biome/config.json",
+    "./biome-app": "./biome/config.app.json"
   },
   "peerDependencies": {
     "solid-js": "^2.0.0-beta.25"

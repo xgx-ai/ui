@@ -1,0 +1,53 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.5/schema.json",
+  "plugins": [
+    "./node_modules/@xgx/solid/biome/rules/no-destructured-props.grit",
+    "./node_modules/@xgx/solid/biome/rules/no-single-callback-effect.grit"
+  ],
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "solid-js/web": "Web renderer APIs live in `@solidjs/web`.",
+              "solid-js/store": "Stores live in `solid-js`.",
+              "solid-js/html": "Use `@solidjs/html`.",
+              "solid-js/universal": "Use `@solidjs/universal`.",
+              "solid-js/h": "Use `@solidjs/h`.",
+              "solid-js/jsx-runtime": "Renderer packages own JSX types; use `@solidjs/web`.",
+              "solid-js": {
+                "importNames": [
+                  "batch",
+                  "createComputed",
+                  "createMutable",
+                  "createResource",
+                  "ErrorBoundary",
+                  "Index",
+                  "indexArray",
+                  "mergeProps",
+                  "modifyMutable",
+                  "observable",
+                  "on",
+                  "onError",
+                  "onMount",
+                  "produce",
+                  "resetErrorBoundaries",
+                  "splitProps",
+                  "startTransition",
+                  "Suspense",
+                  "SuspenseList",
+                  "unwrap",
+                  "useTransition"
+                ],
+                "message": "Solid 1 API. Use the Solid 2 replacement: batch/startTransition/useTransition are built in, createResource is an async computation with <Loading>, ErrorBoundary is <Errored>, Suspense is <Loading>, SuspenseList is <Reveal>, Index is <For keyed={false}>, onMount is onSettled, mergeProps is merge, splitProps is omit, unwrap is snapshot, on(...) is a split effect, produce is the default store setter."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

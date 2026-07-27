@@ -1,0 +1,26 @@
+language js
+
+// `untrack(() => props.x)` is an undeclared one-time read: the type signature says the
+// prop is live, the body says it is sampled once, and nothing checks that the component
+// remounts when its subject changes.
+//
+// The contract is `InitialProp<T>` + `initialProp(value, identity)` + `readInitialProp`.
+// Genuine imperative boundaries still exist — those keep `untrack` with a Biome
+// suppression comment stating why, which is the point: the exception becomes visible.
+or {
+  `untrack(() => props.$member)` where {
+    register_diagnostic(
+      span = $member,
+      message = "Sampling a prop with `untrack` hides a one-time read behind a live type. Name the prop `initial*`, type it `InitialProp<T>`, mark it with `initialProp(value, identity)` at the call site, and read it with `readInitialProp`. If this really is an imperative boundary, keep `untrack` and add a Biome suppression saying why.",
+      severity = "error"
+    )
+  },
+  `untrack($fn)` where {
+    !$fn <: `() => props.$member`,
+    register_diagnostic(
+      span = $fn,
+      message = "Raw `untrack` in application code. If this is a one-time prop read, use the `InitialProp` contract instead; if it is a deliberate imperative boundary, add a Biome suppression saying why.",
+      severity = "warn"
+    )
+  }
+}

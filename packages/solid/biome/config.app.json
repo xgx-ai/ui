@@ -1,0 +1,9 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.5/schema.json",
+  "extends": ["@xgx/solid/biome"],
+  "plugins": [
+    "./node_modules/@xgx/solid/biome/rules/no-destructured-props.grit",
+    "./node_modules/@xgx/solid/biome/rules/no-single-callback-effect.grit",
+    "./node_modules/@xgx/solid/biome/rules/initial-prop-contract.grit"
+  ]
+}

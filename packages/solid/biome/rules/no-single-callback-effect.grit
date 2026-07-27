@@ -1,0 +1,26 @@
+language js
+
+// Solid 2 effects are two-phase: `createEffect(compute, apply)`. The single-callback form
+// is a Solid 1 pattern and is an error at runtime. Reactive reads belong in the compute
+// phase; DOM writes, subscriptions and cleanup belong in the apply phase.
+// Both take an optional third options argument (`{ defer: true }`), so the two- and
+// three-argument forms are both correct and must be excluded.
+$effect where {
+  or {
+    {
+      $effect <: `createEffect($compute)`,
+      !$effect <: `createEffect($a, $b)`,
+      !$effect <: `createEffect($a, $b, $options)`
+    },
+    {
+      $effect <: `createRenderEffect($compute)`,
+      !$effect <: `createRenderEffect($a, $b)`,
+      !$effect <: `createRenderEffect($a, $b, $options)`
+    }
+  },
+  register_diagnostic(
+    span = $effect,
+    message = "Solid 2 effects take two callbacks: `createEffect(() => dependency(), value => { ... })`. Put reactive reads in the compute phase and side effects in the apply phase, returning a cleanup function from apply.",
+    severity = "error"
+  )
+}

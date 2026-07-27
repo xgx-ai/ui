@@ -3,5 +3,7 @@
   "compilerOptions": {
     "types": ["bun"]
   },
-  "include": ["src", "test"]
+  "include": ["src", "test"],
+  "//": "test/grit holds deliberately invalid Solid code used as lint fixtures, not compilable source.",
+  "exclude": ["test/grit"]
 }
