@@ -1,0 +1,4 @@
+interface:
+  display_name: "SolidJS 2 Best Practices"
+  short_description: "Build and debug idiomatic SolidJS 2 code"
+  default_prompt: "Use $solidjs2-best-practices to review this SolidJS 2 change for reactive correctness."
