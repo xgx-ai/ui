@@ -1,5 +1,5 @@
-import type { Accessor } from "solid-js";
 import type { JSX } from "@solidjs/web";
+import type { Accessor } from "solid-js";
 
 export type SortDirection = false | "asc" | "desc";
 
@@ -57,7 +57,6 @@ export interface ColumnDef<TData, TValue = unknown> {
 
 export interface TableController<TData> {
   data: Accessor<TData[]>;
-  latestData?: Accessor<TData[]>;
   isLoading: Accessor<boolean>;
   isFetchingMore: Accessor<boolean>;
   hasMore: Accessor<boolean>;

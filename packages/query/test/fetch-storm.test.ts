@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { createRoot, createSignal, flush, resolve } from "solid-js";
+import { createEffect, createRoot, createSignal, flush, resolve } from "solid-js";
 import { createInfiniteQuery, createValueQuery, QueryClient } from "../src/index.tsx";
 
 /**
@@ -13,10 +13,13 @@ import { createInfiniteQuery, createValueQuery, QueryClient } from "../src/index
  * one request per frame. This is what `createInfiniteQuery` did when `loadInitialPage`
  * was called inside `createMemo`.
  *
- * These tests pass today only because recomputes hit the cache and receive the same
- * promise identity, so `_inFlight` dedupes them. That is a masked violation, not a safe
- * pattern: they exist to fail loudly if the dedupe is ever weakened, and to stay green
- * once the rewrite moves fetch initiation out of the memo entirely.
+ * `createQueryResult` does still call `readQuery` — which can start a request — from
+ * inside the `data` memo. Phase 3 set out to move that out, but no scenario could be
+ * constructed where it misbehaves: the pending, settled, failed, idle-at-default-stale-time
+ * and many-readers paths below all hold. What actually protects the invariant is the cache
+ * entry, which owns the promise, so every recompute observes the *same* promise identity
+ * rather than creating one. The read path was therefore left alone and these tests pin the
+ * property that makes it safe. They fail loudly if that dedupe is ever weakened.
  *
  * Caveat: these run headless, without a web renderer, so effect and memo propagation does
  * not pump the way it does in a browser. They catch a caller-driven storm but cannot prove
@@ -177,6 +180,69 @@ test("a pending infinite query does not restart its first page", async () => {
     request.resolve({ data: [1] });
     await read;
     flush();
+    await churnClock();
+
+    expect(calls).toBe(1);
+  });
+});
+
+test("an active query does not refetch while idle at the default stale time", async () => {
+  // The storm path that would matter in production: the entry goes stale immediately
+  // (default `staleTime` of 0), and `readQuery` starts a background refresh whenever the
+  // memo recomputes while stale. A refresh writes `data`, which the memo observes — so if
+  // a settle could trigger a recompute after the stale timer fires, the query would feed
+  // itself forever.
+  await inRoot(async () => {
+    let calls = 0;
+    const query = createValueQuery(() => ({
+      queryKey: ["storm-idle"],
+      queryFn: async () => {
+        calls += 1;
+        return calls;
+      },
+    }));
+
+    // An active consumer, standing in for a rendered component reading `data()`.
+    createEffect(
+      () => query.data(),
+      () => {},
+    );
+
+    await resolve(() => query.data());
+    flush();
+    expect(calls).toBe(1);
+
+    await new Promise((settle) => setTimeout(settle, 200));
+    flush();
+
+    expect(calls).toBe(1);
+  });
+});
+
+test("a failed query does not restart on repeated reads", async () => {
+  // On failure the cache clears `entry.promise` and never sets `hasData`, so a compute
+  // that re-entered `readQuery` would start a fresh request every time it ran.
+  await inRoot(async () => {
+    let calls = 0;
+    const query = createValueQuery(() => ({
+      queryKey: ["storm-failed"],
+      queryFn: async () => {
+        calls += 1;
+        throw new Error("upstream is down");
+      },
+    }));
+
+    await resolve(() => query.data()).catch(() => undefined);
+    expect(calls).toBe(1);
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      try {
+        query.data();
+      } catch {
+        // The read re-throws the stored failure; that must not re-ask the question.
+      }
+      await Promise.resolve();
+    }
     await churnClock();
 
     expect(calls).toBe(1);

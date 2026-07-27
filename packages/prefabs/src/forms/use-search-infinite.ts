@@ -91,7 +91,10 @@ export function createSearchInfinite<T>(
     };
   });
 
-  const options = createMemo(() => query.latest()?.pages.flatMap((page) => page.data) ?? []);
+  const options = createMemo(() => {
+    const rows = query.retained();
+    return (rows ? rows.pages : query.data().pages).flatMap((page) => page.data);
+  });
 
   const loadMore = () => {
     if (query.hasNextPage() && !query.fetching() && !query.fetchingNextPage()) {
@@ -105,7 +108,8 @@ export function createSearchInfinite<T>(
     searchTerm,
     setSearch,
     clearSearch,
-    isLoading: query.loading,
+    // No cached value for the current key yet: the dropdown has nothing to show.
+    isLoading: () => query.fetching() && query.cached() === undefined,
     isFetchingMore: query.fetchingNextPage,
     hasMore: query.hasNextPage,
     loadMore,

@@ -1,7 +1,8 @@
 import type { JSX } from "@solidjs/web";
+import { createIntersectionLoader } from "@xgx/query";
 import {
-  cn,
   ComboboxTrigger,
+  cn,
   Label,
   Search,
   SearchContent,
@@ -15,9 +16,8 @@ import {
   SearchSection,
   Spinner,
 } from "@xgx/ui";
-import { createIntersectionLoader } from "@xgx/query";
-import { type Accessor, createMemo, createSignal, createUniqueId, Show } from "solid-js";
 import { Search as SearchIcon, X } from "@xgx/ui/icons";
+import { type Accessor, createMemo, createSignal, createUniqueId, Show } from "solid-js";
 import { createSearchInfinite, type SearchInfiniteQueryConfig } from "./use-search-infinite.ts";
 
 export type { SearchInfinitePage, SearchInfiniteQueryConfig } from "./use-search-infinite.ts";

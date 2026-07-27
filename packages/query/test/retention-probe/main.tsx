@@ -1,5 +1,5 @@
 import { render } from "@solidjs/web";
-import { createMemo, createSignal, For, isPending, latest, Loading } from "solid-js";
+import { createMemo, createSignal, For, isPending, Loading, latest } from "solid-js";
 
 /**
  * Phase 1 browser probe for docs/solidjs2-query-contract-plan.md.

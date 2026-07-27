@@ -50,7 +50,6 @@ export interface UseTableInfiniteReturn<
   TPageParam = unknown,
 > {
   data: Accessor<TData[]>;
-  latestData: Accessor<TData[]>;
   query: InfiniteQueryResult<TPage, TPageParam>;
   isLoading: Accessor<boolean>;
   isFetchingMore: Accessor<boolean>;
@@ -121,21 +120,23 @@ export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
   const flattenPages = (pages: readonly TPage[] | undefined): TData[] =>
     pages?.flatMap((page) => [...getRows(page)]) ?? [];
 
+  // Reads `retained`, not `data`: a keyed `<For>` under `<Loading>` does not pick up the
+  // new value in Solid 2 beta.25, so a filtered table would stay stuck on old rows. The
+  // first read still suspends, because `retained` is undefined until something resolves.
   const data = createMemo(() => {
-    return flattenPages(query.data().pages);
+    const rows = query.retained();
+    return flattenPages(rows ? rows.pages : query.data().pages);
   });
 
-  const latestData = createMemo(() => flattenPages(query.latest()?.pages));
-
   const count = createMemo(() => {
-    const pages = query.latest()?.pages;
+    const pages = query.cached()?.pages;
     if (!pages || pages.length === 0) return undefined;
     const lastPage = pages[pages.length - 1];
     return getCount(lastPage);
   });
 
   const totalCount = createMemo(() => {
-    const pages = query.latest()?.pages;
+    const pages = query.cached()?.pages;
     if (!pages || pages.length === 0) return undefined;
     const lastPage = pages[pages.length - 1];
     return getTotalCount(lastPage);
@@ -151,7 +152,9 @@ export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
     void query.refetch();
   };
 
-  const isLoading = createMemo(() => query.loading());
+  // No cached value for the current key yet, so nothing can be shown. `<Loading>` owns
+  // the first read; this is for chrome that renders outside the boundary.
+  const isLoading = createMemo(() => query.fetching() && query.cached() === undefined);
   const isFetchingMore = createMemo(() => query.fetchingNextPage());
   const hasMore = createMemo(() => query.hasNextPage());
 
@@ -212,7 +215,7 @@ export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
 
   const selectedCount = createMemo(() => {
     if (allSelected()) {
-      const base = latestData().length;
+      const base = data().length;
       const excluded = excludedIds().length;
       return Math.min(5000, Math.max(0, base - excluded));
     }
@@ -221,7 +224,6 @@ export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
 
   return {
     data,
-    latestData,
     query,
     isLoading,
     isFetchingMore,

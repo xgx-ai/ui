@@ -44,7 +44,7 @@ test("the default client works without a provider", async () => {
     }));
 
     expect(await resolve(() => query.data())).toBe("ready");
-    expect(query.latest()).toBe("ready");
+    expect(query.cached()).toBe("ready");
   });
 });
 
@@ -137,15 +137,17 @@ test("a remounted stale query renders cached data while refreshing", async () =>
     expect(query.data()).toBe(1);
     await Promise.resolve();
     expect(calls).toBe(2);
-    expect(query.loading()).toBe(false);
-    expect(query.refetching()).toBe(true);
+    // Was `loading()` false / `refetching()` true: a request is running while the current
+    // key already has data.
+    expect(query.fetching()).toBe(true);
+    expect(query.cached()).toBe(1);
 
     refreshed.resolve(2);
     await nextTask();
 
     expect(query.data()).toBe(2);
-    expect(query.latest()).toBe(2);
-    expect(query.refetching()).toBe(false);
+    expect(query.cached()).toBe(2);
+    expect(query.fetching()).toBe(false);
   });
 });
 
@@ -175,13 +177,13 @@ test("prefix invalidation refetches active queries and waits for settlement", as
     await Promise.resolve();
 
     expect(calls).toBe(2);
-    expect(query.refetching()).toBe(true);
+    expect(query.fetching()).toBe(true);
     expect(query.pending()).toBe(false);
     expect(settled).toBe(false);
 
     refreshed.resolve(2);
     await invalidation;
-    expect(query.latest()).toBe(2);
+    expect(query.cached()).toBe(2);
     expect(settled).toBe(true);
   });
 });
@@ -205,12 +207,11 @@ test("an explicit refetch is affected, pending, and returns the new value", asyn
     await Promise.resolve();
 
     expect(query.fetching()).toBe(true);
-    expect(query.refetching()).toBe(true);
     expect(query.pending()).toBe(true);
 
     refreshed.resolve(2);
     expect(await result).toBe(2);
-    expect(query.latest()).toBe(2);
+    expect(query.cached()).toBe(2);
     expect(query.pending()).toBe(false);
 
     const quietResult = query.refresh();
@@ -220,11 +221,11 @@ test("an explicit refetch is affected, pending, and returns the new value", asyn
 
     quietlyRefreshed.resolve(3);
     expect(await quietResult).toBe(3);
-    expect(query.latest()).toBe(3);
+    expect(query.cached()).toBe(3);
   });
 });
 
-test("a superseded key cannot overwrite the latest value", async () => {
+test("a superseded key cannot overwrite the current value", async () => {
   await inRoot(async () => {
     const first = deferred<string>();
     const second = deferred<string>();
@@ -245,16 +246,16 @@ test("a superseded key cannot overwrite the latest value", async () => {
     second.resolve("second");
 
     expect(await secondRead).toBe("second");
-    expect(query.latest()).toBe("second");
+    expect(query.cached()).toBe("second");
 
     first.resolve("first");
     await firstRead;
     await Promise.resolve();
-    expect(query.latest()).toBe("second");
+    expect(query.cached()).toBe("second");
   });
 });
 
-test("an active query follows key changes when consumers read only latest", async () => {
+test("an active query follows key changes when consumers only peek at the cache", async () => {
   await inRoot(async () => {
     const second = deferred<string>();
     const [id, setId] = createSignal(1);
@@ -271,7 +272,7 @@ test("an active query follows key changes when consumers read only latest", asyn
     });
 
     await resolve(() => query.data());
-    expect(query.latest()).toBe("first");
+    expect(query.cached()).toBe("first");
 
     setId(2);
     flush();
@@ -280,7 +281,7 @@ test("an active query follows key changes when consumers read only latest", asyn
 
     second.resolve("second");
     await nextTask();
-    expect(query.latest()).toBe("second");
+    expect(query.cached()).toBe("second");
   });
 });
 
@@ -314,13 +315,13 @@ test("mutation pending includes awaited query invalidation", async () => {
     await Promise.resolve();
 
     expect(mutation.isPending).toBe(true);
-    expect(query.refetching()).toBe(true);
+    expect(query.fetching()).toBe(true);
     expect(query.pending()).toBe(true);
 
     refreshed.resolve(2);
     expect(await result).toBe("saved");
     expect(mutation.isPending).toBe(false);
-    expect(query.latest()).toBe(2);
+    expect(query.cached()).toBe(2);
     expect(query.pending()).toBe(false);
   });
 });
@@ -346,7 +347,7 @@ test("infinite queries cache later pages and reset on a new key", async () => {
     await resolve(() => query.data());
     flush();
     await query.fetchNextPage();
-    expect(query.latest()?.pages).toHaveLength(2);
+    expect(query.cached()?.pages).toHaveLength(2);
 
     const refetched = await query.refetch();
     expect(refetched.pages).toHaveLength(2);
@@ -358,7 +359,7 @@ test("infinite queries cache later pages and reset on a new key", async () => {
     await resolve(() => query.data());
     flush();
 
-    expect(query.latest()?.pages).toEqual([{ next: 1, value: "second" }]);
+    expect(query.cached()?.pages).toEqual([{ next: 1, value: "second" }]);
     expect(calls).toEqual(["first:0", "first:1", "first:0", "first:1", "second:0"]);
   });
 });
@@ -416,7 +417,7 @@ test("active queries poll quietly, recover from failure, and stop when disposed"
 
     expect(await resolve(() => query.data())).toBe(1);
     await secondStarted.promise;
-    expect(query.latest()).toBe(1);
+    expect(query.cached()).toBe(1);
     expect(query.fetching()).toBe(true);
     expect(query.pending()).toBe(false);
 
@@ -424,7 +425,7 @@ test("active queries poll quietly, recover from failure, and stop when disposed"
     await thirdSucceeded.promise;
     await nextTask();
     flush();
-    expect(query.latest()).toBe(3);
+    expect(query.cached()).toBe(3);
 
     dispose();
     const callsAtDispose = calls;

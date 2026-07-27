@@ -11,7 +11,6 @@ import type {
 
 export type UseTableReturn<TData> = {
   data: () => TData[];
-  latestData: () => TData[];
   hasMore: () => boolean;
   isFetchingMore: () => boolean;
   loadMore: () => void;
@@ -54,20 +53,26 @@ export function useTableInfinite<TData>(
     },
   }));
 
-  const rows = createMemo(() => query.data().pages.flatMap((page) => page.data ?? []));
-  const latestRows = createMemo(
-    () => query.latest()?.pages.flatMap((page) => page.data ?? []) ?? [],
+  // See `retained` on the infinite query result: a keyed <For> under <Loading> does not
+  // pick up the new value in Solid 2 beta.25, so the rows source must not suspend once
+  // anything has loaded.
+  const rows = createMemo(() => {
+    const held = query.retained();
+    return (held ? held.pages : query.data().pages).flatMap((page) => page.data ?? []);
+  });
+  // Non-suspending peek for the chrome below, which renders outside the boundary.
+  const cachedRows = createMemo(
+    () => query.cached()?.pages.flatMap((page) => page.data ?? []) ?? [],
   );
   const totalCount = createMemo(
     () =>
-      query.latest()?.pages.at(-1)?.totalCount ??
-      query.latest()?.pages.at(-1)?.count ??
-      latestRows().length,
+      query.cached()?.pages.at(-1)?.totalCount ??
+      query.cached()?.pages.at(-1)?.count ??
+      cachedRows().length,
   );
 
   return {
     data: rows,
-    latestData: latestRows,
     hasMore: createMemo(() => query.hasNextPage()),
     isFetchingMore: createMemo(() => query.fetchingNextPage()),
     loadMore: () => {
@@ -76,8 +81,8 @@ export function useTableInfinite<TData>(
     query: {
       get data() {
         return {
-          count: latestRows().length,
-          data: latestRows(),
+          count: cachedRows().length,
+          data: cachedRows(),
           totalCount: totalCount(),
         };
       },
@@ -85,7 +90,7 @@ export function useTableInfinite<TData>(
         return query.fetching() || query.fetchingNextPage();
       },
       get isLoading() {
-        return query.loading();
+        return query.fetching() && query.cached() === undefined;
       },
       pending: query.fetching,
     },
@@ -175,7 +180,6 @@ function renderCell<TData>(
 
 export function TableInfinite<TData>(props: TableCompatProps<TData>) {
   const rows = createMemo(() => props.table.data());
-  const latestRows = () => props.table.latestData();
   const columnCount = () => Math.max(props.columns.length, 1);
 
   return (
@@ -211,7 +215,7 @@ export function TableInfinite<TData>(props: TableCompatProps<TData>) {
                 </tr>
               )}
             </For>
-            <Show when={latestRows().length === 0 && !props.table.query.isLoading}>
+            <Show when={rows().length === 0 && !props.table.query.isLoading}>
               <tr>
                 <td class="px-4 py-6 text-center text-muted-foreground" colspan={columnCount()}>
                   No results

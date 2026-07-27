@@ -126,7 +126,7 @@ const Table = <TData,>(props: TableProps<TData>) => {
     props.getRowId?.(row) ?? (row as { id?: string }).id ?? String(index);
   const enableRowSelection = () => props.enableRowSelection ?? false;
   const enableSorting = () => props.enableSorting ?? false;
-  const latestData = () => props.table.latestData?.() ?? [];
+  const tableData = () => props.table.data();
 
   const loader = createIntersectionLoader({
     canLoad: () =>
@@ -145,7 +145,7 @@ const Table = <TData,>(props: TableProps<TData>) => {
         size: 40,
         enableSorting: false,
         header: () => {
-          const data = latestData();
+          const data = tableData();
           const allSelected =
             data.length > 0 && data.every((row) => props.table.isRowSelected(row));
           const someSelected = data.some((row) => props.table.isRowSelected(row));
@@ -224,9 +224,9 @@ const Table = <TData,>(props: TableProps<TData>) => {
     });
   });
 
-  const totalCount = () => props.table.totalCount?.() ?? latestData().length;
+  const totalCount = () => props.table.totalCount?.() ?? tableData().length;
   const showEndOfResults = () =>
-    !props.table.hasMore() && latestData().length > 0 && !props.table.isLoading();
+    !props.table.hasMore() && tableData().length > 0 && !props.table.isLoading();
 
   return (
     <div class={cn("flex min-h-0 w-full flex-1 flex-col", props.class)}>

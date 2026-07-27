@@ -10,9 +10,7 @@ import {
   createRoot,
   createSignal,
   createStore,
-  Errored,
   isPending,
-  Loading,
   onCleanup,
   onSettled,
   refresh,
@@ -23,7 +21,6 @@ import {
 } from "solid-js";
 
 export type QueryKey = readonly unknown[];
-export { Errored, Loading };
 
 export type QueryContext = {
   queryKey: QueryKey;
@@ -132,22 +129,22 @@ export type MutationOptions<TData, TVariables> = {
 };
 
 export interface QueryResult<TData> {
-  /** The current authoritative value. Initial reads participate in `Loading`. */
+  /**
+   * The authoritative read. Participates in `<Loading>` and `<Errored>`, and is the only
+   * read that belongs in render: `<Loading>` retains already-rendered content across a
+   * revalidation, so nothing extra is needed to keep a list on screen while it reloads.
+   */
   data: SourceAccessor<TData>;
-  /** The last value resolved by this query instance, without suspending. */
-  latest: Accessor<TData | undefined>;
-  /** The cached value for the current key, without stale data from a previous key. */
+  /**
+   * A non-suspending peek at the current key's cached value, for event handlers, effect
+   * compute phases, `<Loading>` fallbacks and other places with no boundary to read under.
+   * Never use it to dodge a boundary in render.
+   */
   cached: Accessor<TData | undefined>;
-  /** Whether the current key has cached data. */
-  hasData: Accessor<boolean>;
-  /** Solid's question-scoped pending verdict for `data`. */
+  /** Solid's question-scoped pending verdict for `data`: a declared change is in flight. */
   pending: Accessor<boolean>;
   /** Whether a request is executing, including quiet background work. */
   fetching: Accessor<boolean>;
-  /** Whether the first request for the current key is executing. */
-  loading: Accessor<boolean>;
-  /** Whether a request is executing while current-key data remains available. */
-  refetching: Accessor<boolean>;
   /** A quiet background refresh that does not declare a value change. */
   refresh: () => Promise<TData>;
   /** A declared, user-visible refetch. */
@@ -194,11 +191,24 @@ export interface InfiniteQueryOptions<TPage, TPageParam = unknown>
 
 export interface InfiniteQueryResult<TPage, TPageParam = unknown> {
   data: SourceAccessor<InfiniteData<TPage, TPageParam>>;
-  latest: Accessor<InfiniteData<TPage, TPageParam> | undefined>;
+  cached: Accessor<InfiniteData<TPage, TPageParam> | undefined>;
+  /**
+   * The last value this query instance resolved, for ANY key, without suspending.
+   *
+   * This exists for one reason: in Solid 2 beta.25 a keyed `<For>` whose source became
+   * pending beneath `<Loading>` keeps rendering its old children after the new value
+   * arrives. `<Loading>` retains the old rows as designed, but the update never lands, so
+   * a filtered table stays stuck on the previous results. Reading a non-suspending source
+   * sidesteps it.
+   *
+   * Unlike `cached`, this deliberately keeps the previous key's value while the next one
+   * loads, so a list does not blank between keys. Use it only for that: any read that can
+   * live under a boundary should use `data`. Remove it when the renderer bug is fixed —
+   * `packages/query/test/retention-probe` is the check.
+   */
+  retained: Accessor<InfiniteData<TPage, TPageParam> | undefined>;
   pending: Accessor<boolean>;
   fetching: Accessor<boolean>;
-  loading: Accessor<boolean>;
-  refetching: Accessor<boolean>;
   fetchingNextPage: Accessor<boolean>;
   hasNextPage: Accessor<boolean>;
   fetchNextPage: () => Promise<void>;
@@ -954,22 +964,6 @@ function createQueryResult<TData>(
     return client.readQuery(current.query);
   });
 
-  const [latestData, setLatestData] = createSignal<TData | undefined>();
-
-  createEffect(
-    () => {
-      const current = state();
-      if (!current.entry.hasData()) return undefined;
-      return {
-        hash: current.entry.hash,
-        value: current.entry.data() as TData,
-      };
-    },
-    (value) => {
-      if (value) setLatestData(() => value.value);
-    },
-  );
-
   createEffect(
     () => {
       const current = state();
@@ -1007,17 +1001,12 @@ function createQueryResult<TData>(
     return entry.hasData() ? (entry.data() as TData) : undefined;
   };
   const fetching = () => state().enabled && state().entry.fetching();
-  const loading = () => fetching() && !state().entry.hasData();
 
   return {
     data,
-    latest: latestData,
     cached,
-    hasData: () => state().entry.hasData(),
     pending: () => state().enabled && isPending(() => data()),
     fetching,
-    loading,
-    refetching: () => fetching() && state().entry.hasData(),
     refresh: refreshQuery,
     refetch,
   };
@@ -1077,11 +1066,10 @@ export function createInfiniteQuery<TPage, TPageParam = unknown>(
         hash: stableQueryKey(current.queryKey),
         page: firstPage.cached(),
         pageParam: current.initialPageParam,
-        ready: firstPage.hasData(),
       };
     },
     (current) => {
-      if (!current.ready) return;
+      if (current.page === undefined) return;
       setPagesHash(current.hash);
       setPages((draft) => {
         draft.pages.splice(0, draft.pages.length, current.page as TPage);
@@ -1158,8 +1146,7 @@ export function createInfiniteQuery<TPage, TPageParam = unknown>(
     const current = untrack(descriptor);
     const hash = stableQueryKey(current.queryKey);
     if (!isEnabled(current.enabled)) {
-      const value = firstPage.latest();
-      if (value === undefined) throw new QueryDisabledError();
+      if (firstPage.cached() === undefined) throw new QueryDisabledError();
       return pages;
     }
 
@@ -1202,13 +1189,20 @@ export function createInfiniteQuery<TPage, TPageParam = unknown>(
     return yield refreshPages();
   });
 
+  const everLoaded = () => pagesHash() !== "";
+
   return {
     data,
-    latest: () => (firstPage.latest() === undefined ? undefined : pages),
+    retained: () => (everLoaded() ? pages : undefined),
+    // Only valid for the current key: the pages store still holds the previous key's
+    // pages until the sync effect replaces them.
+    cached: () =>
+      firstPage.cached() === undefined ||
+      pagesHash() !== stableQueryKey(untrack(descriptor).queryKey)
+        ? undefined
+        : pages,
     pending: firstPage.pending,
     fetching: firstPage.fetching,
-    loading: firstPage.loading,
-    refetching: firstPage.refetching,
     fetchingNextPage,
     hasNextPage: () => nextPageParam() !== undefined,
     fetchNextPage,

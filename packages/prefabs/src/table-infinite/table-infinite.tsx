@@ -96,7 +96,6 @@ const TABLE_LOADING_BAR_STYLES = `
 
 type PendingQuerySource = {
   query?: {
-    readonly latest?: () => unknown;
     readonly pending?: () => boolean;
   };
 };
@@ -328,18 +327,10 @@ function getColumnStyles<TData>(
   };
 }
 
-function getLatestTableData<TData>(
-  table: UseTableInfiniteReturn<TData, any, any> | TableController<TData>,
-): TData[] {
-  return table.latestData?.() ?? table.data();
-}
-
 function getRenderableTableData<TData>(
   table: UseTableInfiniteReturn<TData, any, any> | TableController<TData>,
 ): TData[] {
-  const queryLatest = (table as PendingQuerySource).query?.latest;
-  if (queryLatest && queryLatest() === undefined) return table.data();
-  return getLatestTableData(table);
+  return table.data();
 }
 
 function getQueryIsPending(table: object): boolean {
@@ -387,7 +378,7 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
         size: 40,
         enableSorting: false,
         header: () => {
-          const currentData = getLatestTableData(props.table);
+          const currentData = getRenderableTableData(props.table);
           const allSelected =
             currentData.length > 0 && currentData.every((row) => props.table.isRowSelected(row));
           const someSelected = currentData.some((row) => props.table.isRowSelected(row));
@@ -477,9 +468,8 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
 
   const rows = createMemo<TableRowContext<TData>[]>(() => {
     const sort = sorting();
-    // Solid 2 beta can retain stale keyed children when this list reads a newly-pending
-    // source beneath <Loading>. Suspend for the first page, then render latestData so
-    // later query-key changes keep the settled rows reactive while the loading bar runs.
+    // `<Loading>` retains already-rendered rows across a key change, so the authoritative
+    // read is all that is needed: no mirror, no non-suspending fallback.
     const sourceData = getRenderableTableData(props.table);
     const data = sourceData.map((row, index) => ({
       id: rowId(row, index),
@@ -502,14 +492,14 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
     });
   });
 
-  const totalCount = () => props.table.totalCount?.() ?? getLatestTableData(props.table).length;
+  const totalCount = () => props.table.totalCount?.() ?? getRenderableTableData(props.table).length;
   const selectedCount = () =>
     enableRowSelection()
-      ? getLatestTableData(props.table).filter((row) => props.table.isRowSelected(row)).length
+      ? getRenderableTableData(props.table).filter((row) => props.table.isRowSelected(row)).length
       : 0;
   const showEndOfResults = () =>
     !props.table.hasMore() &&
-    getLatestTableData(props.table).length > 0 &&
+    getRenderableTableData(props.table).length > 0 &&
     !props.table.isLoading();
   const showLoadingBar = () =>
     props.table.isLoading() || props.table.isFetchingMore() || getQueryIsPending(props.table);

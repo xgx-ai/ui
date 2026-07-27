@@ -28,7 +28,6 @@ export interface UseTableParams<TData extends TableRowData, TParams = Record<str
 
 export interface UseTableReturn<TData> {
   data: Accessor<TData[]>;
-  latestData: Accessor<TData[]>;
   query: InfiniteQueryResult<
     {
       data: TData[];
@@ -104,23 +103,24 @@ export function useTable<
     }),
   );
 
+  // Reads `retained`, not `data`: a keyed `<For>` under `<Loading>` does not pick up the
+  // new value in Solid 2 beta.25, so a filtered table would stay stuck on old rows. The
+  // first read still suspends, because `retained` is undefined until something resolves.
   const data = createMemo(() => {
-    return query.data().pages.flatMap((page) => page.data);
-  });
-
-  const latestData = createMemo(() => {
-    return query.latest()?.pages.flatMap((page) => page.data) ?? [];
+    const rows = query.retained();
+    if (!rows) return query.data().pages.flatMap((page) => page.data);
+    return rows.pages.flatMap((page) => page.data);
   });
 
   const count = createMemo(() => {
-    const pages = query.latest()?.pages;
+    const pages = query.cached()?.pages;
     if (!pages || pages.length === 0) return undefined;
     const lastPage = pages[pages.length - 1];
     return lastPage.count;
   });
 
   const totalCount = createMemo(() => {
-    const pages = query.latest()?.pages;
+    const pages = query.cached()?.pages;
     if (!pages || pages.length === 0) return undefined;
     const lastPage = pages[pages.length - 1];
     return lastPage.totalCount;
@@ -136,7 +136,9 @@ export function useTable<
     void query.refetch();
   };
 
-  const isLoading = createMemo(() => query.loading());
+  // No cached value for the current key yet, so nothing can be shown. `<Loading>` owns
+  // the first read; this is for chrome that renders outside the boundary.
+  const isLoading = createMemo(() => query.fetching() && query.cached() === undefined);
   const isFetchingMore = createMemo(() => query.fetchingNextPage());
   const hasMore = createMemo(() => query.hasNextPage());
 
@@ -183,7 +185,7 @@ export function useTable<
 
   const selectedCount = createMemo(() => {
     if (allSelected()) {
-      const base = latestData().length;
+      const base = data().length;
       const excluded = excludedIds().length;
       return Math.min(5000, Math.max(0, base - excluded));
     }
@@ -192,7 +194,6 @@ export function useTable<
 
   return {
     data,
-    latestData,
     query,
     isLoading,
     isFetchingMore,

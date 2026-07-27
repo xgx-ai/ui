@@ -1,3 +1,12 @@
+export type {
+  CellContext,
+  ColumnDef,
+  HeaderContext,
+  SortDirection,
+  TableColumn,
+  TableController,
+  TableRowContext,
+} from "@xgx/ui";
 export {
   type DatePresetOption,
   defaultDatePresets,
@@ -29,8 +38,8 @@ export {
 export { TableFilter, type TableFilterProps } from "./table-filter.tsx";
 export {
   TableInfinite,
-  TableInfiniteSkeletonRows,
   type TableInfiniteProps,
+  TableInfiniteSkeletonRows,
   type TableInfiniteSkeletonRowsProps,
 } from "./table-infinite.tsx";
 export {
@@ -47,12 +56,3 @@ export {
   useTableInfinite,
   useTableInfiniteFromQuery,
 } from "./use-table-infinite.ts";
-export type {
-  CellContext,
-  ColumnDef,
-  HeaderContext,
-  SortDirection,
-  TableColumn,
-  TableController,
-  TableRowContext,
-} from "@xgx/ui";
