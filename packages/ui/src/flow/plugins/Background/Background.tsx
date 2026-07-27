@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createMemo, Show } from "solid-js";
 import { useStore } from "../../store";
 import { type BackgroundProps, BackgroundVariant } from "./types";

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Position } from "@xyflow/system";
 import type { NodeProps } from "../../types";
 import { Handle } from "../Handle";

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Align, Position } from "@xyflow/system";
 import type { JSX } from "@solidjs/web";
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getNodeIdContext } from "../store/context";
 import { useStore } from "./useStore";
 

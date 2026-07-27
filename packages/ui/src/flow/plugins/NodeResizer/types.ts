@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { ControlPosition, OnResize, OnResizeEnd, OnResizeStart, ResizeControlDirection, ResizeControlVariant, ShouldResize, } from "@xyflow/system";
 import type { JSX } from "@solidjs/web";
 

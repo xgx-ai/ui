@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
 	type AriaLabelConfig,
 	adoptUserNodes,
@@ -212,7 +211,6 @@ export function getInitialStore<
 
 			return initialized;
 		},
-		undefined,
 		{ equals: false },
 	);
 
@@ -268,11 +266,13 @@ export function getInitialStore<
 	});
 
 	// --- Props-derived values ---
-	const nodesDraggable = createMemo(() => signals.props.nodesDraggable ?? true);
-	const nodesConnectable = createMemo(
+	const [nodesDraggable, setNodesDraggable] = createSignal(
+		() => signals.props.nodesDraggable ?? true,
+	);
+	const [nodesConnectable, setNodesConnectable] = createSignal(
 		() => signals.props.nodesConnectable ?? true,
 	);
-	const elementsSelectable = createMemo(
+	const [elementsSelectable, setElementsSelectable] = createSignal(
 		() => signals.props.elementsSelectable ?? true,
 	);
 	const nodesFocusable = createMemo(() => signals.props.nodesFocusable ?? true);
@@ -521,7 +521,6 @@ export function getInitialStore<
 				edges: visibleEdges,
 			};
 		},
-		undefined,
 		{ equals: false },
 	);
 
@@ -648,11 +647,20 @@ export function getInitialStore<
 		get nodesDraggable() {
 			return nodesDraggable();
 		},
+		set nodesDraggable(value) {
+			setNodesDraggable(value);
+		},
 		get nodesConnectable() {
 			return nodesConnectable();
 		},
+		set nodesConnectable(value) {
+			setNodesConnectable(value);
+		},
 		get elementsSelectable() {
 			return elementsSelectable();
+		},
+		set elementsSelectable(value) {
+			setElementsSelectable(value);
 		},
 		get nodesFocusable() {
 			return nodesFocusable();

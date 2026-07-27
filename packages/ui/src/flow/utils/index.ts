@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { isEdgeBase, isNodeBase, type XYPosition } from "@xyflow/system";
 
 import type { Edge, Node } from "../types";

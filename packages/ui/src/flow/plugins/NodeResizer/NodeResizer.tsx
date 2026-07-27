@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { ResizeControlVariant, XY_RESIZER_HANDLE_POSITIONS, XY_RESIZER_LINE_POSITIONS, } from "@xyflow/system";
 import { For, Show } from "solid-js";
 import { ResizeControl } from "./ResizeControl";

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export enum BackgroundVariant {
 	Lines = "lines",
 	Dots = "dots",

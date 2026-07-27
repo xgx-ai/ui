@@ -12,7 +12,7 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createSignal, omit, useContext } from "solid-js";
+import { createContext, createSignal, omit, untrack, useContext } from "solid-js";
 
 import { cn } from "../cn";
 
@@ -41,7 +41,9 @@ type SwitchProps = Omit<ComponentProps<"label">, "children" | "onChange"> & {
 
 export const Switch = (props: SwitchProps) => {
   const local = props;
-  const [internalChecked, setInternalChecked] = createSignal(local.defaultChecked === true);
+  const [internalChecked, setInternalChecked] = createSignal(
+    untrack(() => local.defaultChecked === true),
+  );
   const checked = () => local.checked ?? internalChecked();
   const disabled = () => local.disabled === true;
   const handleInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {

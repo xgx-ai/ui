@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { ColorModeClass } from "@xyflow/system";
 import { useStore } from "./useStore";
 

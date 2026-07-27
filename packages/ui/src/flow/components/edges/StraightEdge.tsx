@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getStraightPath } from "@xyflow/system";
 import type { StraightEdgeProps } from "../../types";
 import { BaseEdge } from "./BaseEdge";

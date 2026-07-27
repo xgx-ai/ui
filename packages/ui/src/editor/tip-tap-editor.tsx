@@ -7,7 +7,7 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import { TableRow } from "@tiptap/extension-table-row";
 import StarterKit from "@tiptap/starter-kit";
 import type { Component } from "solid-js";
-import { createEffect, createSignal, onCleanup } from "solid-js";
+import { createEffect, createSignal, untrack } from "solid-js";
 import type { WebsocketProvider } from "y-websocket";
 import type * as Y from "yjs";
 import { ParameterNode } from "./extensions/parameter-node";
@@ -70,80 +70,91 @@ export interface TipTapEditorProps {
 export const TipTapEditor: Component<TipTapEditorProps> = (props) => {
   const [editorContainer, setEditorContainer] = createSignal<HTMLDivElement | null>(null);
   const [editor, setEditor] = createSignal<Editor | null>(null);
+  const initialEditable = untrack(() => props.editable ?? true);
 
-  createEffect(editorContainer, (container) => {
-    if (!container || editor()) return;
+  createEffect(
+    () => ({
+      container: editorContainer(),
+      fragment: props.fragment,
+      onHistoryReady: props.onHistoryReady,
+      onReady: props.onReady,
+      provider: props.provider,
+      undoManager: props.undoManager,
+      userId: props.user?.id || "anonymous",
+      userName: props.user?.name || "Anonymous",
+    }),
+    (state) => {
+      if (!state.container) return;
 
-    // Get current user info for collaboration cursor
-    const userName = props.user?.name || "Anonymous";
-    const userId = props.user?.id || "anonymous";
-    const color = userColor(userId);
+      const color = userColor(state.userId);
 
-    // Build extensions list
-    // biome-ignore lint/suspicious/noExplicitAny: TipTap extension unions are too wide for this mixed array.
-    const extensions: any[] = [
-      StarterKit.configure({
-        // Disable undo/redo since Y.js handles it
-        undoRedo: false,
-      }),
-      Collaboration.configure({
-        fragment: props.fragment,
-        ...(props.undoManager
-          ? {
-              yUndoOptions: {
-                undoManager: props.undoManager,
-              },
-            }
-          : {}),
-      }),
-      VegaLiteChart,
-      Table.configure({
-        resizable: true,
-      }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      ParameterNode,
-    ];
-
-    // Add CollaborationCursor if provider is available
-    if (props.provider) {
-      extensions.push(
-        CollaborationCursor.configure({
-          provider: props.provider,
-          user: {
-            name: userName,
-            color: color,
-          },
+      const extensions: any[] = [
+        StarterKit.configure({
+          undoRedo: false,
         }),
-      );
-    }
+        Collaboration.configure({
+          fragment: state.fragment,
+          ...(state.undoManager
+            ? {
+                yUndoOptions: {
+                  undoManager: state.undoManager,
+                },
+              }
+            : {}),
+        }),
+        VegaLiteChart,
+        Table.configure({
+          resizable: true,
+        }),
+        TableRow,
+        TableHeader,
+        TableCell,
+        ParameterNode,
+      ];
 
-    const editorInstance = new Editor({
-      element: container,
-      extensions,
-      editable: props.editable ?? true,
-      editorProps: {
-        attributes: {
-          class:
-            "ama-document-prose prose prose-sm max-w-none focus:outline-none min-h-[200px] px-8 py-12 prose-headings:font-semibold prose-h1:text-xl prose-h2:text-base prose-h3:text-sm",
+      if (state.provider) {
+        extensions.push(
+          CollaborationCursor.configure({
+            provider: state.provider,
+            user: {
+              name: state.userName,
+              color,
+            },
+          }),
+        );
+      }
+
+      const editorInstance = new Editor({
+        element: state.container,
+        extensions,
+        editable: initialEditable,
+        editorProps: {
+          attributes: {
+            class:
+              "ama-document-prose prose prose-sm max-w-none focus:outline-none min-h-[200px] px-8 py-12 prose-headings:font-semibold prose-h1:text-xl prose-h2:text-base prose-h3:text-sm",
+          },
         },
-      },
-    });
+      });
 
-    const undoPlugin = editorInstance.state.plugins.find((plugin) =>
-      ((plugin as unknown as { key?: string }).key ?? "").startsWith("y-undo"),
-    );
-    const undoPluginState = undoPlugin?.getState(editorInstance.state) as
-      | { undoManager?: Y.UndoManager }
-      | undefined;
-    if (undoPluginState?.undoManager) {
-      props.onHistoryReady?.(undoPluginState.undoManager);
-    }
+      const undoPlugin = editorInstance.state.plugins.find((plugin) =>
+        ((plugin as unknown as { key?: string }).key ?? "").startsWith("y-undo"),
+      );
+      const undoPluginState = undoPlugin?.getState(editorInstance.state) as
+        | { undoManager?: Y.UndoManager }
+        | undefined;
+      if (undoPluginState?.undoManager) {
+        state.onHistoryReady?.(undoPluginState.undoManager);
+      }
 
-    setEditor(editorInstance);
-    props.onReady?.(editorInstance);
-  });
+      setEditor(editorInstance);
+      state.onReady?.(editorInstance);
+
+      return () => {
+        editorInstance.destroy();
+        setEditor((current) => (current === editorInstance ? null : current));
+      };
+    },
+  );
 
   createEffect(
     () => [editor(), props.editable] as const,
@@ -155,13 +166,6 @@ export const TipTapEditor: Component<TipTapEditorProps> = (props) => {
       currentEditor.setEditable(editable ?? true);
     },
   );
-
-  onCleanup(() => {
-    const currentEditor = editor();
-    if (currentEditor) {
-      currentEditor.destroy();
-    }
-  });
 
   return (
     <div

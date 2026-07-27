@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { onCleanup } from "solid-js";
 import type { OnSelectionChange } from "../types";
 import { useStore } from "./useStore";

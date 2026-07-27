@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { format, isSameDay } from "date-fns";
 
-import { createMemo, createSignal, For, onCleanup, onSettled, Show } from "solid-js";
+import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
 import { useCalendarContext } from "./calendar-context";
 import { CalendarEntry, type CalendarEntryContext } from "./calendar-entry";
 import { CalendarHeaderEntry } from "./calendar-header-entry";
@@ -33,8 +33,10 @@ export function CalendarWeekView(props: CalendarWeekViewProps) {
   let scrollRef: HTMLDivElement | undefined;
 
   const [now, setNow] = createSignal(new Date());
-  const timer = setInterval(() => setNow(new Date()), 60_000);
-  onCleanup(() => clearInterval(timer));
+  onSettled(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  });
 
   onSettled(() => {
     if (START_HOUR() === 0) {

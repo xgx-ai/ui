@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { Edge } from "./edges";
 import type { Node } from "./nodes";
 

@@ -36,15 +36,15 @@ export function CalendarEntry(props: CalendarEntryProps) {
   const event = () => props.layoutEvent.event;
   const layoutEvent = () => props.layoutEvent;
 
-  const dayStart = startOfDay(props.day);
+  const dayStart = createMemo(() => startOfDay(props.day));
   const displayStart = createMemo(() =>
-    event().startDate < dayStart ? dayStart : event().startDate,
+    event().startDate < dayStart() ? dayStart() : event().startDate,
   );
 
   const displayEnd = createMemo(() => {
     const endDate = event().endDate;
     if (endDate) {
-      return endDate > addDays(dayStart, 1) ? addDays(dayStart, 1) : endDate;
+      return endDate > addDays(dayStart(), 1) ? addDays(dayStart(), 1) : endDate;
     }
     return addMinutes(event().startDate, 30);
   });

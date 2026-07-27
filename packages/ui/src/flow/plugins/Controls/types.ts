@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { PanelPosition } from "@xyflow/system";
 import type { JSX } from "@solidjs/web";
 

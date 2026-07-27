@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getMarkerId } from "@xyflow/system";
 import { createMemo, For, Show } from "solid-js";
 import { BezierEdgeInternal } from "../../components/edges";
@@ -66,7 +65,6 @@ function ReactiveEdge<
 			const e = store.visible.edges.get(id);
 			return e ? ({ ...e } as EdgeLayouted<EdgeType>) : undefined;
 		},
-		undefined,
 		{ equals: false }, // always notify — edge objects are mutated in place
 	);
 
@@ -167,7 +165,7 @@ function ReactiveEdge<
 									interactionWidth={e.interactionWidth}
 									selectable={selectable()}
 									deletable={e.deletable}
-									type={e.type}
+									type={e.type ?? "default"}
 									sourceHandleId={e.sourceHandleId}
 									targetHandleId={e.targetHandleId}
 									markerStart={markerStartUrl()}

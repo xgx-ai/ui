@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getNodeToolbarTransform, Position } from "@xyflow/system";
 import { createMemo, omit, Show } from "solid-js";
 import { useSolidFlow } from "../../hooks/useSolidFlow";

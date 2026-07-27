@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
 	elementSelectionKeys,
 	isInputDOMNode,
@@ -7,7 +6,14 @@ import {
 	type XYDragParams,
 } from "@xyflow/system";
 import type { JSX } from "@solidjs/web";
-import { createMemo, createRenderEffect, For, onCleanup, untrack } from "solid-js";
+import {
+	createMemo,
+	createRenderEffect,
+	createSignal,
+	For,
+	onSettled,
+	untrack,
+} from "solid-js";
 import { DefaultNode } from "../../components/nodes/DefaultNode";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { NodeConnectableContext, NodeIdContext } from "../../store/context";
@@ -55,9 +61,7 @@ export function NodeRenderer<
 					store.updateNodeInternals(updates);
 				});
 
-	onCleanup(() => {
-		resizeObserver?.disconnect();
-	});
+	onSettled(() => () => resizeObserver?.disconnect());
 
 	const nodeEntries = () => Array.from(store.visible.nodes.values());
 
@@ -100,7 +104,7 @@ function NodeWrapper<
 	const id = untrack(() => props.node.id);
 	const initialNode = untrack(() => props.node);
 
-	let nodeRef!: HTMLDivElement;
+	const [nodeRef, setNodeRef] = createSignal<HTMLDivElement>();
 	let dragInstance: ReturnType<typeof XYDrag> | null = null;
 	let observedNodeRef: HTMLDivElement | null = null;
 
@@ -162,8 +166,8 @@ function NodeWrapper<
 		};
 	});
 
-	const ensureDragInstance = () => {
-		if (!nodeRef || dragInstance) {
+	const ensureDragInstance = (element: HTMLDivElement) => {
+		if (dragInstance) {
 			return;
 		}
 
@@ -222,69 +226,85 @@ function NodeWrapper<
 		>);
 	};
 
-	const updateDragInstance = () => {
-		if (!nodeRef) {
+	const updateDragInstance = (params: {
+		dragHandle: string | undefined;
+		draggable: boolean;
+		element: HTMLDivElement | undefined;
+		nodeClickDistance: number | undefined;
+		selectable: boolean;
+	}) => {
+		if (!params.element) {
 			return;
 		}
 
-		ensureDragInstance();
+		ensureDragInstance(params.element);
 		if (!dragInstance) {
 			return;
 		}
 
-		if (!draggable()) {
+		if (!params.draggable) {
 			dragInstance.destroy();
 			dragInstance = null;
 			return;
 		}
 
 		dragInstance.update({
-			domNode: nodeRef,
+			domNode: params.element,
 			noDragClassName: store.noDragClass,
-			handleSelector: node().dragHandle,
+			handleSelector: params.dragHandle,
 			nodeId: id,
-			isSelectable: selectable(),
-			nodeClickDistance: props.nodeClickDistance,
+			isSelectable: params.selectable,
+			nodeClickDistance: params.nodeClickDistance,
 		});
 	};
 
 	// Update drag instance reactively
 	createRenderEffect(
-		() => [draggable(), node().dragHandle, selectable(), props.nodeClickDistance] as const,
-		updateDragInstance,
+		() => ({
+			dragHandle: node().dragHandle,
+			draggable: draggable(),
+			element: nodeRef(),
+			nodeClickDistance: props.nodeClickDistance,
+			selectable: selectable(),
+		}),
+		(params) => {
+			updateDragInstance(params);
+		},
 	);
 
-	onCleanup(() => {
-		dragInstance?.destroy();
-	});
+	createRenderEffect(
+		() => ({ element: nodeRef(), observer: props.resizeObserver }),
+		({ element, observer }) => {
+			if (!element) return;
 
-	const observeAndMeasureNode = () => {
-		if (!nodeRef) {
-			return;
-		}
-
-		if (props.resizeObserver && observedNodeRef !== nodeRef) {
-			if (observedNodeRef) {
-				props.resizeObserver.unobserve(observedNodeRef);
+			if (observer && observedNodeRef !== element) {
+				if (observedNodeRef) {
+					observer.unobserve(observedNodeRef);
+				}
+				observer.observe(element);
+				observedNodeRef = element;
 			}
-			props.resizeObserver.observe(nodeRef);
-			observedNodeRef = nodeRef;
-		}
 
-		// Force initial handle bounds measurement after handles are rendered
-		requestAnimationFrame(() => {
-			if (nodeRef) {
+			const animationFrame = requestAnimationFrame(() => {
 				store.updateNodeInternals(
-					new Map([[id, { id, nodeElement: nodeRef, force: true }]]),
+					new Map([[id, { id, nodeElement: element, force: true }]]),
 				);
-			}
-		});
-	};
+			});
 
-	onCleanup(() => {
-		if (props.resizeObserver && observedNodeRef) {
-			props.resizeObserver.unobserve(observedNodeRef);
-		}
+			return () => {
+				cancelAnimationFrame(animationFrame);
+				if (observer && observedNodeRef === element) {
+					observer.unobserve(element);
+					observedNodeRef = null;
+				}
+			};
+		},
+	);
+
+	onSettled(() => {
+		return () => {
+			dragInstance?.destroy();
+		};
 	});
 
 	function onSelectNodeHandler(event: MouseEvent | TouchEvent) {
@@ -302,7 +322,7 @@ function NodeWrapper<
 
 		if (elementSelectionKeys.includes(event.key) && selectable()) {
 			const unselect = event.key === "Escape";
-			store.handleNodeSelection(id, unselect, nodeRef);
+			store.handleNodeSelection(id, unselect, nodeRef());
 		} else if (
 			draggable() &&
 			node().selected &&
@@ -316,12 +336,8 @@ function NodeWrapper<
 	return (
 		<NodeIdContext value={id}>
 			<NodeConnectableContext value={{ value: connectable }}>
-				<div
-					ref={(el) => {
-						nodeRef = el;
-						updateDragInstance();
-						observeAndMeasureNode();
-					}}
+					<div
+						ref={setNodeRef}
 					data-id={id}
 					class={[
 						"xy-flow__node",
@@ -376,7 +392,7 @@ function NodeWrapper<
 							: undefined
 					}
 					onKeyDown={focusable() ? onKeyDown : undefined}
-					tabIndex={focusable() ? 0 : undefined}
+					tabindex={focusable() ? 0 : undefined}
 					role={node().ariaRole ?? (focusable() ? "group" : undefined)}
 					aria-roledescription="node"
 				>

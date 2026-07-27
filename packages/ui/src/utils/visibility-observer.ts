@@ -52,7 +52,9 @@ export function createVisibilityObserver(
     if (element instanceof Element) {
       attach(element);
     } else {
-      createRenderEffect(element, attach);
+      createRenderEffect(element, (node) => {
+        attach(node);
+      });
     }
 
     onCleanup(() => attach(undefined));

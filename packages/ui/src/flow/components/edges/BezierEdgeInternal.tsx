@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getBezierPath } from "@xyflow/system";
 import type { EdgeProps } from "../../types";
 import { BaseEdge } from "./BaseEdge";

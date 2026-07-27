@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { areConnectionMapsEqual, type HandleConnection, type HandleType, handleConnectionChange, type NodeConnection, } from "@xyflow/system";
 import { createMemo, createRenderEffect } from "solid-js";
 import { getNodeIdContext } from "../store/context";

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export { BaseEdge } from "./BaseEdge";
 export { BezierEdge } from "./BezierEdge";
 export { BezierEdgeInternal } from "./BezierEdgeInternal";

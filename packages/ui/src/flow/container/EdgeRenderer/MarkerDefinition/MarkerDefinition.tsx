@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { For } from "solid-js";
 import { useStore } from "../../../store";
 import { Marker } from "./Marker";

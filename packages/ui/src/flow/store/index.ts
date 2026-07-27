@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { addEdge as addEdgeUtil, type Connection, type ConnectionState, type CoordinateExtent, calculateNodePosition, errorMessages, getHandlePosition, type InternalNodeUpdate, initialConnection, Position, panBy as panBySystem, type SetCenterOptions, snapPosition, type UpdateConnection, type UpdateNodePositions, updateAbsolutePositions, updateNodeInternals as updateNodeInternalsSystem, type ViewportHelperFunctionOptions, type XYPosition, } from "@xyflow/system";
 import { createContext } from "solid-js";
 
@@ -23,7 +22,8 @@ import type {
 
 export { useStore } from "../hooks/useStore";
 
-export const StoreContextObj = createContext<StoreContext>();
+// The context erases store generics; useStore restores them at the consumer boundary.
+export const StoreContextObj = createContext<StoreContext<any, any>>();
 
 export function createStore<
 	NodeType extends Node = Node,

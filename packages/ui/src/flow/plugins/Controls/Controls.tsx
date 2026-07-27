@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { omit, Show } from "solid-js";
 import { Panel } from "../../container/Panel";
 import { useStore } from "../../store";

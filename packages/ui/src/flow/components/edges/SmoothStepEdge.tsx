@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getSmoothStepPath } from "@xyflow/system";
 import type { SmoothStepEdgeProps } from "../../types";
 import { BaseEdge } from "./BaseEdge";

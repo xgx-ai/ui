@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createMemo, omit } from "solid-js";
 import { useStore } from "../../store";
 import { getEdgeIdContext } from "../../store/context";

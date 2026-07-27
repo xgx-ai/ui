@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { SolidFlowStore } from "../../store/types";
 import type { Edge, InternalNode, Node } from "../../types";
 

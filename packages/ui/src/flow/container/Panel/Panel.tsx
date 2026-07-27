@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { omit } from "solid-js";
 
 import type { PanelProps } from "./types";

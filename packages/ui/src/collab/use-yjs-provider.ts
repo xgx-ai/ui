@@ -1,7 +1,7 @@
 /**
  * useYjsProvider - Hook for managing Y.Doc and WebSocket provider
  */
-import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import { createEffect, createMemo, createSignal } from "solid-js";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
@@ -31,12 +31,12 @@ export function useYjsProvider(
 	});
 
 	createEffect(
-		() => [ydoc(), wsUrl(), options.projectId] as const,
-		([doc, url, projectId]) => {
+		() => [ydoc(), wsUrl(), options.projectId, options.docName] as const,
+		([doc, url, projectId, docName]) => {
 			// Create WebSocket provider - use project: prefix for project tree docs
 			const wsProvider = new WebsocketProvider(
 				url,
-				options.docName ?? `yjs/project:${projectId}`,
+				docName ?? `yjs/project:${projectId}`,
 				doc,
 				{ connect: true },
 			);
@@ -48,9 +48,9 @@ export function useYjsProvider(
 				setIsConnected(event.status === "connected");
 			});
 
-			onCleanup(() => {
+			return () => {
 				wsProvider.destroy();
-			});
+			};
 		},
 	);
 

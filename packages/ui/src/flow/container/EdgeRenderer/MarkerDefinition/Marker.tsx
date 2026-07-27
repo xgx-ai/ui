@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { type MarkerProps, MarkerType } from "@xyflow/system";
 import { Show } from "solid-js";
 
@@ -10,7 +9,11 @@ export function Marker(props: MarkerProps) {
 			markerWidth={`${props.width ?? 12.5}`}
 			markerHeight={`${props.height ?? 12.5}`}
 			viewBox="-10 -10 20 20"
-			markerUnits={props.markerUnits ?? "strokeWidth"}
+			markerUnits={
+				(props.markerUnits ?? "strokeWidth") as
+					| "strokeWidth"
+					| "userSpaceOnUse"
+			}
 			orient={props.orient ?? "auto-start-reverse"}
 			refX="0"
 			refY="0"

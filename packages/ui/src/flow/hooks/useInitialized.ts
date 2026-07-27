@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useStore } from "./useStore";
 
 export function useNodesInitialized() {

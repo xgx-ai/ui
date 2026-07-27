@@ -181,6 +181,7 @@ import {
   reconcile,
   Show,
   snapshot,
+  untrack,
 } from "solid-js";
 import { z } from "zod";
 
@@ -3343,7 +3344,7 @@ function SortableDemoHandleRow(props: {
   state: SortableItemState;
   showIndex?: boolean;
 }) {
-  const renderToken = sortableDemoRenderToken(props.kind, props.item.id);
+  const renderToken = untrack(() => sortableDemoRenderToken(props.kind, props.item.id));
 
   return (
     <div
@@ -3365,7 +3366,7 @@ function SortableDemoHandleRow(props: {
 }
 
 function SortableDemoWholeRow(props: { item: SortableDemoField; state: SortableItemState }) {
-  const renderToken = sortableDemoRenderToken("store", props.item.id);
+  const renderToken = untrack(() => sortableDemoRenderToken("store", props.item.id));
 
   return (
     <div

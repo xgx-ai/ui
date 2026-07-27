@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useContext } from "solid-js";
 import { StoreContextObj } from "../store";
 import type { SolidFlowStore, StoreContext } from "../store/types";
@@ -8,7 +7,7 @@ export function useStore<
 	NodeType extends Node = Node,
 	EdgeType extends Edge = Edge,
 >(): SolidFlowStore<NodeType, EdgeType> {
-	const storeContext = useContext(StoreContextObj) as
+	const storeContext = useContext(StoreContextObj) as unknown as
 		| StoreContext<NodeType, EdgeType>
 		| undefined;
 

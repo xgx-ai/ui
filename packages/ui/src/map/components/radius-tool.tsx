@@ -205,7 +205,9 @@ export function RadiusTool(props: RadiusToolProps) {
 
   useMapEvent("mouseup", () => setDraggingRadius(false));
 
-  createEffect(settingCenter, (setting) => setCursor(setting ? "crosshair" : "default"));
+  createEffect(settingCenter, (setting) => {
+    setCursor(setting ? "crosshair" : "default");
+  });
   createEffect(
     () => ({
       dragging: draggingRadius() || draggingCenter(),

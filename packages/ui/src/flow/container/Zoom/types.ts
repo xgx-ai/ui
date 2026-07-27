@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { OnMove, OnMoveEnd, OnMoveStart, PanOnScrollMode, } from "@xyflow/system";
 import type { JSX } from "@solidjs/web";
 

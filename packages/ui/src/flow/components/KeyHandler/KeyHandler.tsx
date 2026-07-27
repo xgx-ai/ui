@@ -1,6 +1,5 @@
-// @ts-nocheck
 import { isInputDOMNode, isMacOs } from "@xyflow/system";
-import { createRenderEffect, onCleanup } from "solid-js";
+import { onSettled } from "solid-js";
 import { useSolidFlow } from "../../hooks/useSolidFlow";
 import type {
 	Edge,
@@ -146,18 +145,17 @@ export function KeyHandler<
 		}
 	}
 
-	createRenderEffect(() => undefined, () => {
+	onSettled(() => {
 		window.addEventListener("keydown", onKeyDown);
 		window.addEventListener("keyup", onKeyUp);
 		window.addEventListener("blur", resetKeysAndSelection);
 		window.addEventListener("contextmenu", resetKeysAndSelection);
-	});
-
-	onCleanup(() => {
-		window.removeEventListener("keydown", onKeyDown);
-		window.removeEventListener("keyup", onKeyUp);
-		window.removeEventListener("blur", resetKeysAndSelection);
-		window.removeEventListener("contextmenu", resetKeysAndSelection);
+		return () => {
+			window.removeEventListener("keydown", onKeyDown);
+			window.removeEventListener("keyup", onKeyUp);
+			window.removeEventListener("blur", resetKeysAndSelection);
+			window.removeEventListener("contextmenu", resetKeysAndSelection);
+		};
 	});
 
 	return null;

@@ -26,10 +26,6 @@ function refreshRuntimeImport(fromPath: string): string {
   return localImport(fromPath, `${pluginDir}/solid-refresh-runtime.ts`);
 }
 
-function isSolidOneDependencyImport(importer: string): boolean {
-  return importer.includes("/node_modules/@tanstack/solid-");
-}
-
 function packageRoot(specifier: string): string {
   return dirname(Bun.resolveSync(`${specifier}/package.json`, process.cwd()));
 }
@@ -433,14 +429,11 @@ export function SolidPlugin(options: SolidPluginOptions = {}): Bun.BunPlugin {
     name: "xgx-solid-v2",
     setup(build) {
       let babel: typeof import("@babel/core") | undefined;
-      const dependencyRuntimePath = `${pluginDir}/solid-dependency-runtime.ts`;
       const solidEntrypoints = solidRuntimeEntrypoints(hmr && generate === "dom");
 
-      build.onResolve({ filter: /^solid-js(?:\/store)?$/ }, (args) => {
-        if (!isSolidOneDependencyImport(args.importer))
-          return { path: solidEntrypoints["solid-js"] };
-        return { path: dependencyRuntimePath };
-      });
+      build.onResolve({ filter: /^solid-js$/ }, () => ({
+        path: solidEntrypoints["solid-js"],
+      }));
 
       build.onResolve({ filter: /^@solidjs\/(?:signals|web)$/ }, (args) => ({
         path: solidEntrypoints[args.path],

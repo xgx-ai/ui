@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
 	getBoundsOfRects,
 	getInternalNodesBounds,
@@ -10,7 +9,6 @@ import {
 	createRenderEffect,
 	createSignal,
 	For,
-	onCleanup,
 	Show,
 } from "solid-js";
 import { Panel } from "../../container/Panel";
@@ -189,10 +187,10 @@ export function MiniMap(props: MiniMapProps) {
 			getViewScale: () => viewScale(),
 		});
 		minimapInstance = instance;
-		onCleanup(() => {
+		return () => {
 			instance.destroy();
 			if (minimapInstance === instance) minimapInstance = null;
-		});
+		};
 	});
 
 	createRenderEffect(
@@ -205,12 +203,10 @@ export function MiniMap(props: MiniMapProps) {
 			pannable: false,
 			zoomable: zoomable(),
 		}),
-		(params) => minimapInstance?.update(params),
+		(params) => {
+			minimapInstance?.update(params);
+		},
 	);
-
-	onCleanup(() => {
-		minimapInstance?.destroy();
-	});
 
 	return (
 		<Panel

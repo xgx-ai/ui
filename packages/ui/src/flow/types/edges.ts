@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { BezierPathOptions, DefaultEdgeOptionsBase, EdgeBase, EdgePosition, SmoothStepPathOptions, StepPathOptions, } from "@xyflow/system";
 import type { Component } from "solid-js";
 import type { JSX } from "@solidjs/web";
@@ -23,7 +22,7 @@ export type Edge<
 	 * The ARIA role attribute for the edge, used for accessibility.
 	 * @role "group"
 	 */
-	ariaRole?: string;
+	ariaRole?: JSX.AriaAttributes["role"];
 	/**
 	 * General escape hatch for adding custom attributes to the edge's DOM element.
 	 */

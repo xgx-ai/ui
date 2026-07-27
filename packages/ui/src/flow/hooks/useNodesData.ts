@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { type DistributivePick, shallowNodeData } from "@xyflow/system";
 import { createMemo } from "solid-js";
 

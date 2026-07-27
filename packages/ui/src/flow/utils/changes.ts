@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { EdgeChange, NodeChange } from "@xyflow/system";
 import type { Edge, Node } from "../types";
 

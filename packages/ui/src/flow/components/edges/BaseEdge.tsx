@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { omit, Show } from "solid-js";
 import type { BaseEdgeProps } from "../../types";
 import { EdgeLabel } from "../EdgeLabel";

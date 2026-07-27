@@ -1,5 +1,4 @@
-// @ts-nocheck
-import type { AriaLabelConfig, ColorMode, ColorModeClass, ConnectionLineType, ConnectionMode, CoordinateExtent, NodeOrigin, OnConnect, OnConnectEnd, OnConnectStart, OnError, OnReconnect, OnReconnectEnd, OnReconnectStart, PanelPosition, PanOnScrollMode, SelectionMode, SnapGrid, Viewport, ZIndexMode, } from "@xyflow/system";
+import type { AriaLabelConfig, ColorMode, ColorModeClass, ConnectionLineType, ConnectionMode, CoordinateExtent, NodeOrigin, OnConnect, OnConnectEnd, OnConnectStart, OnError, OnMove, OnReconnect, OnReconnectEnd, OnReconnectStart, PanelPosition, PanOnScrollMode, SelectionMode, SnapGrid, Viewport, ZIndexMode, } from "@xyflow/system";
 import type { JSX } from "@solidjs/web";
 
 
@@ -145,9 +144,9 @@ export type SolidFlowProps<
 	onselectiondragstart?: OnSelectionDrag<NodeType>;
 	onselectiondragstop?: OnSelectionDrag<NodeType>;
 	onselectionchange?: OnSelectionChange<NodeType, EdgeType>;
-	onMoveStart?: (event: MouseEvent | TouchEvent, viewport: Viewport) => void;
-	onMove?: (event: MouseEvent | TouchEvent, viewport: Viewport) => void;
-	onMoveEnd?: (event: MouseEvent | TouchEvent, viewport: Viewport) => void;
+	onMoveStart?: OnMove;
+	onMove?: OnMove;
+	onMoveEnd?: OnMove;
 
 	defaultMarkerColor?: string | null;
 } & NodeEvents<NodeType> &

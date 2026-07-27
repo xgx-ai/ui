@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { evaluateAbsolutePosition, type FitBoundsOptions, getElementsToRemove, getNodesBounds, getOverlappingArea, getViewportForBounds, type HandleConnection, type HandleType, isRectObject, nodeToRect, pointToRendererPoint, type Rect, rendererPointToPoint, type SetCenterOptions, type Viewport, type ViewportHelperFunctionOptions, type XYPosition, type ZoomInOut, } from "@xyflow/system";
 
 import type { Edge, FitViewOptions, InternalNode, Node } from "../types";

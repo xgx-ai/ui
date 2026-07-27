@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
   areConnectionMapsEqual,
   type Connection,

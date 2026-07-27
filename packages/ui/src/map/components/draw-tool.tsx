@@ -245,7 +245,9 @@ export function DrawTool(props: DrawToolProps) {
     commit(current);
   });
 
-  createEffect(inserting, (value) => setCursor(value ? "pointer" : "crosshair"));
+  createEffect(inserting, (value) => {
+    setCursor(value ? "pointer" : "crosshair");
+  });
 
   createMapKeyboardShortcuts(() => props.enableKeyboardShortcuts ?? true, container, [
     { code: "Backspace", handler: deleteMarker },

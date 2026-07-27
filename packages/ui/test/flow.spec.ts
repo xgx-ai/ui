@@ -1,4 +1,4 @@
-import { createRoot } from "solid-js";
+import { createRoot, flush } from "solid-js";
 import { createStore as createFlowStore } from "../src/flow/store/index.ts";
 import type { Edge, Node } from "../src/flow/types/index.ts";
 
@@ -121,6 +121,18 @@ test("resets selection state", () =>
       store.edges.every((edge) => !edge.selected),
       "Edge selection was not cleared",
     );
+  }));
+
+test("allows controls to override interaction flags", () =>
+  withStore((store) => {
+    store.nodesDraggable = false;
+    store.nodesConnectable = false;
+    store.elementsSelectable = false;
+    flush();
+
+    assertEqual(store.nodesDraggable, false, "Node dragging was not disabled");
+    assertEqual(store.nodesConnectable, false, "Node connections were not disabled");
+    assertEqual(store.elementsSelectable, false, "Element selection was not disabled");
   }));
 
 export default async function runFlowSpec() {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { EdgeToolbarBaseProps } from "@xyflow/system";
 import type { JSX } from "@solidjs/web";
 

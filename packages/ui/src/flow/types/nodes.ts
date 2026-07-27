@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { InternalNodeBase, NodeBase, NodeProps as NodePropsBase, } from "@xyflow/system";
 import type { Component } from "solid-js";
 import type { JSX } from "@solidjs/web";
@@ -27,7 +26,7 @@ export type Node<
 	 * The ARIA role attribute for the node element, used for accessibility.
 	 * @default "group"
 	 */
-	ariaRole?: string;
+	ariaRole?: JSX.AriaAttributes["role"];
 
 	/**
 	 * General escape hatch for adding custom attributes to the node's DOM element.

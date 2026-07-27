@@ -1,6 +1,5 @@
-// @ts-nocheck
 import { ConnectionLineType, PanOnScrollMode } from "@xyflow/system";
-import { createRenderEffect, createSignal, onCleanup } from "solid-js";
+import { createRenderEffect, createSignal, onSettled, untrack } from "solid-js";
 import { ConnectionLine } from "../../components/ConnectionLine";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { KeyHandler } from "../../components/KeyHandler";
@@ -22,22 +21,20 @@ export function SolidFlow<
 	EdgeType extends Edge = Edge,
 >(props: SolidFlowProps<NodeType, EdgeType>) {
 	const [wrapperRef, setWrapperRef] = createSignal<HTMLDivElement | undefined>();
-	const [clientWidth, setClientWidth] = createSignal(props.width ?? 0);
-	const [clientHeight, setClientHeight] = createSignal(props.height ?? 0);
 
 	// Internal signals that the store reads/writes.
 	// Initialized from props and kept in sync below.
 	const [nodes, setNodes] = createSignal<NodeType[]>(
-		props.nodes ?? ([] as NodeType[]),
+		untrack(() => props.nodes ?? ([] as NodeType[])),
 	);
 	const [edges, setEdges] = createSignal<EdgeType[]>(
-		props.edges ?? ([] as EdgeType[]),
+		untrack(() => props.edges ?? ([] as EdgeType[])),
 	);
 
 	// Track the last props reference we synced, so we only push
 	// parent changes into the store (not overwrite internal drag updates).
-	let lastPropsNodes = props.nodes;
-	let lastPropsEdges = props.edges;
+	let lastPropsNodes = untrack(() => props.nodes);
+	let lastPropsEdges = untrack(() => props.edges);
 
 	createRenderEffect(() => props.nodes, (incoming) => {
 		if (incoming !== lastPropsNodes) {
@@ -55,8 +52,8 @@ export function SolidFlow<
 
 	const store = createStore<NodeType, EdgeType>({
 		props: props as any,
-		width: props.width,
-		height: props.height,
+		width: untrack(() => props.width),
+		height: untrack(() => props.height),
 		get nodes() {
 			return nodes();
 		},
@@ -77,24 +74,20 @@ export function SolidFlow<
 		},
 	});
 
-	// Observe wrapper resize
-	const resizeObserver = new ResizeObserver((entries) => {
-		for (const entry of entries) {
-			const { width, height } = entry.contentRect;
-			setClientWidth(width);
-			setClientHeight(height);
-			store.width = width;
-			store.height = height;
-		}
-	});
-
 	// Set domNode ref on mount
 	createRenderEffect(wrapperRef, (wrapper) => {
 		if (!wrapper) return;
 
+		const resizeObserver = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				const { width, height } = entry.contentRect;
+				store.width = width;
+				store.height = height;
+			}
+		});
 		store.domNode = wrapper;
 		resizeObserver.observe(wrapper);
-		onCleanup(() => resizeObserver.unobserve(wrapper));
+		return () => resizeObserver.disconnect();
 	});
 
 	// Handle selection change
@@ -109,10 +102,7 @@ export function SolidFlow<
 		},
 	);
 
-	onCleanup(() => {
-		resizeObserver.disconnect();
-		store.reset();
-	});
+	onSettled(() => () => store.reset());
 
 	// Wrapper scroll handler to prevent viewport shifting
 	function onWrapperScroll(e: Event) {

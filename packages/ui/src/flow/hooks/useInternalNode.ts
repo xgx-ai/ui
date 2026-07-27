@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createMemo } from "solid-js";
 import type { InternalNode } from "../types";
 import { useStore } from "./useStore";

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { EdgeChange } from "@xyflow/system";
 import { type Accessor, createSignal, type Setter } from "solid-js";
 import type { Edge } from "../types";

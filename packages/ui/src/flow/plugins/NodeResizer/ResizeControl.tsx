@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
   type ControlPosition,
   ResizeControlVariant,
@@ -7,7 +6,7 @@ import {
   type XYResizerChildChange,
   type XYResizerInstance,
 } from "@xyflow/system";
-import { createMemo, createRenderEffect, createSignal, omit, onCleanup } from "solid-js";
+import { createMemo, createRenderEffect, createSignal, omit } from "solid-js";
 import { useStore } from "../../store";
 import { getNodeIdContext } from "../../store/context";
 import type { ResizeControlProps } from "./types";
@@ -98,10 +97,10 @@ export function ResizeControl(allProps: ResizeControlProps) {
         },
       });
       resizer = instance;
-      onCleanup(() => {
+      return () => {
         instance.destroy();
         if (resizer === instance) resizer = null;
-      });
+      };
     },
   );
 
@@ -121,12 +120,10 @@ export function ResizeControl(allProps: ResizeControlProps) {
       onResizeEnd: props.onResizeEnd,
       shouldResize: props.shouldResize,
     }),
-    (params) => resizer?.update(params),
+    (params) => {
+      resizer?.update(params);
+    },
   );
-
-  onCleanup(() => {
-    resizer?.destroy();
-  });
 
   const autoScale = () => props.autoScale ?? true;
 

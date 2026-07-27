@@ -190,15 +190,22 @@ export function LineMarkerTool(props: LineMarkerToolProps) {
   }
 
   createEffect(
-    () => ({ fractions: props.fractions, locked: lockedEndpoints() }),
+    () => ({
+      currentModels: snapshot(models).map((model) => ({ ...model })),
+      fractions: props.fractions,
+      locked: lockedEndpoints(),
+    }),
     (state) => {
       if (state.fractions === undefined) return;
       const next = normaliseFractions(state.fractions, state.locked);
       const serialised = JSON.stringify(next);
-      if (serialised === lastEmittedValue || serialised === JSON.stringify(fractionsFromModels())) {
+      if (
+        serialised === lastEmittedValue ||
+        serialised === JSON.stringify(fractionsFromModels(state.currentModels))
+      ) {
         return;
       }
-      const nextModels = modelsFromFractions(next, readModels());
+      const nextModels = modelsFromFractions(next, state.currentModels);
       replaceModels(nextModels);
       setFractions(next);
       history.clearHistory(next);

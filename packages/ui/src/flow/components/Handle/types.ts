@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { HandleConnection, HandleProps as HandlePropsSystem, } from "@xyflow/system";
 import type { JSX } from "@solidjs/web";
 

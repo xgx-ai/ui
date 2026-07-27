@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { PanelPosition } from "@xyflow/system";
 import type { Component } from "solid-js";
 import type { Node } from "../../types";
@@ -15,7 +14,7 @@ export type MiniMapNodeProps = {
 	borderRadius?: number;
 	class?: string;
 	color?: string;
-	shapeRendering?: string;
+	shapeRendering?: JSX.RectSVGAttributes<SVGRectElement>["shape-rendering"];
 	strokeColor?: string;
 	strokeWidth?: number;
 	selected?: boolean;

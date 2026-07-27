@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { ConnectionLineType, getBezierPath, getConnectionStatus, getSmoothStepPath, getStraightPath, } from "@xyflow/system";
 import type { Component } from "solid-js";
 import { createMemo, Show } from "solid-js";

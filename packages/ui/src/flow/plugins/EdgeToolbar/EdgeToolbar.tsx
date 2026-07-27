@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getEdgeToolbarTransform } from "@xyflow/system";
 import { createMemo, omit, Show } from "solid-js";
 import { EdgeLabel } from "../../components/EdgeLabel";

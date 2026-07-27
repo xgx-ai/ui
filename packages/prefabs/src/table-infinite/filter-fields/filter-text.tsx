@@ -76,8 +76,10 @@ export function FilterText<TFilters extends Record<string, unknown>>(
 
   createEffect(
     () => true,
-    () => () => {
-      clearDebounce();
+    () => {
+      return () => {
+        clearDebounce();
+      };
     },
   );
 
