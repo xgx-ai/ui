@@ -530,8 +530,9 @@ export class QueryClient {
    * nothing" — the shape a read-modify-write on a possibly-absent list needs.
    *
    * When the entry has never fetched, it **adopts the descriptor's `fetch`**, so a later
-   * invalidation re-asks the real question. The legacy `setQueryData` fabricates a
-   * `queryFn` that resolves the written value forever, which silently freezes the entry.
+   * invalidation re-asks the real question. This is the trap in TanStack-shaped
+   * `setQueryData`, which fabricates a `queryFn` resolving the written value forever and so
+   * silently freezes the entry.
    */
   write<TData>(
     descriptor: QueryDescriptor<TData>,
@@ -1045,11 +1046,12 @@ export function createQuery<TData>(
 /**
  * Observes one exact infinite descriptor, holding every loaded page in a SINGLE cache entry.
  *
- * The legacy path caches the first page as its own entry and mirrors it into a separate
- * pages store, with later pages under synthetic `{ $page: n }` keys. That split is why a
- * refetch kept pages the server no longer had, and why invalidating a list family silently
- * collapsed every scrolled table back to its first page: invalidation refetched only the
- * first-page entry, and the mirror effect then spliced the store down to it.
+ * The design this replaced cached the first page as its own entry and mirrored it into a
+ * separate pages store, with later pages under synthetic `{ $page: n }` keys. That split is
+ * why a refetch kept pages the server no longer had, and why invalidating a list family
+ * silently collapsed every scrolled table back to its first page: invalidation refetched
+ * only the first-page entry, and the mirror effect then spliced the store down to it. It is
+ * recorded here because the failure is subtle and the split looks reasonable.
  *
  * Here the entry's value *is* the `InfiniteData`, and its `queryFn` re-asks for every
  * currently-loaded page. Invalidation therefore refreshes all of them and keeps the user's
@@ -1276,8 +1278,8 @@ function createCacheMutation<TData, TVariables>(
     try {
       const data: TData = yield mutation.mutationFn(resolvedVariables);
 
-      // Order is fixed: exact writes first, then invalidation. The legacy path invalidated
-      // before `onSuccess`, so a canonical write only survived by accident of timing.
+      // Order is fixed: exact writes first, then invalidation. The inverse order — sweeping
+      // before `onSuccess` — leaves a canonical write surviving only by accident of timing.
       const written = new Set<string>();
       if (mutation.onSuccess) {
         yield mutation.onSuccess(data, resolvedVariables, recordingCache(client, written));

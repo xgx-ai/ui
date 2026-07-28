@@ -4,8 +4,8 @@ import { type QueryKey, stableQueryKey } from "./keys.ts";
  * Query identity: groups, scopes and descriptors.
  *
  * A group names a namespace once and its members derive their scope from it, so there is no
- * separate prefix to keep in sync with the key — the drift that `defineQuery({ key, prefix })`
- * allows cannot be expressed here.
+ * separate prefix to keep in sync with the key — the drift a hand-written
+ * `{ key, prefix }` pair allows cannot be expressed here.
  *
  * `key` is the normaliser. It converts loose UI state into the strict, serialisable identity,
  * and `fetch` receives that identity and nothing else. A value that affects the answer but is
