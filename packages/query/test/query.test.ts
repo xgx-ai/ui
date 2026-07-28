@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { createRoot, createSignal, flush, resolve } from "solid-js";
+import { createEffect, createRoot, createSignal, flush, resolve } from "solid-js";
 import {
   createInfiniteQuery,
   createMutation,
@@ -454,6 +454,68 @@ test("active queries poll quietly, recover from failure, and stop when disposed"
     const callsAtDispose = calls;
     await new Promise((resolveWait) => setTimeout(resolveWait, 5));
     expect(calls).toBe(callsAtDispose);
+  });
+});
+
+test("cached() re-runs reactive consumers on every write, not just the first", async () => {
+  await inRoot(async () => {
+    const client = new QueryClient();
+    let status = "draft";
+    const group = queryGroup("cached-reactivity", {
+      value: query({
+        key: () => ({}),
+        fetch: async () => ({ status }),
+      }),
+    });
+    const observed = createQuery(() => group.value(), client);
+    const seen: string[] = [];
+    createEffect(
+      () => observed.cached(),
+      (value) => {
+        if (value) seen.push(value.status);
+      },
+    );
+
+    await resolve(() => observed.data());
+    flush();
+    expect(seen).toEqual(["draft"]);
+
+    status = "published";
+    await client.invalidate(group.all);
+    flush();
+
+    // `hasData` stays true across a refetch, so subscribing to it alone froze every consumer
+    // of `cached` on the first answer — a table row kept its old status after the mutation
+    // that invalidated it.
+    expect(observed.cached()?.status).toBe("published");
+    expect(seen).toEqual(["draft", "published"]);
+  });
+});
+
+test("an infinite query's retained pages follow an invalidation refetch", async () => {
+  await inRoot(async () => {
+    const client = new QueryClient();
+    let status = "draft";
+    const group = queryGroup("cached-reactivity-infinite", {
+      list: infiniteQuery({
+        key: () => ({}),
+        initialPageParam: 0,
+        fetch: async () => ({ data: [{ id: "a", status }] }),
+        getNextPageParam: () => undefined,
+      }),
+    });
+    const observed = createInfiniteQuery(() => group.list(), client);
+
+    await resolve(() => observed.data());
+    flush();
+    expect(observed.retained()?.pages[0].data[0].status).toBe("draft");
+
+    status = "published";
+    await client.invalidate(group.all);
+    flush();
+
+    expect(observed.cached()?.pages[0].data[0].status).toBe("published");
+    expect(observed.retained()?.pages[0].data[0].status).toBe("published");
   });
 });
 

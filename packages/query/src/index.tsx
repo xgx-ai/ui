@@ -984,9 +984,15 @@ function createQueryResult<TData>(
 
   const cached = () => {
     const entry = state().entry;
-    // Subscribe to the signal so reactive consumers still re-run, but read the mirror so a
-    // handler that writes and then peeks in the same tick does not see the previous value.
+    // Subscribe to BOTH signals, then read the mirror so a handler that writes and then peeks
+    // in the same tick does not see the previous value. `hasData` alone is not enough: it
+    // flips false -> true on the first answer and never changes again, so every later write —
+    // an invalidation refetch, a canonical `write`, a background refresh — left reactive
+    // consumers of `cached` frozen on the first value while `data` moved on. That is how a
+    // list rendered from `retained` kept showing a row's old status after a mutation the
+    // cache had already invalidated and refetched.
     entry.hasData();
+    entry.data();
     return entry.hasValue ? (entry.value as TData) : undefined;
   };
   const fetching = () => state().enabled && state().entry.fetching();
