@@ -168,7 +168,16 @@ const Search = <T,>(props: SearchRootProps<T>) => {
     local.defaultValue ?? (local.multiple ? [] : null),
   );
   const listboxId = createUniqueId();
-  const selectedValue = () => local.value ?? uncontrolledValue();
+  /**
+   * Whether the caller owns the selection.
+   *
+   * Keyed on the prop being *present*, not on it being non-nullish. `value ?? uncontrolled`
+   * silently demotes a controlled component to uncontrolled the moment its value is empty —
+   * so a picker with nothing selected would adopt whatever the list loaded and display the
+   * first record instead of its placeholder.
+   */
+  const isControlled = "value" in props;
+  const selectedValue = () => (isControlled ? (local.value ?? null) : uncontrolledValue());
   const options = () =>
     (local.options ?? []).map((option, index) => ({
       ...toSearchOption(option, props),
@@ -242,7 +251,7 @@ const Search = <T,>(props: SearchRootProps<T>) => {
     return valueKey(current as T | null | undefined, props) === item.value;
   };
   const commitValue = (next: T | T[] | null) => {
-    if (local.value === undefined) {
+    if (!isControlled) {
       (setUncontrolledValue as (value: any) => void)(next);
     }
     local.onChange?.(next);
