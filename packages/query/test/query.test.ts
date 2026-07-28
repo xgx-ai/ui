@@ -3,9 +3,12 @@ import { createRoot, createSignal, flush, resolve } from "solid-js";
 import {
   createInfiniteQuery,
   createMutation,
-  createValueQuery,
+  createQuery,
+  infiniteQuery,
   QueryClient,
   QueryTimeoutError,
+  query,
+  queryGroup,
 } from "../src/index.tsx";
 
 function deferred<T>() {
@@ -38,13 +41,13 @@ async function inRoot<T>(run: (dispose: () => void) => Promise<T>): Promise<T> {
 
 test("the default client works without a provider", async () => {
   await inRoot(async () => {
-    const query = createValueQuery(() => ({
-      queryKey: ["default-client"],
-      queryFn: async () => "ready",
-    }));
+    const group = queryGroup("default-client", {
+      value: query({ key: () => ({}), fetch: async () => "ready" }),
+    });
+    const observed = createQuery(() => group.value());
 
-    expect(await resolve(() => query.data())).toBe("ready");
-    expect(query.cached()).toBe("ready");
+    expect(await resolve(() => observed.data())).toBe("ready");
+    expect(observed.cached()).toBe("ready");
   });
 });
 
@@ -77,25 +80,27 @@ test("structurally equal keys deduplicate requests", async () => {
 test("cache ownership survives the component that first observed it", async () => {
   const client = new QueryClient();
   let calls = 0;
-  const options = () => ({
-    queryKey: ["owned-cache"],
-    queryFn: async () => {
-      calls += 1;
-      return "cached";
-    },
-    gcTime: Number.POSITIVE_INFINITY,
-    staleTime: Number.POSITIVE_INFINITY,
+  const group = queryGroup("owned-cache", {
+    value: query({
+      key: () => ({}),
+      fetch: async () => {
+        calls += 1;
+        return "cached";
+      },
+      gcTime: Number.POSITIVE_INFINITY,
+      staleTime: Number.POSITIVE_INFINITY,
+    }),
   });
 
   await inRoot(async () => {
-    const query = createValueQuery(options, client);
-    expect(await resolve(() => query.data())).toBe("cached");
+    const observed = createQuery(() => group.value(), client);
+    expect(await resolve(() => observed.data())).toBe("cached");
   });
 
-  expect(client.getQueryData<string>(["owned-cache"])).toBe("cached");
+  expect(client.read(group.value())).toBe("cached");
   await inRoot(async () => {
-    const query = createValueQuery(options, client);
-    expect(await resolve(() => query.data())).toBe("cached");
+    const observed = createQuery(() => group.value(), client);
+    expect(await resolve(() => observed.data())).toBe("cached");
   });
   expect(calls).toBe(1);
 });
@@ -119,35 +124,37 @@ test("a remounted stale query renders cached data while refreshing", async () =>
   const client = new QueryClient();
   const refreshed = deferred<number>();
   let calls = 0;
-  const options = () => ({
-    queryKey: ["stale-remount"],
-    queryFn: async () => {
-      calls += 1;
-      return calls === 1 ? 1 : refreshed.promise;
-    },
-    staleTime: 0,
+  const group = queryGroup("stale-remount", {
+    value: query({
+      key: () => ({}),
+      fetch: async () => {
+        calls += 1;
+        return calls === 1 ? 1 : refreshed.promise;
+      },
+      staleTime: 0,
+    }),
   });
 
-  expect(await client.fetchQuery(options())).toBe(1);
+  expect(await client.prefetch(group.value())).toBe(1);
   await nextTask();
 
   await inRoot(async () => {
-    const query = createValueQuery(options, client);
+    const observed = createQuery(() => group.value(), client);
 
-    expect(query.data()).toBe(1);
+    expect(observed.data()).toBe(1);
     await Promise.resolve();
     expect(calls).toBe(2);
     // Was `loading()` false / `refetching()` true: a request is running while the current
     // key already has data.
-    expect(query.fetching()).toBe(true);
-    expect(query.cached()).toBe(1);
+    expect(observed.fetching()).toBe(true);
+    expect(observed.cached()).toBe(1);
 
     refreshed.resolve(2);
     await nextTask();
 
-    expect(query.data()).toBe(2);
-    expect(query.cached()).toBe(2);
-    expect(query.fetching()).toBe(false);
+    expect(observed.data()).toBe(2);
+    expect(observed.cached()).toBe(2);
+    expect(observed.fetching()).toBe(false);
   });
 });
 
@@ -156,34 +163,34 @@ test("prefix invalidation refetches active queries and waits for settlement", as
     const client = new QueryClient();
     const refreshed = deferred<number>();
     let calls = 0;
-    const query = createValueQuery(
-      () => ({
-        queryKey: ["records", { page: 1 }],
-        queryFn: async () => {
+    const group = queryGroup("records", {
+      page: query({
+        key: (page: number) => ({ page }),
+        fetch: async () => {
           calls += 1;
           return calls === 1 ? 1 : refreshed.promise;
         },
       }),
-      client,
-    );
+    });
+    const observed = createQuery(() => group.page(1), client);
 
-    expect(await resolve(() => query.data())).toBe(1);
+    expect(await resolve(() => observed.data())).toBe(1);
     flush();
 
     let settled = false;
-    const invalidation = client.invalidateQueries(["records"]).then(() => {
+    const invalidation = client.invalidate(group.all).then(() => {
       settled = true;
     });
     await Promise.resolve();
 
     expect(calls).toBe(2);
-    expect(query.fetching()).toBe(true);
-    expect(query.pending()).toBe(false);
+    expect(observed.fetching()).toBe(true);
+    expect(observed.pending()).toBe(false);
     expect(settled).toBe(false);
 
     refreshed.resolve(2);
     await invalidation;
-    expect(query.cached()).toBe(2);
+    expect(observed.cached()).toBe(2);
     expect(settled).toBe(true);
   });
 });
@@ -193,35 +200,38 @@ test("an explicit refetch is affected, pending, and returns the new value", asyn
     const refreshed = deferred<number>();
     const quietlyRefreshed = deferred<number>();
     let calls = 0;
-    const query = createValueQuery(() => ({
-      queryKey: ["refetch"],
-      queryFn: async () => {
-        calls += 1;
-        if (calls === 1) return 1;
-        return calls === 2 ? refreshed.promise : quietlyRefreshed.promise;
-      },
-    }));
+    const group = queryGroup("refetch", {
+      value: query({
+        key: () => ({}),
+        fetch: async () => {
+          calls += 1;
+          if (calls === 1) return 1;
+          return calls === 2 ? refreshed.promise : quietlyRefreshed.promise;
+        },
+      }),
+    });
+    const observed = createQuery(() => group.value());
 
-    await resolve(() => query.data());
-    const result = query.refetch();
+    await resolve(() => observed.data());
+    const result = observed.refetch();
     await Promise.resolve();
 
-    expect(query.fetching()).toBe(true);
-    expect(query.pending()).toBe(true);
+    expect(observed.fetching()).toBe(true);
+    expect(observed.pending()).toBe(true);
 
     refreshed.resolve(2);
     expect(await result).toBe(2);
-    expect(query.cached()).toBe(2);
-    expect(query.pending()).toBe(false);
+    expect(observed.cached()).toBe(2);
+    expect(observed.pending()).toBe(false);
 
-    const quietResult = query.refresh();
+    const quietResult = observed.refresh();
     await Promise.resolve();
-    expect(query.fetching()).toBe(true);
-    expect(query.pending()).toBe(false);
+    expect(observed.fetching()).toBe(true);
+    expect(observed.pending()).toBe(false);
 
     quietlyRefreshed.resolve(3);
     expect(await quietResult).toBe(3);
-    expect(query.cached()).toBe(3);
+    expect(observed.cached()).toBe(3);
   });
 });
 
@@ -230,28 +240,28 @@ test("a superseded key cannot overwrite the current value", async () => {
     const first = deferred<string>();
     const second = deferred<string>();
     const [id, setId] = createSignal(1);
-    const query = createValueQuery(() => {
-      const currentId = id();
-      return {
-        queryKey: ["record", currentId],
-        queryFn: () => (currentId === 1 ? first.promise : second.promise),
-      };
+    const group = queryGroup("record", {
+      detail: query({
+        key: (recordId: number) => ({ recordId }),
+        fetch: (key) => (key.recordId === 1 ? first.promise : second.promise),
+      }),
     });
+    const observed = createQuery(() => group.detail(id()));
 
-    const firstRead = resolve(() => query.data()).catch(() => undefined);
+    const firstRead = resolve(() => observed.data()).catch(() => undefined);
     await Promise.resolve();
     setId(2);
     flush();
-    const secondRead = resolve(() => query.data());
+    const secondRead = resolve(() => observed.data());
     second.resolve("second");
 
     expect(await secondRead).toBe("second");
-    expect(query.cached()).toBe("second");
+    expect(observed.cached()).toBe("second");
 
     first.resolve("first");
     await firstRead;
     await Promise.resolve();
-    expect(query.cached()).toBe("second");
+    expect(observed.cached()).toBe("second");
   });
 });
 
@@ -260,19 +270,19 @@ test("an active query follows key changes when consumers only peek at the cache"
     const second = deferred<string>();
     const [id, setId] = createSignal(1);
     let calls = 0;
-    const query = createValueQuery(() => {
-      const currentId = id();
-      return {
-        queryKey: ["latest-only", currentId],
-        queryFn: async () => {
+    const group = queryGroup("latest-only", {
+      detail: query({
+        key: (recordId: number) => ({ recordId }),
+        fetch: async (key) => {
           calls += 1;
-          return currentId === 1 ? "first" : second.promise;
+          return key.recordId === 1 ? "first" : second.promise;
         },
-      };
+      }),
     });
+    const observed = createQuery(() => group.detail(id()));
 
-    await resolve(() => query.data());
-    expect(query.cached()).toBe("first");
+    await resolve(() => observed.data());
+    expect(observed.cached()).toBe("first");
 
     setId(2);
     flush();
@@ -281,7 +291,7 @@ test("an active query follows key changes when consumers only peek at the cache"
 
     second.resolve("second");
     await nextTask();
-    expect(query.cached()).toBe("second");
+    expect(observed.cached()).toBe("second");
   });
 });
 
@@ -290,76 +300,86 @@ test("mutation pending includes awaited query invalidation", async () => {
     const client = new QueryClient();
     const refreshed = deferred<number>();
     let calls = 0;
-    const query = createValueQuery(
-      () => ({
-        queryKey: ["records"],
-        queryFn: async () => {
+    const group = queryGroup("records", {
+      list: query({
+        key: () => ({}),
+        fetch: async () => {
           calls += 1;
           return calls === 1 ? 1 : refreshed.promise;
         },
       }),
-      client,
-    );
+    });
+    const observed = createQuery(() => group.list(), client);
     const mutation = createMutation(
       () => ({
         mutationFn: async () => "saved",
-        invalidates: [["records"]],
+        invalidates: () => [group.all],
       }),
       client,
     );
 
-    await resolve(() => query.data());
+    await resolve(() => observed.data());
     flush();
     const result = mutation.mutateAsync(undefined);
     await Promise.resolve();
     await Promise.resolve();
 
     expect(mutation.isPending).toBe(true);
-    expect(query.fetching()).toBe(true);
-    expect(query.pending()).toBe(true);
+    expect(observed.pending()).toBe(true);
+    // `fetching()` is a plain signal, and `mutateAsync` runs inside a Solid `action` — so
+    // the write that flips it lands in the action's transition and outside readers keep
+    // seeing the pre-mutation value until the action settles. `pending()` is the
+    // transition-aware answer and is what a spinner should read during a mutation.
+    expect(observed.fetching()).toBe(false);
 
     refreshed.resolve(2);
     expect(await result).toBe("saved");
     expect(mutation.isPending).toBe(false);
-    expect(query.cached()).toBe(2);
-    expect(query.pending()).toBe(false);
+    expect(observed.cached()).toBe(2);
+    expect(observed.pending()).toBe(false);
+    expect(observed.fetching()).toBe(false);
   });
 });
+
+type FeedPage = { next: number | undefined; value: string };
 
 test("infinite queries cache later pages and reset on a new key", async () => {
   await inRoot(async () => {
     const client = new QueryClient();
     const [scope, setScope] = createSignal("first");
     const calls: string[] = [];
-    const query = createInfiniteQuery(() => {
-      const currentScope = scope();
-      return {
-        queryKey: ["feed", currentScope],
+    const group = queryGroup("feed", {
+      pages: infiniteQuery({
+        key: (feedScope: string) => ({ scope: feedScope }),
         initialPageParam: 0,
-        queryFn: async ({ pageParam }: { pageParam: number }) => {
-          calls.push(`${currentScope}:${pageParam}`);
-          return { next: pageParam < 1 ? pageParam + 1 : undefined, value: currentScope };
+        fetch: async (key, context): Promise<FeedPage> => {
+          calls.push(`${key.scope}:${context.pageParam}`);
+          return {
+            next: context.pageParam < 1 ? context.pageParam + 1 : undefined,
+            value: key.scope,
+          };
         },
-        getNextPageParam: (page: { next?: number }) => page.next,
-      };
-    }, client);
+        getNextPageParam: (page: FeedPage) => page.next,
+      }),
+    });
+    const observed = createInfiniteQuery(() => group.pages(scope()), client);
 
-    await resolve(() => query.data());
+    await resolve(() => observed.data());
     flush();
-    await query.fetchNextPage();
-    expect(query.cached()?.pages).toHaveLength(2);
+    await observed.fetchNextPage();
+    expect(observed.cached()?.pages).toHaveLength(2);
 
-    const refetched = await query.refetch();
+    const refetched = await observed.refetch();
     expect(refetched.pages).toHaveLength(2);
     expect(calls).toEqual(["first:0", "first:1", "first:0", "first:1"]);
 
     setScope("second");
     flush();
-    expect(query.hasNextPage()).toBe(false);
-    await resolve(() => query.data());
+    expect(observed.hasNextPage()).toBe(false);
+    await resolve(() => observed.data());
     flush();
 
-    expect(query.cached()?.pages).toEqual([{ next: 1, value: "second" }]);
+    expect(observed.cached()?.pages).toEqual([{ next: 1, value: "second" }]);
     expect(calls).toEqual(["first:0", "first:1", "first:0", "first:1", "second:0"]);
   });
 });
@@ -400,32 +420,35 @@ test("active queries poll quietly, recover from failure, and stop when disposed"
   const thirdSucceeded = deferred<void>();
 
   await inRoot(async (dispose) => {
-    const query = createValueQuery(() => ({
-      queryKey: ["polling"],
-      queryFn: async () => {
-        calls += 1;
-        if (calls === 2) {
-          secondStarted.resolve();
-          await releaseSecond.promise;
-          throw new Error("temporary");
-        }
-        if (calls === 3) thirdSucceeded.resolve();
-        return calls;
-      },
-      refetchInterval: 1,
-    }));
+    const group = queryGroup("polling", {
+      value: query({
+        key: () => ({}),
+        fetch: async () => {
+          calls += 1;
+          if (calls === 2) {
+            secondStarted.resolve();
+            await releaseSecond.promise;
+            throw new Error("temporary");
+          }
+          if (calls === 3) thirdSucceeded.resolve();
+          return calls;
+        },
+        refetchInterval: 1,
+      }),
+    });
+    const observed = createQuery(() => group.value());
 
-    expect(await resolve(() => query.data())).toBe(1);
+    expect(await resolve(() => observed.data())).toBe(1);
     await secondStarted.promise;
-    expect(query.cached()).toBe(1);
-    expect(query.fetching()).toBe(true);
-    expect(query.pending()).toBe(false);
+    expect(observed.cached()).toBe(1);
+    expect(observed.fetching()).toBe(true);
+    expect(observed.pending()).toBe(false);
 
     releaseSecond.resolve();
     await thirdSucceeded.promise;
     await nextTask();
     flush();
-    expect(query.cached()).toBe(3);
+    expect(observed.cached()).toBe(3);
 
     dispose();
     const callsAtDispose = calls;

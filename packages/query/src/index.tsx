@@ -93,66 +93,6 @@ export type QueryClientConfig = {
   };
 };
 
-export type QueryFactory = {
-  prefix: QueryKey;
-};
-
-export type InfiniteQueryFactory<TPage, TPageParam, TArgs extends unknown[]> = QueryFactory &
-  ((...args: TArgs) => InfiniteQueryOptions<TPage, TPageParam>);
-
-export type ValueQueryFactory<TData, TArgs extends unknown[]> = QueryFactory &
-  ((...args: TArgs) => QueryOptions<TData>);
-
-type SharedDefineQueryOptions = {
-  gcTime?: number;
-  refetchOnReconnect?: boolean;
-  refetchOnWindowFocus?: boolean;
-  retry?: RetryOption;
-  retryDelay?: RetryDelayOption;
-  staleTime?: number;
-  timeoutMs?: number;
-};
-
-export type DefineInfiniteQueryOptions<
-  TPage,
-  TPageParam,
-  TArgs extends unknown[],
-> = SharedDefineQueryOptions & {
-  key: (...args: TArgs) => QueryKey;
-  prefix: QueryKey;
-  initialPageParam: TPageParam;
-  queryFn: (
-    context: { pageParam: TPageParam; queryKey: QueryKey; signal: AbortSignal },
-    ...args: TArgs
-  ) => Promise<TPage>;
-  getNextPageParam?: (
-    lastPage: TPage,
-    allPages: TPage[],
-    lastPageParam: TPageParam,
-  ) => TPageParam | undefined;
-  enabled?: boolean | (() => boolean);
-};
-
-export type DefineQueryOptions<TData, TArgs extends unknown[]> = SharedDefineQueryOptions & {
-  key: (...args: TArgs) => QueryKey;
-  prefix: QueryKey;
-  queryFn: (context: QueryContext, ...args: TArgs) => Promise<TData>;
-  enabled?: boolean | (() => boolean);
-  refetchInterval?: RefetchIntervalOption<TData>;
-};
-
-export type MutationOptions<TData, TVariables> = {
-  mutationFn: (variables: TVariables) => Promise<TData>;
-  invalidates?: Array<QueryFactory | QueryKey>;
-  onError?: (error: Error, variables: TVariables) => MaybePromise<unknown>;
-  onSettled?: (
-    data: TData | undefined,
-    error: Error | undefined,
-    variables: TVariables,
-  ) => MaybePromise<unknown>;
-  onSuccess?: (data: TData, variables: TVariables) => MaybePromise<unknown>;
-};
-
 export interface QueryResult<TData> {
   /**
    * The authoritative read. Participates in `<Loading>` and `<Errored>`, and is the only
@@ -195,23 +135,6 @@ export interface UseMutationResult<TData, TVariables> extends MutationState<TDat
 export interface InfiniteData<TPage, TPageParam = unknown> {
   pages: TPage[];
   pageParams: TPageParam[];
-}
-
-export interface InfiniteQueryOptions<TPage, TPageParam = unknown>
-  extends SharedDefineQueryOptions {
-  queryKey: QueryKey;
-  queryFn: (context: {
-    pageParam: TPageParam;
-    queryKey: QueryKey;
-    signal: AbortSignal;
-  }) => Promise<TPage>;
-  initialPageParam: TPageParam;
-  getNextPageParam?: (
-    lastPage: TPage,
-    allPages: TPage[],
-    lastPageParam: TPageParam,
-  ) => TPageParam | undefined;
-  enabled?: boolean | (() => boolean);
 }
 
 export interface InfiniteQueryResult<TPage, TPageParam = unknown> {
@@ -293,10 +216,6 @@ const internalWritableOptions = { ownedWrite: true } as const;
 
 function isEnabled(value: boolean | (() => boolean) | undefined): boolean {
   return typeof value === "function" ? value() : (value ?? true);
-}
-
-function isQueryKey(value: QueryFactory | QueryKey): value is QueryKey {
-  return Array.isArray(value);
 }
 
 function normaliseQueryPrefix(input?: QueryKey | { queryKey?: QueryKey }): QueryKey | undefined {
@@ -414,50 +333,6 @@ function resultProxy<TResult extends object>(read: () => TResult): TResult {
       return descriptor ? { ...descriptor, configurable: true } : undefined;
     },
   });
-}
-
-export function defineInfiniteQuery<TPage, TPageParam = unknown, TArgs extends unknown[] = []>(
-  config: DefineInfiniteQueryOptions<TPage, TPageParam, TArgs>,
-): InfiniteQueryFactory<TPage, TPageParam, TArgs> {
-  const factory = ((...args: TArgs) => ({
-    queryKey: config.key(...args),
-    queryFn: (context: { pageParam: TPageParam; queryKey: QueryKey; signal: AbortSignal }) =>
-      config.queryFn(context, ...args),
-    initialPageParam: config.initialPageParam,
-    getNextPageParam: config.getNextPageParam,
-    enabled: config.enabled,
-    gcTime: config.gcTime,
-    refetchOnReconnect: config.refetchOnReconnect,
-    refetchOnWindowFocus: config.refetchOnWindowFocus,
-    retry: config.retry,
-    retryDelay: config.retryDelay,
-    staleTime: config.staleTime,
-    timeoutMs: config.timeoutMs,
-  })) as InfiniteQueryFactory<TPage, TPageParam, TArgs>;
-
-  factory.prefix = config.prefix;
-  return factory;
-}
-
-export function defineQuery<TData, TArgs extends unknown[] = []>(
-  config: DefineQueryOptions<TData, TArgs>,
-): ValueQueryFactory<TData, TArgs> {
-  const factory = ((...args: TArgs) => ({
-    queryKey: config.key(...args),
-    queryFn: (context: QueryContext) => config.queryFn(context, ...args),
-    enabled: config.enabled,
-    gcTime: config.gcTime,
-    refetchInterval: config.refetchInterval,
-    refetchOnReconnect: config.refetchOnReconnect,
-    refetchOnWindowFocus: config.refetchOnWindowFocus,
-    retry: config.retry,
-    retryDelay: config.retryDelay,
-    staleTime: config.staleTime,
-    timeoutMs: config.timeoutMs,
-  })) as ValueQueryFactory<TData, TArgs>;
-
-  factory.prefix = config.prefix;
-  return factory;
 }
 
 export class QueryClient {
@@ -1042,14 +917,12 @@ export function QueryClientProvider(props: { client?: QueryClient; children?: JS
 }
 
 /**
- * The descriptor cache surface. Same object as `useQueryClient`, named for what Phase 5
- * call sites actually use it for.
+ * The cache surface: `read`, `write`, `invalidate`, `remove`, `cancel`, `prefetch`.
+ *
+ * Named for what it is rather than for the client object it happens to be, so that call
+ * sites read as cache operations and not as reaching into a query library's internals.
  */
 export function useQueryCache(queryClient?: QueryClient): QueryClient {
-  return useQueryClient(queryClient);
-}
-
-export function useQueryClient(queryClient?: QueryClient) {
   return queryClient ?? useContext(QueryClientContext);
 }
 
@@ -1057,7 +930,7 @@ function createQueryResult<TData>(
   options: () => QueryOptions<TData>,
   suppliedClient?: QueryClient,
 ): QueryResult<TData> {
-  const client = useQueryClient(suppliedClient);
+  const client = useQueryCache(suppliedClient);
   const state = createMemo(() => {
     const query = client.prepareQuery(options());
     return {
@@ -1127,15 +1000,6 @@ function createQueryResult<TData>(
   };
 }
 
-export function useQuery<TData>(
-  options: () => QueryOptions<TData>,
-  queryClient?: QueryClient,
-): UseQueryResult<TData> {
-  return createQueryResult(options, queryClient);
-}
-
-export const createValueQuery = useQuery;
-
 /** The sentinel entry a `null` descriptor parks on. It never fetches. */
 const absentQueryKey: QueryKey = ["__xgx_query_absent__"];
 
@@ -1178,10 +1042,6 @@ export function createQuery<TData>(
   }, queryClient);
 }
 
-function infinitePageKey<TPageParam>(key: QueryKey, pageParam: TPageParam): QueryKey {
-  return [...key, { $page: pageParam }];
-}
-
 /**
  * Observes one exact infinite descriptor, holding every loaded page in a SINGLE cache entry.
  *
@@ -1201,7 +1061,7 @@ function createInfiniteDescriptorQuery<TPage, TPageParam>(
   source: () => InfiniteDescriptor<TPage, TPageParam> | null,
   suppliedClient?: QueryClient,
 ): InfiniteQueryResult<TPage, TPageParam> {
-  const client = useQueryClient(suppliedClient);
+  const client = useQueryCache(suppliedClient);
   const descriptor = createMemo(source);
 
   const readEntry = (target: InfiniteDescriptor<TPage, TPageParam>) =>
@@ -1325,234 +1185,15 @@ function createInfiniteDescriptorQuery<TPage, TPageParam>(
   };
 }
 
-// Legacy overload first: it is the one existing call sites match, and putting the
-// descriptor overload ahead of it makes TypeScript try (and fail) to infer TPage from a
-// descriptor, degrading every legacy callback parameter to `unknown`.
-export function createInfiniteQuery<TPage, TPageParam = unknown>(
-  options: () => InfiniteQueryOptions<TPage, TPageParam>,
-  queryClient?: QueryClient,
-): InfiniteQueryResult<TPage, TPageParam>;
+/**
+ * Observes one exact infinite descriptor. `null` means "no question yet", exactly as in
+ * {@link createQuery}.
+ */
 export function createInfiniteQuery<TPage, TPageParam>(
   source: () => InfiniteDescriptor<TPage, TPageParam> | null,
   queryClient?: QueryClient,
-): InfiniteQueryResult<TPage, TPageParam>;
-export function createInfiniteQuery<TPage, TPageParam>(
-  source: () =>
-    | InfiniteDescriptor<TPage, TPageParam>
-    | InfiniteQueryOptions<TPage, TPageParam>
-    | null,
-  queryClient?: QueryClient,
 ): InfiniteQueryResult<TPage, TPageParam> {
-  // Dispatch on shape. A descriptor carries `key`; legacy options carry `queryKey`. This
-  // branch is scaffolding: Phase 5 deletes the legacy path and its overload with it.
-  const first = untrack(source);
-  if (first === null || (first !== undefined && "key" in first)) {
-    return createInfiniteDescriptorQuery(
-      source as () => InfiniteDescriptor<TPage, TPageParam> | null,
-      queryClient,
-    );
-  }
-  return createLegacyInfiniteQuery(
-    source as () => InfiniteQueryOptions<TPage, TPageParam>,
-    queryClient,
-  );
-}
-
-function createLegacyInfiniteQuery<TPage, TPageParam = unknown>(
-  options: () => InfiniteQueryOptions<TPage, TPageParam>,
-  suppliedClient?: QueryClient,
-): InfiniteQueryResult<TPage, TPageParam> {
-  const client = useQueryClient(suppliedClient);
-  const descriptor = createMemo(options);
-  const firstPage = createValueQuery<TPage>(() => {
-    const current = descriptor();
-    return {
-      queryKey: current.queryKey,
-      queryFn: ({ queryKey, signal }) =>
-        current.queryFn({
-          pageParam: current.initialPageParam,
-          queryKey,
-          signal,
-        }),
-      enabled: current.enabled,
-      gcTime: current.gcTime,
-      refetchOnReconnect: current.refetchOnReconnect,
-      refetchOnWindowFocus: current.refetchOnWindowFocus,
-      retry: current.retry,
-      retryDelay: current.retryDelay,
-      staleTime: current.staleTime,
-      timeoutMs: current.timeoutMs,
-    };
-  }, client);
-
-  const [pages, setPages] = createStore<InfiniteData<TPage, TPageParam>>({
-    pages: [],
-    pageParams: [],
-  });
-  const [pagesHash, setPagesHash] = createSignal("", internalWritableOptions);
-
-  createEffect(
-    () => {
-      const current = descriptor();
-      return {
-        hash: stableQueryKey(current.queryKey),
-        page: firstPage.cached(),
-        pageParam: current.initialPageParam,
-      };
-    },
-    (current) => {
-      if (current.page === undefined) return;
-      setPagesHash(current.hash);
-      setPages((draft) => {
-        draft.pages.splice(0, draft.pages.length, current.page as TPage);
-        draft.pageParams.splice(0, draft.pageParams.length, current.pageParam);
-      });
-    },
-  );
-
-  const nextPageParam = createMemo(() => {
-    const current = descriptor();
-    if (pagesHash() !== stableQueryKey(current.queryKey)) return undefined;
-    const lastPage = pages.pages.at(-1);
-    const lastPageParam = pages.pageParams.at(-1);
-    if (lastPage === undefined || lastPageParam === undefined || !current.getNextPageParam) {
-      return undefined;
-    }
-    return current.getNextPageParam(lastPage, [...pages.pages], lastPageParam);
-  });
-
-  const [fetchingNextPage, setFetchingNextPage] = createOptimistic(false);
-  let activeNextPage:
-    | {
-        hash: string;
-        promise: Promise<void>;
-      }
-    | undefined;
-
-  const runNextPage = action(function* (hash: string, pageParam: TPageParam) {
-    setFetchingNextPage(true);
-    const current = untrack(descriptor);
-    const page = yield client.fetchQuery<TPage>({
-      queryKey: infinitePageKey(current.queryKey, pageParam),
-      queryFn: ({ signal }) => current.queryFn({ pageParam, queryKey: current.queryKey, signal }),
-      gcTime: current.gcTime,
-      refetchOnReconnect: current.refetchOnReconnect,
-      refetchOnWindowFocus: current.refetchOnWindowFocus,
-      retry: current.retry,
-      retryDelay: current.retryDelay,
-      staleTime: current.staleTime,
-      timeoutMs: current.timeoutMs,
-    });
-
-    if (stableQueryKey(untrack(descriptor).queryKey) !== hash) return;
-    setPagesHash(hash);
-    setPages((draft) => {
-      draft.pages.push(page);
-      draft.pageParams.push(pageParam);
-    });
-  });
-
-  const fetchNextPage = () => {
-    const current = untrack(descriptor);
-    const hash = stableQueryKey(current.queryKey);
-    const pageParam = untrack(nextPageParam);
-    if (pageParam === undefined || !isEnabled(current.enabled)) return Promise.resolve();
-    if (activeNextPage?.hash === hash) return activeNextPage.promise;
-
-    const promise = runNextPage(hash, pageParam).finally(() => {
-      if (activeNextPage?.promise === promise) activeNextPage = undefined;
-    });
-    activeNextPage = { hash, promise };
-    return promise;
-  };
-
-  const data = createMemo<InfiniteData<TPage, TPageParam>>(
-    () => {
-      firstPage.data();
-      return pages;
-    },
-    { equals: false },
-  );
-
-  const refreshPages = async () => {
-    const current = untrack(descriptor);
-    const hash = stableQueryKey(current.queryKey);
-    if (!isEnabled(current.enabled)) {
-      if (firstPage.cached() === undefined) throw new QueryDisabledError();
-      return pages;
-    }
-
-    const pageParams =
-      pagesHash() === hash && pages.pageParams.length > 0
-        ? [...pages.pageParams]
-        : [current.initialPageParam];
-    const nextPages = await Promise.all(
-      pageParams.map((pageParam, index) =>
-        client.refetchQuery<TPage>({
-          queryKey: index === 0 ? current.queryKey : infinitePageKey(current.queryKey, pageParam),
-          queryFn: ({ signal }) =>
-            current.queryFn({ pageParam, queryKey: current.queryKey, signal }),
-          gcTime: current.gcTime,
-          refetchOnReconnect: current.refetchOnReconnect,
-          refetchOnWindowFocus: current.refetchOnWindowFocus,
-          retry: current.retry,
-          retryDelay: current.retryDelay,
-          staleTime: current.staleTime,
-          timeoutMs: current.timeoutMs,
-        }),
-      ),
-    );
-    const result: InfiniteData<TPage, TPageParam> = {
-      pages: nextPages,
-      pageParams,
-    };
-    if (stableQueryKey(untrack(descriptor).queryKey) !== hash) return result;
-    setPagesHash(hash);
-    setPages((draft) => {
-      draft.pages.splice(0, draft.pages.length, ...nextPages);
-      draft.pageParams.splice(0, draft.pageParams.length, ...pageParams);
-    });
-    return result;
-  };
-
-  const refetch = action(function* () {
-    const current = untrack(descriptor);
-    if (isEnabled(current.enabled)) client.affectQueriesMany([current.queryKey]);
-    return yield refreshPages();
-  });
-
-  const everLoaded = () => pagesHash() !== "";
-
-  return {
-    data,
-    retained: () => (everLoaded() ? pages : undefined),
-    // Only valid for the current key: the pages store still holds the previous key's
-    // pages until the sync effect replaces them.
-    cached: () =>
-      firstPage.cached() === undefined ||
-      pagesHash() !== stableQueryKey(untrack(descriptor).queryKey)
-        ? undefined
-        : pages,
-    pending: firstPage.pending,
-    fetching: firstPage.fetching,
-    fetchingNextPage,
-    hasNextPage: () => nextPageParam() !== undefined,
-    fetchNextPage,
-    refresh: refreshPages,
-    refetch,
-  };
-}
-
-export const useInfiniteQuery = createInfiniteQuery;
-
-function invalidationPrefixes(invalidations: Array<QueryFactory | QueryKey> | undefined) {
-  const prefixes: QueryKey[] = [];
-  for (const invalidation of invalidations ?? []) {
-    const prefix = isQueryKey(invalidation) ? invalidation : invalidation.prefix;
-    const hash = stableQueryKey(prefix);
-    if (!prefixes.some((candidate) => stableQueryKey(candidate) === hash)) prefixes.push(prefix);
-  }
-  return prefixes;
+  return createInfiniteDescriptorQuery(source, queryClient);
 }
 
 /**
@@ -1609,7 +1250,7 @@ function createCacheMutation<TData, TVariables>(
   options: () => CacheMutationOptions<TData, TVariables>,
   suppliedClient?: QueryClient,
 ): UseMutationResult<TData, TVariables> {
-  const client = useQueryClient(suppliedClient);
+  const client = useQueryCache(suppliedClient);
   const [state, setState] = createStore<MutationState<TData>>({
     data: undefined,
     error: undefined,
@@ -1711,141 +1352,17 @@ function createCacheMutation<TData, TVariables>(
   }));
 }
 
-// Legacy overload first, for the same inference reason as `createInfiniteQuery`.
-export function createMutation<TData, TVariables>(
-  options: () => MutationOptions<TData, TVariables>,
-  queryClient?: QueryClient,
-): UseMutationResult<TData, TVariables>;
+/**
+ * Runs a mutation and applies its declared cache effect.
+ *
+ * Not overloaded, deliberately: an overload set defeats contextual typing of the options
+ * object, and `invalidates: "nothing"` would widen to `string` and stop compiling.
+ */
 export function createMutation<TData, TVariables>(
   options: () => CacheMutationOptions<TData, TVariables>,
   queryClient?: QueryClient,
-): UseMutationResult<TData, TVariables>;
-export function createMutation<TData, TVariables>(
-  options: () => MutationOptions<TData, TVariables> | CacheMutationOptions<TData, TVariables>,
-  queryClient?: QueryClient,
 ): UseMutationResult<TData, TVariables> {
-  // Dispatch on the shape of `invalidates`: the legacy field is an optional array of
-  // factories or raw keys, the new one is required and is either a function or "nothing".
-  // Scaffolding — Phase 5 deletes the legacy path.
-  const declared = untrack(options).invalidates;
-  if (declared === "nothing" || typeof declared === "function") {
-    return createCacheMutation(
-      options as () => CacheMutationOptions<TData, TVariables>,
-      queryClient,
-    );
-  }
-  return createLegacyMutation(options as () => MutationOptions<TData, TVariables>, queryClient);
-}
-
-function createLegacyMutation<TData, TVariables>(
-  options: () => MutationOptions<TData, TVariables>,
-  suppliedClient?: QueryClient,
-): UseMutationResult<TData, TVariables> {
-  const client = useQueryClient(suppliedClient);
-  const [state, setState] = createStore<MutationState<TData>>({
-    data: undefined,
-    error: undefined,
-    isError: false,
-    isSuccess: false,
-  });
-  const [pending, setPending] = createOptimistic(false);
-  let mutationId = 0;
-
-  const mutateAndInvalidate = async (input: {
-    mutation: MutationOptions<TData, TVariables>;
-    prefixes: QueryKey[];
-    variables: TVariables;
-  }) => {
-    const data = await input.mutation.mutationFn(input.variables);
-    if (input.prefixes.length > 0) await client.invalidateQueriesMany(input.prefixes);
-    return data;
-  };
-
-  const mutateAsync = action(function* (variables?: TVariables) {
-    const resolvedVariables = variables as TVariables;
-    const mutation = untrack(options);
-    const prefixes = invalidationPrefixes(mutation.invalidates);
-    const currentMutationId = ++mutationId;
-    client.affectQueriesMany(prefixes);
-    setPending(true);
-    setState((draft) => {
-      draft.data = undefined;
-      draft.error = undefined;
-      draft.isError = false;
-      draft.isSuccess = false;
-    });
-    let settledCallbackStarted = false;
-
-    try {
-      const data = yield mutateAndInvalidate({
-        mutation,
-        prefixes,
-        variables: resolvedVariables,
-      });
-      if (mutation.onSuccess) yield mutation.onSuccess(data, resolvedVariables);
-      if (mutation.onSettled) {
-        settledCallbackStarted = true;
-        yield mutation.onSettled(data, undefined, resolvedVariables);
-      }
-      if (currentMutationId === mutationId) {
-        setState((draft) => {
-          draft.data = data;
-          draft.error = undefined;
-          draft.isError = false;
-          draft.isSuccess = true;
-        });
-      }
-      return data;
-    } catch (cause) {
-      const error = cause instanceof Error ? cause : new Error(String(cause));
-      client.notifyMutationError(error);
-      if (mutation.onError) yield mutation.onError(error, resolvedVariables);
-      if (mutation.onSettled && !settledCallbackStarted) {
-        yield mutation.onSettled(undefined, error, resolvedVariables);
-      }
-      if (currentMutationId === mutationId) {
-        setState((draft) => {
-          draft.data = undefined;
-          draft.error = error;
-          draft.isError = true;
-          draft.isSuccess = false;
-        });
-      }
-      throw error;
-    }
-  });
-
-  return resultProxy<UseMutationResult<TData, TVariables>>(() => ({
-    data: state.data,
-    error: state.error,
-    isError: state.isError,
-    isPending: pending(),
-    isSuccess: state.isSuccess,
-    mutate: (variables?: TVariables) => {
-      void mutateAsync(variables).catch(() => {});
-    },
-    mutateAsync,
-    reset() {
-      setState((draft) => {
-        draft.data = undefined;
-        draft.error = undefined;
-        draft.isError = false;
-        draft.isSuccess = false;
-      });
-    },
-  }));
-}
-
-export const useMutation = createMutation;
-
-export function queryOptions<TData>(options: QueryOptions<TData>): QueryOptions<TData> {
-  return options;
-}
-
-export function mutationOptions<TData, TVariables>(
-  options: MutationOptions<TData, TVariables>,
-): MutationOptions<TData, TVariables> {
-  return options;
+  return createCacheMutation(options, queryClient);
 }
 
 export interface IntersectionLoaderOptions {

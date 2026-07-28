@@ -1,4 +1,4 @@
-import { createInfiniteQuery, type InfiniteQueryResult, type QueryKey } from "@xgx/query";
+import { createInfiniteQuery, type InfiniteDescriptor, type InfiniteQueryResult } from "@xgx/query";
 import { type Accessor, createMemo, createSignal, onCleanup } from "solid-js";
 
 export interface SearchInfinitePage<T> {
@@ -9,13 +9,14 @@ export interface SearchInfinitePage<T> {
 }
 
 export interface SearchInfiniteQueryConfig<T> {
-  queryKey: QueryKey;
-  queryFn: (params: {
-    search: string;
-    limit: number;
-    page: number;
-  }) => Promise<SearchInfinitePage<T>>;
-  limit?: number;
+  /**
+   * Builds the descriptor for one debounced search term.
+   *
+   * The term is passed in rather than captured, because it belongs in the key: two terms are
+   * two different questions and must not share a cache entry. Return `null` for a term this
+   * config has no answer for — a minimum length, say — and nothing is fetched.
+   */
+  descriptor: (search: string) => InfiniteDescriptor<SearchInfinitePage<T>, number> | null;
   enabled?: Accessor<boolean> | boolean;
 }
 
@@ -38,9 +39,13 @@ export interface SearchInfiniteState<T> {
   loadMore: () => void;
 }
 
-function pageHasMore<T>(
+/**
+ * The page-shape convention this component understands, for a descriptor's
+ * `getNextPageParam` to reuse rather than restate.
+ */
+export function searchPageHasMore<T>(
   lastPage: SearchInfinitePage<T>,
-  allPages: SearchInfinitePage<T>[],
+  allPages: readonly SearchInfinitePage<T>[],
   limit: number,
 ): boolean {
   if (lastPage.hasMore !== undefined) return lastPage.hasMore;
@@ -76,19 +81,13 @@ export function createSearchInfinite<T>(
 
   const query = createInfiniteQuery<SearchInfinitePage<T>, number>(() => {
     const config = params.queryConfig();
-    const limit = config.limit ?? 20;
-    const search = debouncedSearchTerm();
-
-    return {
-      queryKey: [...config.queryKey, { limit, search }],
-      initialPageParam: 0,
-      queryFn: ({ pageParam }) => config.queryFn({ search, limit, page: pageParam }),
-      getNextPageParam: (lastPage, allPages, lastPageParam) =>
-        pageHasMore(lastPage, allPages, limit) ? lastPageParam + 1 : undefined,
-      enabled: () =>
-        params.active() &&
-        (typeof config.enabled === "function" ? config.enabled() : (config.enabled ?? true)),
-    };
+    const active =
+      params.active() &&
+      (typeof config.enabled === "function" ? config.enabled() : (config.enabled ?? true));
+    // A closed dropdown has no question to ask. `null` is how that is said now — it never
+    // fetches and never mints a placeholder entry, which `enabled` could not avoid.
+    if (!active) return null;
+    return config.descriptor(debouncedSearchTerm());
   });
 
   const options = createMemo(() => {

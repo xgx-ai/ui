@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
 import { createMemo, For, Loading, Show } from "solid-js";
-import { createInfiniteQuery } from "../../query/src/index.tsx";
 import type {
   CellContext,
   ColumnDef,
@@ -26,77 +25,6 @@ export type UseTableReturn<TData> = {
   };
   totalCount: () => number;
 };
-
-type UseTableInfiniteParams<TData> = {
-  queryKey: () => readonly unknown[];
-  queryFn: (params: { limit: number; page: number }) => Promise<{
-    data?: TData[];
-    totalCount?: number;
-    count?: number;
-  }>;
-  limit?: number;
-  tableId?: string;
-};
-
-export function useTableInfinite<TData>(
-  params: UseTableInfiniteParams<TData>,
-): UseTableReturn<TData> {
-  const limit = params.limit ?? 25;
-  const query = createInfiniteQuery(() => ({
-    queryKey: params.queryKey(),
-    queryFn: ({ pageParam }) => params.queryFn({ limit, page: pageParam }),
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages, lastPageParam) => {
-      const loadedCount = allPages.reduce((count, page) => count + (page.data?.length ?? 0), 0);
-      const totalCount = lastPage.totalCount ?? lastPage.count ?? loadedCount;
-      return loadedCount < totalCount ? lastPageParam + 1 : undefined;
-    },
-  }));
-
-  // See `retained` on the infinite query result: a keyed <For> under <Loading> does not
-  // pick up the new value in Solid 2 beta.25, so the rows source must not suspend once
-  // anything has loaded.
-  const rows = createMemo(() => {
-    const held = query.retained();
-    return (held ? held.pages : query.data().pages).flatMap((page) => page.data ?? []);
-  });
-  // Non-suspending peek for the chrome below, which renders outside the boundary.
-  const cachedRows = createMemo(
-    () => query.cached()?.pages.flatMap((page) => page.data ?? []) ?? [],
-  );
-  const totalCount = createMemo(
-    () =>
-      query.cached()?.pages.at(-1)?.totalCount ??
-      query.cached()?.pages.at(-1)?.count ??
-      cachedRows().length,
-  );
-
-  return {
-    data: rows,
-    hasMore: createMemo(() => query.hasNextPage()),
-    isFetchingMore: createMemo(() => query.fetchingNextPage()),
-    loadMore: () => {
-      if (query.hasNextPage()) void query.fetchNextPage();
-    },
-    query: {
-      get data() {
-        return {
-          count: cachedRows().length,
-          data: cachedRows(),
-          totalCount: totalCount(),
-        };
-      },
-      get isFetching() {
-        return query.fetching() || query.fetchingNextPage();
-      },
-      get isLoading() {
-        return query.fetching() && query.cached() === undefined;
-      },
-      pending: query.fetching,
-    },
-    totalCount,
-  };
-}
 
 type TableCompatProps<TData> = {
   table: UseTableReturn<TData>;

@@ -428,9 +428,25 @@ function createSolidHmrPlugin(runtimeImport: string, moduleId: string) {
                 t.callExpression(t.memberExpression(importMetaHot(), t.identifier("accept")), [
                   t.arrowFunctionExpression(
                     [t.identifier("nextModule")],
-                    t.callExpression(refreshImport, [
-                      t.memberExpression(importMetaHot(), t.identifier("data")),
-                      t.identifier("nextModule"),
+                    t.blockStatement([
+                      // When the refresh cannot be applied in place, hand the
+                      // module back to Bun so it sequences a full reload against
+                      // the rebuild instead of us racing it with location.reload().
+                      t.ifStatement(
+                        t.unaryExpression(
+                          "!",
+                          t.callExpression(refreshImport, [
+                            t.memberExpression(importMetaHot(), t.identifier("data")),
+                            t.identifier("nextModule"),
+                          ]),
+                        ),
+                        t.expressionStatement(
+                          t.callExpression(
+                            t.memberExpression(importMetaHot(), t.identifier("invalidate")),
+                            [],
+                          ),
+                        ),
+                      ),
                     ]),
                   ),
                 ]),

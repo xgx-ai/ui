@@ -987,7 +987,6 @@ export {
   Table,
   TableColumnHeader,
   TableInfinite,
-  useTableInfinite,
 } from "./table-compat.tsx";
 export type {
   CellContext,

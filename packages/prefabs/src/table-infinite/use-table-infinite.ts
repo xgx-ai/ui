@@ -1,24 +1,10 @@
-import { createInfiniteQuery, type InfiniteQueryResult, type QueryKey } from "@xgx/query";
+import { type InfiniteQueryResult } from "@xgx/query";
 import { type Accessor, createMemo, createSignal } from "solid-js";
 
 export interface TableInfinitePage<TData> {
   data: TData[];
   count: number;
   totalCount?: number;
-}
-
-export interface UseTableInfiniteParams<TData, TParams = any> {
-  queryKey: Accessor<QueryKey> | QueryKey;
-  queryFn: (params: TParams & { limit: number; page: number }) => Promise<TableInfinitePage<TData>>;
-  limit?: number;
-  enabled?: Accessor<boolean> | boolean;
-  initialParams?: Omit<TParams, "limit" | "page">;
-  singleSelect?: boolean;
-  /**
-   * Unique identifier for the table, used for persisting state like column visibility.
-   * Defaults to a stringified version of the queryKey if not specified.
-   */
-  tableId?: string;
 }
 
 export interface UseTableInfiniteFromQueryParams<TData, TPage, TPageParam = unknown> {
@@ -72,11 +58,6 @@ export interface UseTableInfiniteReturn<
    * Unique identifier for the table, used for persisting state like column visibility.
    */
   tableId: string;
-}
-
-// Helper to resolve queryKey whether it's an accessor or static array
-function resolveQueryKey(queryKey: Accessor<QueryKey> | QueryKey): QueryKey {
-  return typeof queryKey === "function" ? queryKey() : queryKey;
 }
 
 function getDefaultRows<TData>(page: TableInfinitePage<TData>): readonly TData[] {
@@ -244,49 +225,4 @@ export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
     singleSelect,
     tableId: params.tableId ?? "table",
   };
-}
-
-export function useTableInfinite<TData = any, TParams = any>(
-  params: UseTableInfiniteParams<TData, TParams>,
-): UseTableInfiniteReturn<TData, TableInfinitePage<TData>, number> {
-  const { limit = 10, initialParams = {} as Omit<TParams, "limit" | "page"> } = params;
-
-  // Generate tableId from queryKey if not provided
-  const tableId =
-    params.tableId ??
-    (() => {
-      const key = resolveQueryKey(params.queryKey);
-      return Array.isArray(key) ? (key[0]?.toString() ?? "table") : String(key);
-    })();
-
-  const query = createInfiniteQuery<TableInfinitePage<TData>, number>(() => ({
-    queryKey: resolveQueryKey(params.queryKey),
-    queryFn: ({ pageParam }) =>
-      params.queryFn({
-        ...initialParams,
-        limit,
-        page: pageParam,
-      } as TParams & { limit: number; page: number }),
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
-      const loadedCount = _allPages.reduce((total, page) => total + page.data.length, 0);
-      if (typeof lastPage.totalCount === "number" && loadedCount >= lastPage.totalCount) {
-        return undefined;
-      }
-
-      if (!lastPage || !lastPage.data || lastPage.data.length < limit) {
-        return undefined;
-      }
-
-      return lastPageParam + 1;
-    },
-    enabled: () =>
-      typeof params.enabled === "function" ? params.enabled() : (params.enabled ?? true),
-  }));
-
-  return useTableInfiniteFromQuery({
-    query,
-    tableId,
-    singleSelect: params.singleSelect,
-  });
 }

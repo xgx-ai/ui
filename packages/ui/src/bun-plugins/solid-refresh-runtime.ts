@@ -1,5 +1,5 @@
-import { createMemo, createSignal } from "solid-js";
 import { createComponent } from "@solidjs/web";
+import { createMemo, createSignal } from "solid-js";
 
 const REGISTRY_KEY = "__xgx_solid_refresh_v2_registry";
 const NEXT_REGISTRY_KEY = "__xgx_solid_refresh_v2_next_registry";
@@ -9,17 +9,24 @@ type Component = (props: Record<string, unknown>) => any;
 
 type ComponentRecord = {
   component: Component;
-  /**
-   * Live record this one defers to. A re-evaluated module registers a fresh
-   * record for the same component; it must render whatever the *mounted*
-   * record renders, and keep doing so as later edits arrive.
-   */
-  delegate?: ComponentRecord;
   hash: string;
   id: string;
   proxy: Component;
   read: () => Component;
+  /**
+   * Set when the component was mounted with `children`. Swapping such a
+   * component re-creates its subtree, but the children were built by its parent
+   * and stay bound to the owner that swap disposed — they render once more and
+   * then never update again. There is no in-place patch for that, so the whole
+   * page reloads instead of leaving the screen silently stale.
+   */
+  rendersChildren: boolean;
   update: (component: Component, hash: string) => void;
+};
+
+type PendingUpdate = {
+  component: Component;
+  hash: string;
 };
 
 type Registry = {
@@ -31,8 +38,31 @@ type RefreshScope = {
 };
 
 type RefreshState = {
+  /**
+   * Bumped once per applied hot update. Every component proxy reads it, so a
+   * swap re-renders the tree from the root down.
+   *
+   * Workaround (Bun HMR): swapping a component in place re-created its subtree
+   * but not the `children` its parent had already built, leaving those memos
+   * attached to a disposed owner — the DOM then froze on the code from before
+   * the swap while later edits appeared to do nothing. Re-rendering top-down
+   * rebuilds every owner; `signalCache` + `refreshSnapshot` carry component
+   * state across, which is what `resetRefreshScopes` exists for.
+   */
+  generation: ReturnType<typeof createSignal<number>>;
+  /**
+   * One record per component id, shared by every evaluation of its module.
+   *
+   * Workaround (Bun HMR): an edit anywhere re-evaluates most of the graph, so a
+   * component is registered many times over a session. Handing out a fresh
+   * proxy each time left the mounted tree holding a proxy from an older
+   * generation that later patches never reached — edits silently stopped
+   * applying until a full reload. Keying records by id keeps exactly one live
+   * proxy per component no matter which evaluation hands it out.
+   */
+  liveRecords: Map<string, ComponentRecord>;
   nextInstanceOrdinalById: Map<string, number>;
-  proxyRecords: WeakMap<object, ComponentRecord>;
+  pendingUpdates: Map<ComponentRecord, PendingUpdate>;
   refreshSnapshot?: Map<string, unknown>;
   rootDisposers: Map<string, () => void>;
   scopeStack: RefreshScope[];
@@ -52,14 +82,25 @@ const refreshState = (hotData?.[GLOBAL_STATE_KEY] ||
 
 if (hotData) hotData[GLOBAL_STATE_KEY] = refreshState;
 globalRecord[GLOBAL_STATE_KEY] = refreshState;
+refreshState.generation ||= createSignal(0, { equals: false, ownedWrite: true });
+refreshState.liveRecords ||= new Map<string, ComponentRecord>();
 refreshState.nextInstanceOrdinalById ||= new Map<string, number>();
-refreshState.proxyRecords ||= new WeakMap<object, ComponentRecord>();
+refreshState.pendingUpdates ||= new Map<ComponentRecord, PendingUpdate>();
 refreshState.rootDisposers ||= new Map<string, () => void>();
 refreshState.scopeStack ||= [];
 refreshState.signalCache ||= new Map<string, ReturnType<typeof createSignal>>();
 
-const { nextInstanceOrdinalById, proxyRecords, rootDisposers, scopeStack, signalCache } =
-  refreshState as RefreshState;
+const {
+  generation,
+  liveRecords,
+  nextInstanceOrdinalById,
+  pendingUpdates,
+  rootDisposers,
+  scopeStack,
+  signalCache,
+} = refreshState as RefreshState;
+
+const [readGeneration, setGeneration] = generation;
 
 function createCachedSignal<T>(value: T, options?: Parameters<typeof createSignal<T>>[1]) {
   return (createSignal as unknown as (value: T, options?: unknown) => unknown)(
@@ -130,33 +171,17 @@ function setComponentProperty(component: Component, key: string, value: unknown)
   });
 }
 
-/** Follows the delegate chain to the record that owns the mounted component. */
-function resolveRecord(record: ComponentRecord): ComponentRecord {
-  let target = record;
-
-  for (let depth = 0; depth < 16; depth += 1) {
-    const next = target.delegate;
-    if (!next || next === target) break;
-    target = next;
-  }
-
-  return target;
-}
-
 function createProxy(record: ComponentRecord, id: string) {
   const refreshName = `[xgx-solid-hmr]${id}`;
 
   function HmrComponent(props: Record<string, unknown>) {
     const scope = createRefreshScope(id);
+    if (props && "children" in props) record.rendersChildren = true;
 
     return createMemo(
       () => {
-        // Track this record even when it delegates: `update` writes through its
-        // own signal when the delegate link changes, and the live record's
-        // signal carries subsequent edits. Both have to be read to stay hot.
-        const own = record.read();
-        const live = resolveRecord(record);
-        const current = live === record ? own : live.read();
+        readGeneration();
+        const current = record.read();
 
         return current
           ? withRefreshScope(scope, () => createComponent(current as never, props as never))
@@ -171,12 +196,11 @@ function createProxy(record: ComponentRecord, id: string) {
   return new Proxy(HmrComponent, {
     get(_, property) {
       if (property === "name") return HmrComponent.name;
-      return resolveRecord(record).component?.[property as keyof Component];
+      return record.component?.[property as keyof Component];
     },
     set(_, property, value) {
-      const current = resolveRecord(record).component;
-      if (current) {
-        (current as unknown as Record<PropertyKey, unknown>)[property] = value;
+      if (record.component) {
+        (record.component as unknown as Record<PropertyKey, unknown>)[property] = value;
       }
       return true;
     },
@@ -190,6 +214,17 @@ export function $$registry(): Registry {
 }
 
 export function $$component(registry: Registry, id: string, component: Component, hash: string) {
+  const existing = liveRecords.get(id);
+
+  if (existing) {
+    // Re-evaluation of an already-mounted component: keep the live record and
+    // proxy, and queue the swap for $$refresh so the whole module lands at once.
+    registry.components.set(id, existing);
+    if (existing.hash !== hash) pendingUpdates.set(existing, { component, hash });
+
+    return existing.proxy;
+  }
+
   const [readState, setState] = createSignal(
     { component },
     {
@@ -203,23 +238,8 @@ export function $$component(registry: Registry, id: string, component: Component
     id,
     proxy: undefined as unknown as Component,
     read: () => readState().component,
+    rendersChildren: false,
     update: (nextComponent, nextHash) => {
-      // Workaround (Bun HMR): patchRegistry hands the mounted record's *proxy* to
-      // the incoming record so the re-evaluated module's export keeps rendering
-      // the mounted tree. Storing that proxy as a component made the live record
-      // render a proxy of itself on the next patch round — the subtree duplicated
-      // and then froze on stale code. Record it as a delegate link instead, which
-      // stays live across later edits and makes patching idempotent.
-      const delegate = proxyRecords.get(nextComponent as unknown as object);
-
-      if (delegate) {
-        record.delegate = delegate === record ? undefined : delegate;
-        record.hash = nextHash;
-        setState({ component: record.component });
-        return;
-      }
-
-      record.delegate = undefined;
       record.component = nextComponent;
       record.hash = nextHash;
       setState({ component: nextComponent });
@@ -227,7 +247,7 @@ export function $$component(registry: Registry, id: string, component: Component
   };
 
   record.proxy = createProxy(record, id);
-  proxyRecords.set(record.proxy as unknown as object, record);
+  liveRecords.set(id, record);
   registry.components.set(id, record);
 
   return record.proxy;
@@ -258,34 +278,34 @@ export function $$root<T>(id: string, dispose: T): T {
 }
 
 function patchRegistry(currentRegistry: Registry, nextRegistry: Registry) {
+  // A component that disappeared cannot be patched — its mounted instances have
+  // no replacement to swap in. Fall back to a reload.
+  for (const id of currentRegistry.components.keys()) {
+    if (!nextRegistry.components.has(id)) return false;
+  }
+
+  if (pendingUpdates.size === 0) return true;
+
+  const updates = [...pendingUpdates];
+  pendingUpdates.clear();
+
+  for (const [record] of updates) {
+    if (record.rendersChildren) return false;
+  }
+
   beginRefresh();
-  const ids = new Set([...currentRegistry.components.keys(), ...nextRegistry.components.keys()]);
 
   try {
-    for (const id of ids) {
-      const current = currentRegistry.components.get(id);
-      const next = nextRegistry.components.get(id);
-
-      if (current && next) {
-        if (current.hash !== next.hash) {
-          current.update(next.component, next.hash);
-        }
-        next.update(current.proxy, current.hash);
-        continue;
-      }
-
-      if (current && !next) return false;
-      if (!current && next) currentRegistry.components.set(id, next);
+    for (const [record, next] of updates) {
+      record.update(next.component, next.hash);
     }
+
+    setGeneration((value) => value + 1);
 
     return true;
   } finally {
     endRefresh();
   }
-}
-
-function reloadPage() {
-  if (typeof window !== "undefined") window.location.reload();
 }
 
 export function $$register(data: Record<string, unknown>, registry: Registry) {
@@ -294,18 +314,23 @@ export function $$register(data: Record<string, unknown>, registry: Registry) {
   data[NEXT_REGISTRY_KEY] = registry;
 }
 
+/**
+ * Applies a module's hot update. Returns false when the update cannot be
+ * patched in place — the caller then hands the module back to Bun with
+ * `import.meta.hot.invalidate()`.
+ *
+ * Workaround (Bun HMR): this used to call `window.location.reload()` directly,
+ * which races the dev server's rebuild — the reload could land on a bundle
+ * generation the server had already discarded, leaving the page stale with no
+ * live HMR socket. `invalidate()` lets Bun sequence the reload against the build.
+ */
 export function $$refresh(data: Record<string, unknown>) {
   const currentRegistry = data?.[REGISTRY_KEY] as Registry | undefined;
   const nextRegistry = data?.[NEXT_REGISTRY_KEY] as Registry | undefined;
 
-  if (!currentRegistry || !nextRegistry) {
-    reloadPage();
-    return;
-  }
+  if (!currentRegistry || !nextRegistry) return false;
 
-  if (!patchRegistry(currentRegistry, nextRegistry)) {
-    reloadPage();
-  }
+  return patchRegistry(currentRegistry, nextRegistry);
 }
 
 if (import.meta.hot) {

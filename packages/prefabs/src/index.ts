@@ -1,5 +1,6 @@
 export { Table, type TableProps } from "./data-display/table.tsx";
 export {
+  type TablePage,
   type TableRowData,
   type UseTableParams,
   type UseTableReturn,
@@ -12,5 +13,6 @@ export {
   type SearchInfinitePage,
   type SearchInfiniteQueryConfig,
   type SearchInfiniteState,
+  searchPageHasMore,
 } from "./forms/use-search-infinite.ts";
 export * from "./table-infinite/index.ts";

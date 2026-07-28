@@ -1,4 +1,4 @@
-import { createInfiniteQuery, type InfiniteQueryResult, type QueryKey } from "@xgx/query";
+import { createInfiniteQuery, type InfiniteDescriptor, type InfiniteQueryResult } from "@xgx/query";
 import { type Accessor, createMemo, createSignal } from "solid-js";
 
 /**
@@ -9,33 +9,27 @@ export interface TableRowData {
   id: string;
 }
 
-export interface UseTableParams<TData extends TableRowData, TParams = Record<string, unknown>> {
-  /** Query key for the local infinite query cache. */
-  queryKey: QueryKey;
-  /** Function to fetch paginated data. */
-  queryFn: (
-    params: TParams & { limit: number; page: number },
-  ) => Promise<{ data: TData[]; count: number; totalCount?: number }>;
-  /** Number of items per page. */
-  limit?: number;
-  /** Whether the query is enabled. */
-  enabled?: Accessor<boolean> | boolean;
-  /** Additional params passed to queryFn. */
-  initialParams?: Omit<TParams, "limit" | "page">;
+export interface UseTableParams<TData extends TableRowData> {
+  /**
+   * The descriptor to observe, or `null` for "no question yet".
+   *
+   * Page size, filters and search term all live in the descriptor's key, so this hook has
+   * nothing to inject and nothing that can drift from what the request actually sends.
+   */
+  source: () => InfiniteDescriptor<TablePage<TData>, number> | null;
   /** Only allow single row selection. */
   singleSelect?: boolean;
 }
 
+export interface TablePage<TData> {
+  data: TData[];
+  count: number;
+  totalCount?: number;
+}
+
 export interface UseTableReturn<TData> {
   data: Accessor<TData[]>;
-  query: InfiniteQueryResult<
-    {
-      data: TData[];
-      count: number;
-      totalCount?: number;
-    },
-    number
-  >;
+  query: InfiniteQueryResult<TablePage<TData>, number>;
   isLoading: Accessor<boolean>;
   isFetchingMore: Accessor<boolean>;
   hasMore: Accessor<boolean>;
@@ -60,48 +54,24 @@ export interface UseTableReturn<TData> {
  *
  * @example
  * ```tsx
- * const table = useTable({
- *   queryKey: ["users"],
- *   queryFn: ({ limit, page }) => fetchUsers({ limit, page }),
+ * const users = queryGroup("users", {
+ *   list: infiniteQuery({
+ *     key: (search: string) => ({ search: search || undefined, limit: 10 }),
+ *     initialPageParam: 0,
+ *     fetch: (key, ctx) => fetchUsers({ ...key, page: ctx.pageParam }),
+ *     getNextPageParam: (page, pages, cursor) => ...,
+ *   }),
  * });
+ *
+ * const table = useTable({ source: () => users.list(search()) });
  * ```
  */
-export function useTable<
-  TData extends TableRowData = TableRowData,
-  TParams = Record<string, unknown>,
->(params: UseTableParams<TData, TParams>): UseTableReturn<TData> {
-  const {
-    limit = 10,
-    initialParams = {} as Omit<TParams, "limit" | "page">,
-    singleSelect = false,
-  } = params;
+export function useTable<TData extends TableRowData = TableRowData>(
+  params: UseTableParams<TData>,
+): UseTableReturn<TData> {
+  const { singleSelect = false } = params;
 
-  const query = createInfiniteQuery<{ data: TData[]; count: number; totalCount?: number }, number>(
-    () => ({
-      queryKey: params.queryKey,
-      queryFn: ({ pageParam }) =>
-        params.queryFn({
-          ...initialParams,
-          limit,
-          page: pageParam,
-        } as TParams & { limit: number; page: number }),
-      initialPageParam: 0,
-      getNextPageParam: (lastPage, allPages, lastPageParam) => {
-        const loadedCount = allPages.reduce((total, page) => total + page.data.length, 0);
-        if (typeof lastPage.totalCount === "number" && loadedCount >= lastPage.totalCount) {
-          return undefined;
-        }
-
-        if (!lastPage || !lastPage.data || lastPage.data.length < limit) {
-          return undefined;
-        }
-
-        return lastPageParam + 1;
-      },
-      enabled: () =>
-        typeof params.enabled === "function" ? params.enabled() : (params.enabled ?? true),
-    }),
-  );
+  const query = createInfiniteQuery(params.source);
 
   // Reads `retained`, not `data`: a keyed `<For>` under `<Loading>` does not pick up the
   // new value in Solid 2 beta.25, so a filtered table would stay stuck on old rows. The

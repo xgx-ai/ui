@@ -1,6 +1,13 @@
 import { expect, test } from "bun:test";
 import { createEffect, createRoot, createSignal, flush, resolve } from "solid-js";
-import { createInfiniteQuery, createValueQuery, QueryClient } from "../src/index.tsx";
+import {
+  createInfiniteQuery,
+  createQuery,
+  infiniteQuery,
+  QueryClient,
+  query,
+  queryGroup,
+} from "../src/index.tsx";
 
 /**
  * Guards the "never start a fetch inside a memo compute" invariant.
@@ -63,15 +70,18 @@ test("a pending value query does not restart while the clock advances", async ()
   await inRoot(async () => {
     const request = deferred<string>();
     let calls = 0;
-    const query = createValueQuery(() => ({
-      queryKey: ["storm-pending"],
-      queryFn: () => {
-        calls += 1;
-        return request.promise;
-      },
-    }));
+    const storm = queryGroup("storm-pending", {
+      value: query({
+        key: () => ({}),
+        fetch: () => {
+          calls += 1;
+          return request.promise;
+        },
+      }),
+    });
+    const observed = createQuery(() => storm.value());
 
-    const read = resolve(() => query.data());
+    const read = resolve(() => observed.data());
     await Promise.resolve();
     await churnClock();
 
@@ -86,16 +96,19 @@ test("a pending value query does not restart while the clock advances", async ()
 test("a settled value query does not restart while the clock advances", async () => {
   await inRoot(async () => {
     let calls = 0;
-    const query = createValueQuery(() => ({
-      queryKey: ["storm-settled"],
-      queryFn: async () => {
-        calls += 1;
-        return calls;
-      },
-      staleTime: Number.POSITIVE_INFINITY,
-    }));
+    const storm = queryGroup("storm-settled", {
+      value: query({
+        key: () => ({}),
+        fetch: async () => {
+          calls += 1;
+          return calls;
+        },
+        staleTime: Number.POSITIVE_INFINITY,
+      }),
+    });
+    const observed = createQuery(() => storm.value());
 
-    await resolve(() => query.data());
+    await resolve(() => observed.data());
     flush();
     await churnClock();
 
@@ -108,18 +121,21 @@ test("a query function returning a fresh promise each call still runs once", asy
   // entry. This asserts the entry — not the caller — is what makes the read idempotent.
   await inRoot(async () => {
     let calls = 0;
-    const query = createValueQuery(() => ({
-      queryKey: ["storm-fresh-promise"],
-      queryFn: () => {
-        calls += 1;
-        return new Promise<number>((resolveRequest) => {
-          setTimeout(() => resolveRequest(calls), 1);
-        });
-      },
-      staleTime: Number.POSITIVE_INFINITY,
-    }));
+    const storm = queryGroup("storm-fresh-promise", {
+      value: query({
+        key: () => ({}),
+        fetch: () => {
+          calls += 1;
+          return new Promise<number>((resolveRequest) => {
+            setTimeout(() => resolveRequest(calls), 1);
+          });
+        },
+        staleTime: Number.POSITIVE_INFINITY,
+      }),
+    });
+    const observed = createQuery(() => storm.value());
 
-    await resolve(() => query.data());
+    await resolve(() => observed.data());
     flush();
     await churnClock();
 
@@ -132,16 +148,18 @@ test("many independent readers of one query share a single request", async () =>
     const client = new QueryClient();
     const request = deferred<string>();
     let calls = 0;
-    const options = () => ({
-      queryKey: ["storm-shared"],
-      queryFn: () => {
-        calls += 1;
-        return request.promise;
-      },
-      staleTime: Number.POSITIVE_INFINITY,
+    const storm = queryGroup("storm-shared", {
+      value: query({
+        key: () => ({}),
+        fetch: () => {
+          calls += 1;
+          return request.promise;
+        },
+        staleTime: Number.POSITIVE_INFINITY,
+      }),
     });
 
-    const readers = Array.from({ length: 5 }, () => createValueQuery(options, client));
+    const readers = Array.from({ length: 5 }, () => createQuery(() => storm.value(), client));
     const reads = readers.map((reader) => resolve(() => reader.data()));
     await Promise.resolve();
     await churnClock();
@@ -160,18 +178,21 @@ test("a pending infinite query does not restart its first page", async () => {
   await inRoot(async () => {
     const request = deferred<{ data: number[] }>();
     let calls = 0;
-    const query = createInfiniteQuery(() => ({
-      queryKey: ["storm-infinite"],
-      initialPageParam: 0,
-      queryFn: () => {
-        calls += 1;
-        return request.promise;
-      },
-      getNextPageParam: () => undefined,
-      staleTime: Number.POSITIVE_INFINITY,
-    }));
+    const storm = queryGroup("storm-infinite", {
+      pages: infiniteQuery({
+        key: () => ({}),
+        initialPageParam: 0,
+        fetch: () => {
+          calls += 1;
+          return request.promise;
+        },
+        getNextPageParam: () => undefined,
+        staleTime: Number.POSITIVE_INFINITY,
+      }),
+    });
+    const observed = createInfiniteQuery(() => storm.pages());
 
-    const read = resolve(() => query.data());
+    const read = resolve(() => observed.data());
     await Promise.resolve();
     await churnClock();
 
@@ -194,21 +215,24 @@ test("an active query does not refetch while idle at the default stale time", as
   // itself forever.
   await inRoot(async () => {
     let calls = 0;
-    const query = createValueQuery(() => ({
-      queryKey: ["storm-idle"],
-      queryFn: async () => {
-        calls += 1;
-        return calls;
-      },
-    }));
+    const storm = queryGroup("storm-idle", {
+      value: query({
+        key: () => ({}),
+        fetch: async () => {
+          calls += 1;
+          return calls;
+        },
+      }),
+    });
+    const observed = createQuery(() => storm.value());
 
     // An active consumer, standing in for a rendered component reading `data()`.
     createEffect(
-      () => query.data(),
+      () => observed.data(),
       () => {},
     );
 
-    await resolve(() => query.data());
+    await resolve(() => observed.data());
     flush();
     expect(calls).toBe(1);
 
@@ -224,20 +248,23 @@ test("a failed query does not restart on repeated reads", async () => {
   // that re-entered `readQuery` would start a fresh request every time it ran.
   await inRoot(async () => {
     let calls = 0;
-    const query = createValueQuery(() => ({
-      queryKey: ["storm-failed"],
-      queryFn: async () => {
-        calls += 1;
-        throw new Error("upstream is down");
-      },
-    }));
+    const storm = queryGroup("storm-failed", {
+      value: query({
+        key: () => ({}),
+        fetch: async (): Promise<never> => {
+          calls += 1;
+          throw new Error("upstream is down");
+        },
+      }),
+    });
+    const observed = createQuery(() => storm.value());
 
-    await resolve(() => query.data()).catch(() => undefined);
+    await resolve(() => observed.data()).catch(() => undefined);
     expect(calls).toBe(1);
 
     for (let attempt = 0; attempt < 10; attempt += 1) {
       try {
-        query.data();
+        observed.data();
       } catch {
         // The read re-throws the stored failure; that must not re-ask the question.
       }

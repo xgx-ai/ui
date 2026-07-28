@@ -221,6 +221,95 @@ transform. Remove once the package publishes Solid 2 output.
 
 ---
 
+## S9 — Hot updates mount a second app and then stop applying
+
+**Ours, not Solid.** Two faults in this repo's Solid HMR layer, found from the Onshyft app and
+reproduced standalone on Bun 1.3.11. The dev server is not at fault: it rebuilds on every
+change and serves a bundle that matches the source.
+
+**Symptom.** After an edit the page renders a subtree twice; or it shows the *previous* edit
+and ignores every later one; or it drops into the error boundary with `Context must either be
+created with a default value…` alongside `You appear to have multiple instances of Solid`.
+A page reload always recovers.
+
+**What was wrong.**
+
+1. Bun re-evaluates most of the graph for a single leaf edit — including the entry module.
+   The plugin gave the entry a bare `import.meta.hot.accept()`, so its module-scope
+   `render(...)` ran again and mounted a **second copy of the application**. Two live trees is
+   what "old and new modules mixed" actually looked like. Root renders now go through
+   `$$root`/`$$disposeRoot`, so the previous root is torn down first.
+2. `$$component` created a new record and proxy on every evaluation, and `patchRegistry`
+   chained them by storing one record's *proxy* as another's component. The mounted tree
+   drifted onto a proxy from an older generation that later patches never reached, and a
+   second patch round left a record rendering a proxy of itself. There is now exactly one
+   record per component id (`liveRecords`), re-evaluations queue a `pendingUpdates` entry, and
+   `$$refresh` applies them in one bracketed pass.
+
+**Re-check.** Two component modules, one rendering the other under a provider. Edit the leaf
+twice, then edit provider and leaf together, then the leaf again. The DOM must hold exactly
+one copy of the leaf and show the newest text of both. Before the fix the leaf duplicated on
+the first edit and froze after the combined one.
+
+**Still open.** Swapping a component that receives `children` cannot be patched in place — the
+children were built by its parent and stay bound to the owner the swap disposed, so they
+render once more and then never update. The runtime detects this (`rendersChildren`) and
+returns false so the module calls `import.meta.hot.invalidate()`, but Bun's reload can still
+land the page on a discarded bundle generation, leaving it stale with no live HMR socket.
+
+**Restart required.** The dev server does not watch these two files — they are reached through
+a plugin-generated relative path — so a consuming app must restart its frontend process to
+pick up a change to either.
+
+- [`packages/ui/src/bun-plugins/solid.ts`](../packages/ui/src/bun-plugins/solid.ts)
+- [`packages/ui/src/bun-plugins/solid-refresh-runtime.ts`](../packages/ui/src/bun-plugins/solid-refresh-runtime.ts)
+
+---
+
+## S10 — Signal writes inside an `action` are invisible until the action settles
+
+**Sharp edge.** A `createSignal` write made while an `action` generator is suspended lands in
+that action's transition. Readers outside the action keep seeing the previous value for the
+whole duration, then jump to the new one when the action resolves.
+
+**Symptom.** A mutation triggers a refetch; the refetch really is in flight (the cache entry
+holds a promise), but the query's `fetching()` flag reads `false` for every outside reader.
+Any spinner bound to it stays hidden for exactly the window it exists to cover.
+
+**Probe.**
+
+```ts
+const [flag, setFlag] = createSignal(false);
+const gate = Promise.withResolvers<void>();
+const run = action(function* () {
+  setFlag(true);
+  yield gate.promise;
+});
+const promise = run();
+await Promise.resolve();
+flush();
+flag(); // false — the write is held in the action's transition
+gate.resolve();
+await promise;
+flag(); // true
+```
+
+**Why it matters here.** `createMutation`'s `mutateAsync` is an `action`, and the invalidation
+sweep it awaits calls `entry.setFetching(true)`. `ownedWrite: true` does not exempt the write:
+owned-write governs *who may write*, not transition visibility.
+
+**What we do.** Nothing — this is the transition contract working as designed, and defeating
+it would make the value tear against the rest of the update. `pending()` is the
+transition-aware signal and reports `true` correctly throughout, so that is what a spinner
+reads during a mutation. `fetching()` remains correct for observer-driven and directly
+invalidated refetches, which are not inside an action.
+
+**Re-check.** `packages/query/test/query.test.ts`, "mutation pending includes awaited query
+invalidation" asserts `pending() === true` and `fetching() === false` together. If a pin bump
+makes `fetching()` true there, the assertion fails and this entry can be narrowed.
+
+---
+
 ## Related
 
 - `solid-js/CHEATSHEET.md` in `node_modules` is the most current API reference for the

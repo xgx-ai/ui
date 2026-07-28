@@ -51,8 +51,6 @@ export {
   type TableInfinitePage,
   type UseTableInfiniteFromDefaultQueryParams,
   type UseTableInfiniteFromQueryParams,
-  type UseTableInfiniteParams,
   type UseTableInfiniteReturn,
-  useTableInfinite,
   useTableInfiniteFromQuery,
 } from "./use-table-infinite.ts";

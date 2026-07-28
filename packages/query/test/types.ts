@@ -7,7 +7,6 @@
  * and when a rule silently weakens.
  */
 
-import type { CacheMutationOptions } from "../src/index.tsx";
 import {
   createInfiniteQuery,
   createMutation,
@@ -97,6 +96,16 @@ createQuery(() => sites.detail.all);
 // @ts-expect-error an infinite descriptor needs createInfiniteQuery
 createQuery(() => sites.list("c1"));
 
+// The page and cursor types come from the descriptor, not from the call site. With an
+// overload set they degraded to `unknown`, which type-checked here and exploded at the
+// consumer; a single signature makes that unrepresentable.
+const _pages = createInfiniteQuery(() => sites.list("c1"));
+const _rows: Site[] = _pages.data().pages.flatMap((page) => page.data);
+const _cursors: number[] = [..._pages.data().pageParams];
+
+// @ts-expect-error a value descriptor is not an infinite one
+createInfiniteQuery(() => sites.detail("a"));
+
 // ---------------------------------------------------------------------------
 // A mutation cannot omit its cache effect.
 // ---------------------------------------------------------------------------
@@ -111,61 +120,18 @@ createMutation(() => ({
   invalidates: ({ variables }) => [sites.detail(variables), sites.list.all],
 }));
 
-// `createMutation` still carries a legacy overload whose `invalidates` is optional, so the
-// requirement cannot be asserted through it until Phase 5 deletes that overload. Assert it
-// against the options type directly, which is the contract that actually matters.
-declare function cacheMutation<TData, TVariables>(
-  options: () => CacheMutationOptions<TData, TVariables>,
-): void;
-
-cacheMutation(() => ({
+// `invalidates` is required, and the requirement is now assertable directly through
+// `createMutation`: the overload set that used to defeat contextual typing is gone.
+// @ts-expect-error `invalidates` is required: a forgotten one is silent at runtime
+createMutation(() => ({
   mutationFn: async (id: string) => ({ id, name: "Site" }),
-  invalidates: "nothing" as const,
 }));
 
-// @ts-expect-error `invalidates` is required: a forgotten one is silent at runtime
-cacheMutation(() => ({
+// The bare literal must survive contextual typing. An overload set would widen it to
+// `string` and this line would stop compiling — which is why there is only one signature.
+createMutation(() => ({
   mutationFn: async (id: string) => ({ id, name: "Site" }),
+  invalidates: "nothing",
 }));
 
 export type { Site };
-
-// ---------------------------------------------------------------------------
-// Overload inference for the legacy paths.
-//
-// `createInfiniteQuery` and `createMutation` each carry a temporary second overload for
-// the descriptor API. Overload order is load-bearing: with the descriptor signature first,
-// TypeScript tries to infer `TPage` from a descriptor for a legacy options call, fails, and
-// silently degrades every legacy callback parameter to `unknown` — which type-checks at the
-// definition and explodes at the call sites. These assertions turn that reorder into a
-// compile error here instead. Delete them with the legacy overloads in Phase 5.
-// ---------------------------------------------------------------------------
-
-type LegacyPage = { data: Site[]; totalCount: number };
-
-createInfiniteQuery(() => ({
-  queryKey: ["legacy", "sites"],
-  initialPageParam: 0,
-  queryFn: async (context: { pageParam: number }): Promise<LegacyPage> => ({
-    data: [],
-    totalCount: context.pageParam,
-  }),
-  getNextPageParam: (lastPage, allPages, lastPageParam) => {
-    // Each of these would be `unknown` if the descriptor overload were matched first.
-    const total: number = lastPage.totalCount;
-    const loaded: number = allPages.reduce((sum, page) => sum + page.data.length, 0);
-    const cursor: number = lastPageParam;
-    return loaded < total ? cursor + 1 : undefined;
-  },
-}));
-
-createMutation(() => ({
-  mutationFn: async (variables: { id: string }) => ({ id: variables.id, name: "Site" }),
-  // Legacy targets are raw keys or factories, not scopes.
-  invalidates: [["sites", "detail"]],
-  onSuccess: (data, variables) => {
-    const savedName: string = data.name;
-    const savedId: string = variables.id;
-    return `${savedId}:${savedName}`;
-  },
-}));

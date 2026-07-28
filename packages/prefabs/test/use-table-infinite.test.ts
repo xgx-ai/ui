@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { createInfiniteQuery, QueryClient } from "@xgx/query";
+import { createInfiniteQuery, infiniteQuery, QueryClient, queryGroup } from "@xgx/query";
 import { action, createEffect, createRoot, createSignal, flush, resolve } from "solid-js";
 import { useTableInfiniteFromQuery } from "../src/table-infinite/use-table-infinite";
 
@@ -15,21 +15,21 @@ test("table rows react when an infinite query key changes", async () => {
     const [filter, setFilter] = createSignal("all");
     const calls: string[] = [];
     const observedRows: string[][] = [];
-    const query = createInfiniteQuery(() => {
-      const currentFilter = filter();
-      return {
-        queryKey: ["table", currentFilter],
+    const group = queryGroup("table", {
+      rows: infiniteQuery({
+        key: (currentFilter: string) => ({ filter: currentFilter }),
         initialPageParam: 0,
-        queryFn: async () => {
-          calls.push(currentFilter);
+        fetch: async (key) => {
+          calls.push(key.filter);
           return {
-            data: [currentFilter],
+            data: [key.filter],
             count: 1,
             totalCount: 1,
           };
         },
-      };
-    }, client);
+      }),
+    });
+    const query = createInfiniteQuery(() => group.rows(filter()), client);
     const table = useTableInfiniteFromQuery<string, number>({ query });
     const changeFilter = action(function* (value: string) {
       setFilter(value);
