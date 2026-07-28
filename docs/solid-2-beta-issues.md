@@ -310,6 +310,55 @@ makes `fetching()` true there, the assertion fails and this entry can be narrowe
 
 ---
 
+## S11 — A `<Show>` accessor read after its condition goes falsy throws and takes the tree down
+
+**Sharp edge.** The accessor Solid hands a `<Show>` child is guarded: reading it once the
+condition is falsy throws `Attempting to access a stale value from <Show>`. That is fine when
+the only thing driving the child's reads is the condition itself. It is a trap when a child's
+read *also* depends on something async, because a late settle can re-run that read after the
+condition has already flipped.
+
+**Symptom.** A panel inside `<Show>` renders fine, then a seemingly unrelated interaction
+takes the whole subtree into its error boundary with the stale-value message. It looks
+intermittent because it depends on when a request lands.
+
+**Where it bit.** The form builder's document-acknowledgement panel:
+
+```tsx
+<Show when={hasStoredDocument() ? props.document : undefined}>
+  {(document) => (
+    // Also depends on the documents query, so a settle re-runs it.
+    <p>{documentSummaryLabel(document(), selectedSourceDocument())}</p>
+  )}
+</Show>
+```
+
+Selecting a field whose document is not configured flips the condition falsy. A query settle
+landing just after that re-ran the label, which read the dead accessor and threw.
+
+**The fix.** Derive the value into a memo and read the memo, not the accessor:
+
+```tsx
+const storedDocument = createMemo(() =>
+  hasStoredDocument() ? props.document : undefined,
+);
+
+<Show when={storedDocument()} fallback={...}>
+  <p>{storedDocumentLabel()}</p>   {/* reads storedDocument(), returns "" when undefined */}
+</Show>
+```
+
+A memo returns `undefined` where the accessor throws, so the late read renders nothing and the
+`<Show>` swaps to its fallback on the next flush.
+
+**Rule of thumb.** Use the `<Show>` accessor only for reads the condition alone drives. If a
+child's read can be triggered by a query, a timer or any other outside source, read a memo.
+
+**Re-check.** `ui/packages/query/test/show-stale-accessor.test.ts` pins both halves — that the
+raw accessor throws, and that the memo form does not.
+
+---
+
 ## Related
 
 - `solid-js/CHEATSHEET.md` in `node_modules` is the most current API reference for the
