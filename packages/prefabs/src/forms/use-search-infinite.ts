@@ -90,9 +90,18 @@ export function createSearchInfinite<T>(
     return config.descriptor(debouncedSearchTerm());
   });
 
+  /**
+   * Never suspends.
+   *
+   * A closed dropdown has no descriptor, and a `null` descriptor's `data()` never resolves —
+   * so reading it here left the memo permanently pending. Solid defers the *whole* update
+   * behind a pending read (issue S5), which meant simply rendering a closed picker could stop
+   * the surrounding update from ever committing. `isLoading` below already reports progress
+   * from non-suspending state, so there is nothing to gain by blocking here.
+   */
   const options = createMemo(() => {
-    const rows = query.retained();
-    return (rows ? rows.pages : query.data().pages).flatMap((page) => page.data);
+    const rows = query.retained() ?? query.cached();
+    return rows ? rows.pages.flatMap((page) => page.data) : [];
   });
 
   const loadMore = () => {

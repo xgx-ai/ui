@@ -187,6 +187,13 @@ router, but any query keyed off a bare signal is.
 both for controls that must stay responsive and for query keys that must follow the change.
 Results read normally and lag behind. This is the job Solid's `latest` is actually for.
 
+**A second bite, worse than a frozen input.** The deferral also swallows the *write that
+started the update*. Selecting a form-builder field mounted an inspector that read a
+suspending accessor; the whole update went pending, so `selected()` kept reading its old
+value everywhere — no selection ring, no inspector, and the click looked like a dead no-op
+with nothing in the console. Anything a click mounts must therefore avoid suspending on data
+the click does not need. Read `cached()` there, not `data()`.
+
 **Evidence.** [`packages/query/test/retention-probe`](../packages/query/test/retention-probe/README.md)
 records the full state table: during the transition `filter()` reads `a` while
 `latest(filter)` reads `b`.
