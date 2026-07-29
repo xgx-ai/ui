@@ -408,7 +408,12 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
               <Show when={props.extraButton}>
                 <div class="p-2 border-t mt-1">{props.extraButton!(() => setIsOpen(false))}</div>
               </Show>
-              <Show when={props.enableInfiniteScroll}>
+              <Show
+                when={
+                  props.enableInfiniteScroll &&
+                  (infiniteLoading() || currentInfiniteState().hasMore)
+                }
+              >
                 <div
                   ref={(el) => {
                     loadMoreEl = el;
