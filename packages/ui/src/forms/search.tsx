@@ -89,6 +89,14 @@ type SearchContextValue = {
   setInputValue: (value: string) => void;
   setOpen: (open: boolean) => void;
   selectedOption: () => unknown;
+  /**
+   * What opens the listbox. `"focus"` (the default) opens it the moment the control is
+   * focused; `"input"` waits until the user types. Inside a dialog, `"focus"` means the
+   * modal's own initial-focus opens a popper while the dialog is still animating, which
+   * makes floating-ui's `autoUpdate` observer fire repeatedly within one frame and the
+   * browser report "ResizeObserver loop completed with undelivered notifications".
+   */
+  triggerMode: () => "focus" | "input";
 };
 
 const SearchContext = createContext<SearchContextValue>();
@@ -450,6 +458,7 @@ const Search = <T,>(props: SearchRootProps<T>) => {
         setInputValue,
         setOpen,
         selectedOption: selectedValue,
+        triggerMode: () => local.triggerMode ?? "focus",
       }}
     >
       <PopperRoot
@@ -625,7 +634,9 @@ const SearchInput = (props: ComponentProps<"input">) => {
             target: Element;
           },
         );
-        if (!event.defaultPrevented) context.setOpen(true);
+        if (!event.defaultPrevented && context.triggerMode() === "focus") {
+          context.setOpen(true);
+        }
       }}
       {...others}
     />

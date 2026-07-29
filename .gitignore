@@ -23,3 +23,4 @@ pa11y-report.json
 # Logs and local OS files
 *.log
 .DS_Store
+/.data

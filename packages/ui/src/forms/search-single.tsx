@@ -27,6 +27,11 @@ import {
 } from "./search";
 
 type SearchProps<T> = {
+  /**
+   * What opens the listbox. Defaults to `"focus"`. Pass `"input"` inside a dialog, where
+   * the modal's initial focus would otherwise open the listbox mid-animation.
+   */
+  triggerMode?: "focus" | "input";
   options: T[];
   value: T | undefined;
   optionValue: keyof T;
@@ -295,7 +300,7 @@ export default function SearchSingle<T>(props: SearchProps<T>) {
           </div>
         ) : (
           <Search<T>
-            triggerMode="focus"
+            triggerMode={props.triggerMode ?? "focus"}
             multiple={false}
             open={isOpen()}
             onOpenChange={setIsOpen}
