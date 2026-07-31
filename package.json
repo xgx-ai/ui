@@ -21,7 +21,9 @@
     "./schema-form": "./packages/ui/src/forms/schema-form/index.ts",
     "./sortablejs": "./packages/ui/src/dnd/sortablejs/index.ts",
     "./bun-plugin-solid": "./packages/ui/src/bun-plugins/solid.ts",
-    "./bun-plugin-tanstack-router": "./packages/ui/src/bun-plugins/tanstack-router.ts"
+    "./bun-plugin-tanstack-router": "./packages/ui/src/bun-plugins/tanstack-router.ts",
+    "./vite-plugin-solid": "./packages/ui/src/vite-plugins/solid.ts",
+    "./vite-plugin-tanstack-router": "./packages/ui/src/vite-plugins/tanstack-router.ts"
   },
   "workspaces": [
     "packages/*",
