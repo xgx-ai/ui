@@ -27,6 +27,7 @@ import {
   DetailPanel,
   DetailSidebar,
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -3088,7 +3089,12 @@ export function AsyncRuntimePanel() {
                 </CalloutContent>
               </Callout>
               <DialogFooter>
-                <Button onClick={() => setDialogOpen(false)}>Done</Button>
+                {/* Deliberately `DialogClose`, not a parent-state button: it calls
+                    `useDialog()`, so this is the only place the suite proves ancestor
+                    context survives the portal (S6 in docs/solid-2-beta-issues.md). */}
+                <DialogClose as={Button} data-testid="async-dialog-close">
+                  Done
+                </DialogClose>
               </DialogFooter>
             </DialogContent>
           </Dialog>

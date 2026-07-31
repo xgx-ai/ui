@@ -4,7 +4,58 @@ A register of SolidJS 2 beta behaviour we have hit in `@xgx/ui`, `@xgx/query`,
 `@xgx/prefabs` and `@xgx/solid`, and what we did about it.
 
 Pinned version: **`solid-js` / `@solidjs/web` / `@solidjs/signals` / `babel-preset-solid`
-2.0.0-beta.26**.
+2.0.0-beta.29**.
+
+### beta.26 → beta.29
+
+Upgraded 31 July 2026, to satisfy `vite-plugin-solid@3.0.0-next`'s peer range. Every suite,
+typecheck and lint passes unchanged. The register was walked entry by entry.
+
+Most of the walk is now automated: **`bun run beta:probes`** (also part of `bun run test`)
+runs [`packages/solid/beta-probes`](../packages/solid/beta-probes) against the *development*
+build. Those tests pin the behaviour each entry describes, so a failure there is the signal
+that an entry may be clearable — read the entry before "fixing" the test.
+
+**Fixed: S6** — ancestor context now survives the manual portal insertion, and **the
+re-provide has been deleted** from both portal paths in `dialog.tsx`. Guarded by the demo's
+async-portal dialog, whose footer is now a `DialogClose` (it calls `useDialog()`, so it only
+renders if context crossed the portal) and by
+[`tests/functional.spec.ts`](../tests/functional.spec.ts). Not bisected — it may have landed
+before beta.29.
+
+**Still present**, each re-checked rather than assumed:
+
+| | How it was re-checked | Result |
+| --- | --- | --- |
+| **S1** | The application procedure below, on the clients table | Chip and footer went to 1, rows stayed at 30 unfiltered — the exact documented signature |
+| **S2** | `beta-probes/halts-s2.test.ts` | `[REACTIVITY_HALTED]`; the unrelated effect never ran again |
+| **S5** | The browser probe in `packages/query/test/retention-probe` | Mid-transition `filter=a`, `latest=b`, rows still `a-*` |
+| **S7** | `beta-probes/register.test.ts` | Throws "Context must either be created with a default value…" |
+| **S10** | `query.test.ts` "mutation pending includes awaited query invalidation" | Still passes with `fetching() === false`, `pending() === true` |
+| **S11** | `beta-probes/register.test.ts`, now driving the real `<Show>` rather than a mirror of it | Accessor still throws once the condition goes falsy |
+| **S8** | `lucide-solid@1.28.0` (published 30 July 2026) still peers `solid-js: ^1.4.7` | Third party, unchanged |
+
+**Not re-checked.** S3 has had no reproduction since beta.15 and `fetch-storm.test.ts`
+passes. S4 is test infrastructure, not version-dependent. S9 no longer applies to Onshyft,
+which moved to Vite and the first-party refresh transform.
+
+**Two traps this walk fell into, both now written into the probes.**
+
+1. `--conditions=browser` on its own selects the **production** build, where every
+   diagnostic message is stripped and the owned-scope write rule does not fire at all. A
+   probe expecting `[REACTIVE_WRITE_IN_OWNED_SCOPE]` passed silently against it. The probes
+   add `--conditions=development`; the other suites do not, and cannot see those diagnostics.
+2. A headless harness is not a substitute for the browser probes. A `bun test` version of S5
+   reports the **opposite** result — `filter()` reads the new value immediately, and only the
+   effect observing the pending memo waits. S5's deferral needs reads inside a rendered tree.
+   The same caution the S1 entry already carries applies to S5.
+
+**Correction to an earlier reading of A2** (Onshyft register). A probe reported
+`[REACTIVE_WRITE_IN_OWNED_SCOPE]` for the Marker-shaped cleanup, and it was recorded as
+"still present". The throw actually came from the probe's own write inside the `createRoot`
+callback. Isolated, the Marker shape — apply stores the instance, teardown clears it — does
+**not** trip the rule on beta.29, on re-run or on disposal. See
+`beta-probes/owned-scope-write.test.ts`, which now pins both halves.
 
 ### beta.25 → beta.26
 
@@ -40,7 +91,7 @@ application-level workarounds. Framework entries here are the canonical copy.
 
 ## S1 — A keyed `<For>` under `<Loading>` keeps stale children after its source resolves
 
-**Bug.** Confirmed in a browser against the real application on **beta.25 and beta.26**.
+**Bug.** Confirmed in a browser against the real application on **beta.25, beta.26 and beta.29**.
 
 **Symptom.** A list whose source became not-ready beneath `<Loading>` renders its old
 children forever. The new value *does* arrive and *does* commit — sibling reads of the same
@@ -77,12 +128,12 @@ real table stack (TanStack row contexts, the prefabs pages store, keyed row ids)
 keyed `<For>` over a suspending source alone. Do not clear this entry on the strength of the
 probe.
 
-The valid procedure, used on beta.26:
+The valid procedure, used on beta.26 and again on beta.29:
 
 1. In `use-table.ts` and `use-table-infinite.ts`, make `data` read `query.data()` directly
    instead of preferring `query.retained()`.
-2. Restart the frontend dev server (it will not pick up `node_modules` changes otherwise).
-3. Filter the clients table and watch two things: the **rows** and the **count chip**.
+2. Filter the clients table and watch two things: the **rows** and the **count chip**. (Since
+   Onshyft moved to Vite the edit hot-updates; no dev-server restart is needed.)
 
 The signature of the bug is the chip updating to the filtered total while the rows stay on
 the unfiltered list. When both move together, `retained` and every reference above can be
@@ -200,10 +251,19 @@ records the full state table: during the transition `filter()` reads `a` while
 
 ---
 
-## S6 — Ancestor context is not preserved through manual portal insertion
+## S6 — Ancestor context is not preserved through manual portal insertion — FIXED
 
-**Bug.** Portalled dialog parts lose ancestor context, so the value has to be re-provided
-inside the portal.
+**Bug, fixed as of beta.29; workaround removed.** Portalled dialog parts used to lose
+ancestor context, so `DialogContent` re-provided the value inside the portal. Context now
+crosses the portal and both portal paths (the plain `div` and the `as` variant) render
+`contentChildren()` directly.
+
+**What guards it.** Nothing in the app consumed the dialog context inside the portal, which
+is why the workaround could have been deleted silently and broken later. The demo's
+async-portal dialog now closes with a `DialogClose` — the one dialog part that calls
+`useDialog()` — and [`tests/functional.spec.ts`](../tests/functional.spec.ts) opens it and
+clicks it. If context stops crossing the portal, that part throws "Dialog parts must be used
+inside Dialog." while rendering and the test fails.
 
 - [`packages/ui/src/overlays/dialog.tsx`](../packages/ui/src/overlays/dialog.tsx)
 

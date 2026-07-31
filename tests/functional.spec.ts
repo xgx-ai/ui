@@ -28,7 +28,11 @@ test("async portal triggers keep dialog and popover interactive", async ({ page 
   await page.getByTestId("async-dialog-trigger").click();
   await expect(page.getByTestId("async-dialog-content")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Async portal opened" })).toBeVisible();
-  await page.getByRole("button", { name: "Done" }).click();
+  // `DialogClose` reads the dialog context from inside the portal. If ancestor context
+  // stops crossing the portal (S6 in docs/solid-2-beta-issues.md, fixed as of Solid
+  // 2.0.0-beta.29), this throws "Dialog parts must be used inside Dialog." on open rather
+  // than failing here — either way the dialog never closes.
+  await page.getByTestId("async-dialog-close").click();
   await expect(page.getByTestId("async-dialog-content")).toBeHidden();
 });
 

@@ -337,12 +337,6 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
       </Show>
     </>
   );
-  // Solid 2 beta does not preserve ancestor context through this manual
-  // portal insertion, so portalled dialog parts need the value re-provided.
-  const contentWithContext = () => (
-    <DialogContext value={dialog}>{contentChildren()}</DialogContext>
-  );
-
   return (
     <Show when={presence.present()}>
       <DialogPortal mount={local.mount} zIndex={local.zIndex}>
@@ -373,7 +367,7 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
               {...rest}
               class={contentClass()}
             >
-              {contentWithContext()}
+              {contentChildren()}
             </div>
           }
         >
@@ -395,7 +389,7 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
               {...rest}
               class={contentClass()}
             >
-              {contentWithContext()}
+              {contentChildren()}
             </DynamicAny>
           )}
         </Show>
