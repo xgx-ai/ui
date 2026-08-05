@@ -138,9 +138,6 @@ export function useCreateMap(props: UseCreateMapProps): MapContext {
           if (cancelled || mapInstance !== instance) return;
           setMap(instance);
           setZoom(instance.getZoom());
-          requestAnimationFrame(() => {
-            if (!cancelled && mapInstance === instance) instance.resize();
-          });
         };
 
         instance.once("load", handleLoad);
@@ -234,25 +231,6 @@ export function useCreateMap(props: UseCreateMapProps): MapContext {
     instance.on("style.load", handleStyleLoad);
     return () => instance.off("style.load", handleStyleLoad);
   });
-
-  createEffect(
-    () => ({
-      disabled: props.disableResize ?? false,
-      map: map(),
-      target: props.container(),
-    }),
-    (state) => {
-      if (!state.map || state.disabled || typeof ResizeObserver === "undefined") {
-        return;
-      }
-
-      const target = state.target;
-      if (!target) return;
-      const observer = new ResizeObserver(() => state.map?.resize());
-      observer.observe(target);
-      return () => observer.disconnect();
-    },
-  );
 
   createEffect(
     () => ({ debug: props.debug, map: map() }),
