@@ -37,7 +37,7 @@ It did confirm S5, and more sharply than the original probe: with a query key bu
 bare `filter()`, changing the filter produced a second fetch for the **old** key. The key
 must read `latest(filter)` for the query to follow the change at all.
 
-## `index.html` — result on `solid-js` 2.0.0-beta.25, unchanged on beta.29
+## `index.html` — result on `solid-js` 2.0.0-beta.25, unchanged on beta.31
 
 | Stage | `filter()` | `latest(filter)` | fallback | `isPending` | rows |
 | --- | --- | --- | --- | --- | --- |
@@ -47,7 +47,7 @@ must read `latest(filter)` for the query to follow the change at all.
 
 **This probe cannot be replaced by a headless test.** A `bun test` version — an observed
 async memo keyed off a signal, read from outside the render tree — shows the *opposite*
-result on beta.29: `filter()` reads `b` the moment the key changes, and only the effect
+result on beta.31: `filter()` reads `b` the moment the key changes, and only the effect
 observing the pending memo waits. The deferral that S5 describes needs reads inside a
 rendered tree, which is what this page has and a headless harness does not. Run the page.
 

@@ -4,7 +4,36 @@ A register of SolidJS 2 beta behaviour we have hit in `@xgx/ui`, `@xgx/query`,
 `@xgx/prefabs` and `@xgx/solid`, and what we did about it.
 
 Pinned version: **`solid-js` / `@solidjs/web` / `@solidjs/signals` / `babel-preset-solid`
-2.0.0-beta.29**.
+2.0.0-beta.31**.
+
+### beta.29 → beta.31
+
+Upgraded 5 August 2026, together with `vite-plugin-solid` 3.0.0-next.21 → next.22
+in Onshyft. Every suite, typecheck, lint and Playwright test passes. No registered
+workaround became clearable.
+
+The only upstream client-reactivity change was `@solidjs/signals`' fix for an ambient
+same-tick write being missed by render effects under an `isPending` lane (#2963). The
+remaining changes are principally SSR, hydration and server-component repairs. The signal
+fix was plausible for **S1**, but the real application still produced its exact signature:
+the clients heading, chips and footer changed to 1 while the table retained 30 unfiltered
+rows. Restoring `query.retained()` returned the table to one row.
+
+| | How it was re-checked | Result |
+| --- | --- | --- |
+| **S1** | The application procedure below, on the clients table | Still present: summary 1, footer 1, rows 30 without `retained`; rows 1 after restoring it |
+| **S2** | `beta-probes/halts-s2.test.ts` | Still halts the graph with `[REACTIVITY_HALTED]` |
+| **S3** | `packages/query/test/fetch-storm.test.ts` | Still no reproduction across the guarded pending, settled, failed and many-reader paths |
+| **S5** | The browser probe in `packages/query/test/retention-probe` | Still `filter=a`, `latest=b`, pending, rows `a-*`; settles to `b` |
+| **S6** | Full Playwright suite, including the async-portal `DialogClose` guard | Remains fixed; context crosses the portal |
+| **S7** | `beta-probes/register.test.ts` | Still treats an `undefined` default as missing |
+| **S10** | `query.test.ts` "mutation pending includes awaited query invalidation" | Still `fetching() === false`, `pending() === true` |
+| **S11** | `beta-probes/register.test.ts` | The real `<Show>` accessor still throws after its condition goes falsy |
+| **S8** | Current `lucide-solid@1.28.0` npm metadata | Still peers `solid-js: ^1.4.7` |
+
+The Marker-shaped cleanup probe still does not trip the owned-scope write rule, so
+Onshyft's **A2** remains unproven rather than confirmed. The map surface was not rewritten
+to force the old Marker implementation.
 
 ### beta.26 → beta.29
 
@@ -91,7 +120,8 @@ application-level workarounds. Framework entries here are the canonical copy.
 
 ## S1 — A keyed `<For>` under `<Loading>` keeps stale children after its source resolves
 
-**Bug.** Confirmed in a browser against the real application on **beta.25, beta.26 and beta.29**.
+**Bug.** Confirmed in a browser against the real application on **beta.25, beta.26, beta.29
+and beta.31**.
 
 **Symptom.** A list whose source became not-ready beneath `<Loading>` renders its old
 children forever. The new value *does* arrive and *does* commit — sibling reads of the same
@@ -128,7 +158,7 @@ real table stack (TanStack row contexts, the prefabs pages store, keyed row ids)
 keyed `<For>` over a suspending source alone. Do not clear this entry on the strength of the
 probe.
 
-The valid procedure, used on beta.26 and again on beta.29:
+The valid procedure, used on beta.26, beta.29 and beta.31:
 
 1. In `use-table.ts` and `use-table-infinite.ts`, make `data` read `query.data()` directly
    instead of preferring `query.retained()`.
@@ -161,8 +191,8 @@ a failure via `onStaleInitialProp`.
 
 ## S3 — An async memo that *starts* a fetch can drive a self-sustaining refetch loop
 
-**Bug.** Observed on beta.15. Not reproducible on beta.25 or beta.26 from application code,
-but the mechanism has not been shown to be gone. beta.26 fixed a closely related autodispose
+**Bug.** Observed on beta.15. Not reproducible on beta.25, beta.26 or beta.31 from
+application code, but the mechanism has not been shown to be gone. beta.26 fixed a closely related autodispose
 leak ([#2934](https://github.com/solidjs/solid/issues/2934)) in which a derivatively-pending
 lazy memo recomputed forever after losing its last subscriber.
 
@@ -281,8 +311,9 @@ sentinel.
 
 ## S8 — `lucide-solid` ships Solid 1 output
 
-**Third-party, not Solid.** Icons are compiled against Solid 1, so the Bun plugin applies a
-transform. Remove once the package publishes Solid 2 output.
+**Third-party, not Solid.** `lucide-solid@1.28.0` still peers `solid-js: ^1.4.7`, so the
+package remains Solid 1 output and the Bun plugin applies a transform. Remove once the
+package publishes Solid 2 output.
 
 - [`packages/ui/src/bun-plugins/solid.ts`](../packages/ui/src/bun-plugins/solid.ts)
 
