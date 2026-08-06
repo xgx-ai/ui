@@ -37,6 +37,13 @@ export {
 // Filter components
 export { TableFilter, type TableFilterProps } from "./table-filter.tsx";
 export {
+  moveTableColumn,
+  pinnedColumnOffset,
+  reconcileTableColumnLayout,
+  reorderVisibleTableColumns,
+  shouldClearTableSort,
+  type TableColumnLayout,
+  type TableColumnLayoutV1,
   TableInfinite,
   type TableInfiniteProps,
   TableInfiniteSkeletonRows,

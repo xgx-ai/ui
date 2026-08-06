@@ -133,6 +133,8 @@ export type {
 } from "./data-display/table.tsx";
 export {
   SimpleTable,
+  tableHeadClass,
+  tableRowClass,
   TableBody,
   TableCaption,
   TableCell,
@@ -898,10 +900,7 @@ export {
   PopperRoot,
   type PopperRootProps,
 } from "./overlays/popper.tsx";
-export {
-  PortalMount,
-  type PortalMountProps,
-} from "./overlays/portal.tsx";
+export { PortalMount, type PortalMountProps } from "./overlays/portal.tsx";
 export {
   Sheet,
   SheetContent,
@@ -983,11 +982,7 @@ export type {
 } from "./specialized/tree-preview.tsx";
 export { TreePreview } from "./specialized/tree-preview.tsx";
 export type { UseTableReturn } from "./table-compat.tsx";
-export {
-  Table,
-  TableColumnHeader,
-  TableInfinite,
-} from "./table-compat.tsx";
+export { Table, TableColumnHeader, TableInfinite } from "./table-compat.tsx";
 export type {
   CellContext,
   ColumnDef,

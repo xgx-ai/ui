@@ -100,6 +100,11 @@ export type SortableProps<T> = Omit<ComponentProps<"div">, "children" | "onChang
   itemAs?: ValidComponent;
   /** Class applied to each item wrapper. */
   itemClass?: string | ((item: T, state: SortableItemState) => string);
+  /** Attributes applied to each item wrapper. Useful when `itemAs` is a semantic element. */
+  itemProps?: (
+    item: T,
+    state: SortableItemState,
+  ) => ComponentProps<"div"> & Record<string, unknown>;
   /** Advanced SortableJS escape hatch. Merged last and not deeply reactive. */
   options?: Partial<SortableOptions>;
   /** Render prop for each item and its drag state. */
@@ -131,6 +136,7 @@ interface RenderedItemProps<T> {
   index: number;
   itemAs?: ValidComponent;
   itemClass?: string | ((item: T, state: SortableItemState) => string);
+  itemProps?: SortableProps<T>["itemProps"];
   children: (item: T, state: SortableItemState) => JSX.Element;
   activeId: () => string | null;
   stateVersion: () => number;
@@ -349,11 +355,16 @@ function SortableRenderedItem<T>(props: RenderedItemProps<T>) {
   const resolvedItemClass = createMemo(() =>
     typeof props.itemClass === "function" ? props.itemClass(props.item, state) : props.itemClass,
   );
+  const resolvedItemProps = createMemo(() => props.itemProps?.(props.item, state));
+  const wrapperClass = createMemo(() =>
+    [resolvedItemClass(), resolvedItemProps()?.class].filter(Boolean).join(" "),
+  );
 
   return (
     <Dynamic
       component={props.itemAs ?? "div"}
-      class={resolvedItemClass()}
+      {...resolvedItemProps()}
+      class={wrapperClass()}
       ref={setWrapperRef}
       data-sortable-item=""
       data-sortable-id={props.id}
@@ -389,6 +400,7 @@ export function Sortable<T>(props: SortableProps<T>) {
     "as",
     "itemAs",
     "itemClass",
+    "itemProps",
     "options",
     "children",
     "ref",
@@ -552,6 +564,7 @@ export function Sortable<T>(props: SortableProps<T>) {
             index={index()}
             itemAs={local.itemAs}
             itemClass={local.itemClass}
+            itemProps={local.itemProps}
             activeId={activeId}
             stateVersion={stateVersion}
           >

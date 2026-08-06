@@ -39,16 +39,19 @@ export type TableRowProps = ComponentProps<"tr"> & {
   interactive?: boolean;
 };
 
+export const tableRowClass =
+  "xgx-table-row group border-b border-border-subtle transition-colors data-[state=selected]:bg-selected data-[state=selected]:text-selected-foreground";
+
+export const tableHeadClass =
+  "xgx-text-caption h-10 px-2 text-left align-middle font-semibold uppercase text-muted-foreground sm:px-4 [&:has([role=checkbox])]:pr-0";
+
 const TableRow = (props: TableRowProps) => {
   const local = props;
   const others = omit(props, "class", "interactive");
   return (
     <tr
       data-interactive={local.interactive ? "true" : undefined}
-      class={cn(
-        "xgx-table-row group border-b border-border-subtle transition-colors data-[state=selected]:bg-selected data-[state=selected]:text-selected-foreground",
-        local.class,
-      )}
+      class={cn(tableRowClass, local.class)}
       {...others}
     />
   );
@@ -57,15 +60,7 @@ const TableRow = (props: TableRowProps) => {
 const TableHead = (props: ComponentProps<"th">) => {
   const local = props;
   const others = omit(props, "class");
-  return (
-    <th
-      class={cn(
-        "xgx-text-caption h-10 px-2 text-left align-middle font-semibold uppercase text-muted-foreground sm:px-4 [&:has([role=checkbox])]:pr-0",
-        local.class,
-      )}
-      {...others}
-    />
-  );
+  return <th class={cn(tableHeadClass, local.class)} {...others} />;
 };
 
 const TableCell = (props: ComponentProps<"td">) => {

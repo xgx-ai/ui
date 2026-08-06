@@ -20,26 +20,82 @@ import {
   TableBody,
   TableCell,
   TableFooter,
-  TableHead,
   TableHeader,
+  tableHeadClass,
+  tableRowClass,
   TableRow,
 } from "@xgx/ui";
-import { Settings } from "@xgx/ui/icons";
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  createStore,
-  For,
-  Loading,
-  Show,
-  snapshot,
-} from "solid-js";
+import { GripVertical, RotateCcw, Settings } from "@xgx/ui/icons";
+import { Sortable } from "@xgx/ui/sortablejs";
+import { createEffect, createMemo, createSignal, For, Loading, Show } from "solid-js";
 import type { UseTableInfiniteReturn } from "./use-table-infinite";
 
-type VisibilityState = Record<string, boolean>;
+export interface TableColumnLayout {
+  version: 1;
+  columnOrder: string[];
+  hiddenColumnIds: string[];
+}
+export type TableColumnLayoutV1 = TableColumnLayout;
 
-const COLUMN_VISIBILITY_STORAGE_KEY_PREFIX = "table-column-visibility:";
+export function shouldClearTableSort(
+  columnId: string | undefined,
+  layout: TableColumnLayout,
+): boolean {
+  return Boolean(columnId && layout.hiddenColumnIds.includes(columnId));
+}
+
+export function reconcileTableColumnLayout(
+  columnIds: readonly string[],
+  hideableColumnIds: readonly string[],
+  stored?: TableColumnLayout,
+): TableColumnLayout {
+  const columnOrder = [...(stored?.columnOrder ?? [])].filter((id) => columnIds.includes(id));
+  for (const id of columnIds) if (!columnOrder.includes(id)) columnOrder.push(id);
+
+  const hideable = new Set(hideableColumnIds);
+  const hiddenColumnIds = [...(stored?.hiddenColumnIds ?? [])].filter((id) => hideable.has(id));
+  if (columnIds.length > 0 && columnIds.every((id) => hiddenColumnIds.includes(id))) {
+    hiddenColumnIds.shift();
+  }
+  return { version: 1, columnOrder, hiddenColumnIds };
+}
+
+export function moveTableColumn(
+  layout: TableColumnLayout,
+  fromId: string,
+  toId: string,
+): TableColumnLayout {
+  const columnOrder = [...layout.columnOrder];
+  const from = columnOrder.indexOf(fromId);
+  const to = columnOrder.indexOf(toId);
+  if (from < 0 || to < 0 || from === to) return layout;
+  columnOrder.splice(from, 1);
+  columnOrder.splice(to, 0, fromId);
+  return { ...layout, columnOrder };
+}
+
+export function reorderVisibleTableColumns(
+  layout: TableColumnLayout,
+  visibleColumnIds: readonly string[],
+): TableColumnLayout {
+  const reordered = [...visibleColumnIds];
+  const visible = new Set(visibleColumnIds);
+  const columnOrder = layout.columnOrder.map((id) =>
+    visible.has(id) ? (reordered.shift() ?? id) : id,
+  );
+  return { ...layout, columnOrder };
+}
+
+export function pinnedColumnOffset(
+  columns: readonly { pinned?: string; size?: number }[],
+  columnIndex: number,
+  pinning: "left" | "right",
+): number {
+  return columns
+    .slice(pinning === "right" ? columnIndex + 1 : 0, pinning === "right" ? undefined : columnIndex)
+    .filter((column) => column.pinned === pinning)
+    .reduce((total, column) => total + (column.size ?? 150), 0);
+}
 const DEFAULT_SKELETON_ROW_COUNT = 10;
 const TABLE_LOADING_BAR_STYLES = `
 .xgx-table-loading-bar {
@@ -106,45 +162,103 @@ const Table = (props: ComponentProps<"table">) => (
 
 interface ColumnVisibilitySettingsProps<TData> {
   columns: ColumnDef<TData, unknown>[];
-  columnVisibility: VisibilityState;
-  setColumnVisibility: (columnId: string, visible: boolean) => void;
+  layout: TableColumnLayout;
+  onLayoutChange: (layout: TableColumnLayout) => void;
+  onReset?: () => void;
+  resetLabel?: () => string | undefined;
+  hasOverride?: () => boolean;
   getColumnDisplayName: (column: ColumnDef<TData, unknown>) => string;
 }
 
 const ColumnVisibilitySettings = <TData,>(props: ColumnVisibilitySettingsProps<TData>) => {
   const [isOpen, setIsOpen] = createSignal(false);
   const toggleableColumns = () =>
-    props.columns.filter((column, index) => {
-      const columnId = getColumnId(column, index);
-      return columnId !== "select" && columnId !== "settings";
-    });
+    props.columns.filter((column) => column.enableHiding !== false && !column.meta?.pinned);
+  const visibleDataCount = () =>
+    props.columns.filter(
+      (column) =>
+        !column.meta?.pinned &&
+        !props.layout.hiddenColumnIds.includes(getColumnId(column, props.columns.indexOf(column))),
+    ).length;
 
   return (
     <div class="flex items-center justify-center h-full">
       <DropdownMenu open={isOpen()} onOpenChange={(open) => setIsOpen(open)}>
-        <DropdownMenuTrigger class="flex items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-hover hover:text-hover-foreground">
+        <DropdownMenuTrigger
+          aria-label="Table settings"
+          data-table-layout-control
+          class="flex items-center justify-center rounded-full p-1 text-muted-foreground transition-colors hover:bg-hover hover:text-hover-foreground"
+        >
           <Settings class="size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent class="w-48">
-          <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
-          <For each={toggleableColumns()}>
-            {(column, index) => {
-              const columnId = () => getColumnId(column, index());
-              const isVisible = () => props.columnVisibility[columnId()] !== false;
+        <DropdownMenuContent data-table-layout-control class="w-48 font-normal normal-case">
+          <DropdownMenuLabel>Columns</DropdownMenuLabel>
+          <Sortable
+            items={toggleableColumns()}
+            getId={(column) => getColumnId(column, props.columns.indexOf(column))}
+            itemClass={(_column, state) =>
+              cn(
+                "flex cursor-grab items-center gap-1 rounded-lg px-1 transition active:cursor-grabbing [&:focus-within_.column-drag-handle]:opacity-100 [&:hover_.column-drag-handle]:opacity-100",
+                state.isGhost && "opacity-30",
+                state.isDragging && "bg-accent shadow-lg ring-1 ring-border-strong",
+              )
+            }
+            onChange={(columns) =>
+              props.onLayoutChange(
+                reorderVisibleTableColumns(
+                  props.layout,
+                  columns.map((column) => getColumnId(column, props.columns.indexOf(column))),
+                ),
+              )
+            }
+            options={{
+              animation: 180,
+              filter: "[role=menuitemcheckbox]",
+              handle: undefined,
+              preventOnFilter: false,
+            }}
+          >
+            {(column) => {
+              const columnId = () => getColumnId(column, props.columns.indexOf(column));
+              const isVisible = () => !props.layout.hiddenColumnIds.includes(columnId());
 
               return (
-                <DropdownMenuCheckboxItem
-                  checked={isVisible()}
-                  closeOnSelect={false}
-                  onChange={() => {
-                    props.setColumnVisibility(columnId(), !isVisible());
-                  }}
-                >
-                  {props.getColumnDisplayName(column)}
-                </DropdownMenuCheckboxItem>
+                <>
+                  <GripVertical
+                    aria-hidden="true"
+                    class="column-drag-handle size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity"
+                  />
+                  <DropdownMenuCheckboxItem
+                    checked={isVisible()}
+                    class="min-w-0 flex-1"
+                    closeOnSelect={false}
+                    disabled={isVisible() && visibleDataCount() <= 1}
+                    onChange={() => {
+                      const hidden = new Set(props.layout.hiddenColumnIds);
+                      if (isVisible()) hidden.add(columnId());
+                      else hidden.delete(columnId());
+                      props.onLayoutChange({
+                        ...props.layout,
+                        hiddenColumnIds: [...hidden],
+                      });
+                    }}
+                  >
+                    {props.getColumnDisplayName(column)}
+                  </DropdownMenuCheckboxItem>
+                </>
               );
             }}
-          </For>
+          </Sortable>
+          <Show when={props.hasOverride?.() && props.onReset}>
+            <button
+              type="button"
+              class="mx-1 mt-1 flex w-[calc(100%-0.5rem)] items-center rounded-full px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-hover hover:text-hover-foreground"
+              onClick={() => props.onReset?.()}
+            >
+              <RotateCcw aria-hidden="true" class="mr-2 size-3.5" />
+              {props.resetLabel?.() ?? "Reset to role default"}
+            </button>
+          </Show>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -158,6 +272,12 @@ export interface TableInfiniteProps<TData> {
   enableRowSelection?: boolean;
   enableSorting?: boolean;
   enableColumnVisibility?: boolean;
+  enableColumnCustomisation?: boolean;
+  columnLayout?: TableColumnLayout;
+  columnLayoutResetLabel?: string;
+  hasColumnLayoutOverride?: boolean;
+  onColumnLayoutChange?: (layout: TableColumnLayout) => void;
+  onResetColumnLayout?: () => void;
   onRowClick?: (row: TData) => void;
   onRowHover?: (row: TData) => void;
   class?: string;
@@ -217,26 +337,6 @@ const TableLoadingBar = () => (
     </div>
   </div>
 );
-
-function getStoredColumnVisibility(tableId: string): VisibilityState | null {
-  try {
-    const stored = localStorage.getItem(`${COLUMN_VISIBILITY_STORAGE_KEY_PREFIX}${tableId}`);
-    return stored ? JSON.parse(stored) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveColumnVisibility(tableId: string, visibility: VisibilityState): void {
-  try {
-    localStorage.setItem(
-      `${COLUMN_VISIBILITY_STORAGE_KEY_PREFIX}${tableId}`,
-      JSON.stringify(visibility),
-    );
-  } catch {
-    // Ignore storage errors.
-  }
-}
 
 function getColumnId<TData>(column: ColumnDef<TData, unknown>, index: number): string {
   return column.id ?? column.accessorKey ?? `column-${index}`;
@@ -300,14 +400,21 @@ function getColumnStyles<TData>(
   column: TableColumn<TData, unknown>,
   visibleColumns: TableColumn<TData, unknown>[],
 ): JSX.CSSProperties {
-  const pinning = column.columnDef.meta?.pinned;
+  const metaPinning = column.columnDef.meta?.pinned;
+  const pinning = metaPinning === "left" || metaPinning === "right" ? metaPinning : undefined;
   const columnSize = column.columnDef.size;
   const widthValue = columnSize ? `${columnSize}px` : undefined;
   const columnIndex = visibleColumns.findIndex((item) => item.id === column.id);
-  const pinnedBefore = visibleColumns
-    .slice(0, Math.max(0, columnIndex))
-    .filter((item) => item.columnDef.meta?.pinned === pinning)
-    .reduce((total, item) => total + (item.columnDef.size ?? 150), 0);
+  const pinnedBefore = pinning
+    ? pinnedColumnOffset(
+        visibleColumns.map((item) => ({
+          pinned: item.columnDef.meta?.pinned,
+          size: item.columnDef.size,
+        })),
+        columnIndex,
+        pinning,
+      )
+    : 0;
 
   return {
     left: pinning === "left" ? `${pinnedBefore}px` : undefined,
@@ -341,13 +448,11 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
   const [sorting, setSorting] = createSignal<
     { columnId: string; direction: Exclude<SortDirection, false> } | undefined
   >();
-  const [columnVisibility, setColumnVisibility] = createStore<VisibilityState>({});
-  const [loadedVisibilityTableId, setLoadedVisibilityTableId] = createSignal<string>();
 
-  const tableId = () => props.tableId ?? props.table.tableId ?? "table";
   const enableRowSelection = () => props.enableRowSelection ?? false;
   const enableSorting = () => props.enableSorting ?? false;
-  const enableColumnVisibility = () => props.enableColumnVisibility ?? false;
+  const enableColumnVisibility = () =>
+    props.enableColumnCustomisation ?? props.enableColumnVisibility ?? false;
   const sourceColumns = () => props.columns ?? [];
   const rowId = (row: TData, index: number) =>
     props.getRowId?.(row) ?? (row as { id?: string }).id ?? String(index);
@@ -363,11 +468,30 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
   const getDisplayName = (column: ColumnDef<TData, unknown>) =>
     getColumnDisplayName(column, sourceColumns().indexOf(column));
 
-  const setColumnVisible = (columnId: string, visible: boolean) => {
-    setColumnVisibility((state) => {
-      state[columnId] = visible;
-    });
-  };
+  const configurableColumns = createMemo(() =>
+    sourceColumns().filter((column) => !column.meta?.pinned),
+  );
+  const columnLayout = createMemo<TableColumnLayout>(() => {
+    const ids = configurableColumns().map((column) =>
+      getColumnId(column, sourceColumns().indexOf(column)),
+    );
+    const hideableIds = configurableColumns()
+      .filter((column) => column.enableHiding !== false)
+      .map((column) => getColumnId(column, sourceColumns().indexOf(column)));
+    return reconcileTableColumnLayout(ids, hideableIds, props.columnLayout);
+  });
+  const orderedSourceColumns = createMemo(() => {
+    const left = sourceColumns().filter((column) => column.meta?.pinned === "left");
+    const ordinary = columnLayout()
+      .columnOrder.map((id) =>
+        sourceColumns().find(
+          (column) => getColumnId(column, sourceColumns().indexOf(column)) === id,
+        ),
+      )
+      .filter((column): column is ColumnDef<TData, unknown> => Boolean(column));
+    const right = sourceColumns().filter((column) => column.meta?.pinned === "right");
+    return [...left, ...ordinary, ...right];
+  });
 
   const allColumns = createMemo<ColumnDef<TData, unknown>[]>(() => {
     const columns: ColumnDef<TData, unknown>[] = [];
@@ -377,6 +501,8 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
         id: "select",
         size: 40,
         enableSorting: false,
+        enableHiding: false,
+        meta: { displayName: "Select", pinned: "left" },
         header: () => {
           const currentData = getRenderableTableData(props.table);
           const allSelected =
@@ -408,18 +534,23 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
       });
     }
 
-    columns.push(...sourceColumns());
+    columns.push(...orderedSourceColumns());
 
     if (enableColumnVisibility()) {
       columns.push({
         id: "settings",
         size: 40,
         enableSorting: false,
+        enableHiding: false,
+        meta: { displayName: "Table settings", pinned: "right" },
         header: () => (
           <ColumnVisibilitySettings
-            columns={sourceColumns()}
-            columnVisibility={columnVisibility}
-            setColumnVisibility={setColumnVisible}
+            columns={orderedSourceColumns()}
+            layout={columnLayout()}
+            onLayoutChange={(layout) => props.onColumnLayoutChange?.(layout)}
+            onReset={props.onResetColumnLayout}
+            resetLabel={() => props.columnLayoutResetLabel}
+            hasOverride={() => props.hasColumnLayoutOverride ?? false}
             getColumnDisplayName={getDisplayName}
           />
         ),
@@ -462,7 +593,9 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
   const visibleColumns = createMemo(() =>
     tableColumns().filter(
       (column) =>
-        column.id === "select" || column.id === "settings" || columnVisibility[column.id] !== false,
+        column.id === "select" ||
+        column.id === "settings" ||
+        !columnLayout().hiddenColumnIds.includes(column.id),
     ),
   );
 
@@ -505,36 +638,20 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
     props.table.isLoading() || props.table.isFetchingMore() || getQueryIsPending(props.table);
 
   createEffect(
-    () =>
-      enableColumnVisibility()
-        ? {
-            id: tableId(),
-            loadedId: loadedVisibilityTableId(),
-          }
-        : undefined,
-    (state) => {
-      if (!state || state.id === state.loadedId) return;
-      const stored = getStoredColumnVisibility(state.id);
-      setColumnVisibility((visibility) => {
-        for (const key of Object.keys(visibility)) {
-          delete visibility[key];
-        }
-        Object.assign(visibility, stored ?? {});
-      });
-      setLoadedVisibilityTableId(state.id);
-    },
-  );
-
-  createEffect(
-    () =>
-      enableColumnVisibility()
-        ? {
-            id: tableId(),
-            visibility: snapshot(columnVisibility) as VisibilityState,
-          }
-        : undefined,
-    (state) => {
-      if (state) saveColumnVisibility(state.id, state.visibility);
+    () => ({
+      columnId: sorting()?.columnId,
+      hiddenColumnIds: columnLayout().hiddenColumnIds,
+    }),
+    ({ columnId, hiddenColumnIds }) => {
+      if (
+        shouldClearTableSort(columnId, {
+          version: 1,
+          columnOrder: [],
+          hiddenColumnIds,
+        })
+      ) {
+        setSorting();
+      }
     },
   );
 
@@ -550,28 +667,69 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
               "z-index": "10",
             }}
           >
-            <TableRow class="cursor-default hover:bg-transparent">
-              <For each={visibleColumns()}>
-                {(column) => (
-                  <TableHead
-                    data-table-pinned={column.columnDef.meta?.pinned || undefined}
-                    class={cn(
-                      "whitespace-nowrap",
-                      column.getCanSort() && "cursor-pointer select-none",
-                    )}
-                    onClick={column.getToggleSortingHandler()}
-                    style={getColumnStyles(column, visibleColumns())}
+            <Sortable
+              as="tr"
+              class={cn(tableRowClass, "cursor-default hover:bg-transparent")}
+              items={visibleColumns()}
+              getId={(column) => column.id}
+              itemAs="th"
+              itemClass={(column, state) =>
+                cn(
+                  tableHeadClass,
+                  "whitespace-nowrap transition-[opacity,box-shadow,background-color] [&:focus-within_.column-drag-handle]:opacity-100 [&:hover_.column-drag-handle]:opacity-100",
+                  enableColumnVisibility() &&
+                    !column.columnDef.meta?.pinned &&
+                    "cursor-grab active:cursor-grabbing",
+                  column.getCanSort() && "select-none",
+                  state.isGhost && "opacity-30",
+                  state.isDragging && "bg-accent shadow-lg ring-1 ring-border-strong",
+                )
+              }
+              itemProps={(column) => ({
+                "data-column-fixed": column.columnDef.meta?.pinned ? "true" : undefined,
+                "data-table-layout-control": enableColumnVisibility() ? "" : undefined,
+                "data-table-pinned": column.columnDef.meta?.pinned || undefined,
+                onClick: column.getToggleSortingHandler(),
+                style: getColumnStyles(column, visibleColumns()),
+              })}
+              onChange={(columns) => {
+                if (!enableColumnVisibility()) return;
+                const ordinaryIds = columns
+                  .filter((column) => !column.columnDef.meta?.pinned)
+                  .map((column) => column.id);
+                props.onColumnLayoutChange?.(
+                  reorderVisibleTableColumns(columnLayout(), ordinaryIds),
+                );
+              }}
+              options={{
+                animation: 180,
+                disabled: !enableColumnVisibility(),
+                direction: "horizontal",
+                draggable: '[data-sortable-item]:not([data-column-fixed="true"])',
+                handle: undefined,
+              }}
+            >
+              {(column) => (
+                <>
+                  <Show
+                    when={
+                      enableColumnVisibility() &&
+                      !column.columnDef.meta?.pinned &&
+                      column.id !== "select" &&
+                      column.id !== "settings"
+                    }
                   >
-                    {renderHeader(column, getDisplayName(column.columnDef))}
-                    <Show when={column.getIsSorted()}>
-                      {(sorted) => (
-                        <span class="ml-2 text-xs">{sorted() === "asc" ? "↑" : "↓"}</span>
-                      )}
-                    </Show>
-                  </TableHead>
-                )}
-              </For>
-            </TableRow>
+                    <span class="column-drag-handle mr-1 inline-flex align-middle opacity-0 transition-opacity">
+                      <GripVertical aria-hidden="true" class="size-3 text-muted-foreground/60" />
+                    </span>
+                  </Show>
+                  {renderHeader(column, getDisplayName(column.columnDef))}
+                  <Show when={column.getIsSorted()}>
+                    {(sorted) => <span class="ml-2 text-xs">{sorted() === "asc" ? "↑" : "↓"}</span>}
+                  </Show>
+                </>
+              )}
+            </Sortable>
             <Show when={showLoadingBar()}>
               <TableRow class="border-none cursor-default hover:bg-transparent">
                 <th
