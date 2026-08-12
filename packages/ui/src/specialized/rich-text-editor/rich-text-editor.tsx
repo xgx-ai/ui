@@ -1,4 +1,4 @@
-import { type AnyExtension, Editor, type EditorOptions } from "@tiptap/core";
+import { type AnyExtension, createDocument, Editor, type EditorOptions } from "@tiptap/core";
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import Color from "@tiptap/extension-color";
@@ -214,8 +214,13 @@ export function RichTextEditor(props: RichTextEditorProps) {
       if (isCollaborative) return;
       if (!currentEditor) return;
 
-      const currentContent = currentEditor.getHTML();
-      if (newValue !== currentContent && newValue !== undefined) {
+      if (newValue === undefined) return;
+
+      // TipTap may serialise equivalent documents differently (for example, custom atom nodes can
+      // render text that is absent from the input HTML). Replacing the document on that superficial
+      // difference resets ProseMirror's selection, so compare parsed documents before syncing.
+      const incomingDocument = createDocument(newValue, currentEditor.schema);
+      if (!incomingDocument.eq(currentEditor.state.doc)) {
         currentEditor.commands.setContent(newValue, {
           emitUpdate: false,
         });

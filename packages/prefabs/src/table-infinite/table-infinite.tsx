@@ -21,9 +21,9 @@ import {
   TableCell,
   TableFooter,
   TableHeader,
+  TableRow,
   tableHeadClass,
   tableRowClass,
-  TableRow,
 } from "@xgx/ui";
 import { GripVertical, RotateCcw, Settings } from "@xgx/ui/icons";
 import { Sortable } from "@xgx/ui/sortablejs";
@@ -269,6 +269,8 @@ export interface TableInfiniteProps<TData> {
   table: UseTableInfiniteReturn<TData, any, any> | TableController<TData>;
   columns: ColumnDef<TData, unknown>[];
   getRowId?: (row: TData) => string;
+  groupBy?: (row: TData) => string;
+  renderGroupHeader?: (group: string, rows: readonly TData[]) => JSX.Element;
   enableRowSelection?: boolean;
   enableSorting?: boolean;
   enableColumnVisibility?: boolean;
@@ -611,18 +613,36 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
       getIsSelected: () => props.table.isRowSelected(row),
     }));
 
-    if (!sort) return data;
-
-    const column = tableColumns().find((item) => item.id === sort.columnId);
-    if (!column) return data;
-
     return [...data].sort((left, right) => {
-      const result = compareValues(
+      const groupResult = props.groupBy
+        ? compareValues(props.groupBy(left.original), props.groupBy(right.original))
+        : 0;
+      if (groupResult !== 0) return groupResult;
+      if (!sort) return left.index - right.index;
+
+      const column = tableColumns().find((item) => item.id === sort.columnId);
+      if (!column) return left.index - right.index;
+
+      const sortResult = compareValues(
         getColumnValue(left.original, left.index, column.columnDef),
         getColumnValue(right.original, right.index, column.columnDef),
       );
-      return sort.direction === "asc" ? result : -result;
+      return sort.direction === "asc" ? sortResult : -sortResult;
     });
+  });
+
+  const rowGroups = createMemo(() => {
+    const grouped: { key?: string; rows: TableRowContext<TData>[] }[] = [];
+    for (const row of rows()) {
+      const key = props.groupBy?.(row.original);
+      const previous = grouped[grouped.length - 1];
+      if (!previous || previous.key !== key) {
+        grouped.push({ key, rows: [row] });
+      } else {
+        previous.rows.push(row);
+      }
+    }
+    return grouped;
   });
 
   const totalCount = () => props.table.totalCount?.() ?? getRenderableTableData(props.table).length;
@@ -764,37 +784,58 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
                   </TableRow>
                 }
               >
-                <For each={rows()}>
-                  {(row) => (
-                    <TableRow
-                      data-state={row.getIsSelected() ? "selected" : undefined}
-                      interactive={Boolean(props.onRowClick)}
-                      onClick={() => props.onRowClick?.(row.original)}
-                      onMouseEnter={
-                        props.onRowHover ? () => props.onRowHover?.(row.original) : undefined
-                      }
-                    >
-                      <For each={visibleColumns()}>
-                        {(column) => {
-                          const context: CellContext<TData, unknown> = {
-                            row,
-                            column,
-                            getValue: () =>
-                              getColumnValue(row.original, row.index, column.columnDef),
-                          };
-
-                          return (
+                <For each={rowGroups()}>
+                  {(rowGroup) => (
+                    <>
+                      <Show when={rowGroup.key}>
+                        {(key) => (
+                          <TableRow class="cursor-default bg-muted/50 hover:bg-muted/50">
                             <TableCell
-                              data-table-pinned={column.columnDef.meta?.pinned || undefined}
-                              class="whitespace-nowrap"
-                              style={getColumnStyles(column, visibleColumns())}
+                              colspan={Math.max(visibleColumns().length, 1)}
+                              class="py-2 text-xs font-semibold text-muted-foreground"
                             >
-                              {renderCell(context)}
+                              {props.renderGroupHeader?.(
+                                key(),
+                                rowGroup.rows.map((row) => row.original),
+                              ) ?? key()}
                             </TableCell>
-                          );
-                        }}
+                          </TableRow>
+                        )}
+                      </Show>
+                      <For each={rowGroup.rows}>
+                        {(row) => (
+                          <TableRow
+                            data-state={row.getIsSelected() ? "selected" : undefined}
+                            interactive={Boolean(props.onRowClick)}
+                            onClick={() => props.onRowClick?.(row.original)}
+                            onMouseEnter={
+                              props.onRowHover ? () => props.onRowHover?.(row.original) : undefined
+                            }
+                          >
+                            <For each={visibleColumns()}>
+                              {(column) => {
+                                const context: CellContext<TData, unknown> = {
+                                  row,
+                                  column,
+                                  getValue: () =>
+                                    getColumnValue(row.original, row.index, column.columnDef),
+                                };
+
+                                return (
+                                  <TableCell
+                                    data-table-pinned={column.columnDef.meta?.pinned || undefined}
+                                    class="whitespace-nowrap"
+                                    style={getColumnStyles(column, visibleColumns())}
+                                  >
+                                    {renderCell(context)}
+                                  </TableCell>
+                                );
+                              }}
+                            </For>
+                          </TableRow>
+                        )}
                       </For>
-                    </TableRow>
+                    </>
                   )}
                 </For>
               </Show>
