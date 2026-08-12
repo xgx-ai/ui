@@ -31,6 +31,7 @@ import {
   sections,
   type ThemeMode,
 } from "./examples/catalog";
+import { FlowHarness } from "./examples/flow-harness.tsx";
 import {
   AccountPopoverContent,
   AdminPanel,
@@ -208,7 +209,16 @@ function getSectionFromHash(): SectionId {
   return isSectionId(hash) ? hash : "foundations";
 }
 
+function isFlowHarness() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("harness") === "flow";
+}
+
 export default function App() {
+  // A test harness renders alone, with none of the catalogue shell around it, so the
+  // spec driving it gets a deterministic page. See tests/flow.spec.ts.
+  if (isFlowHarness()) return <FlowHarness />;
+
   const [section, setSection] = createSignal<SectionId>(getSectionFromHash());
   const [theme, setTheme] = createSignal<ThemeMode>("light");
   const [savedView, setSavedView] = createSignal("all");

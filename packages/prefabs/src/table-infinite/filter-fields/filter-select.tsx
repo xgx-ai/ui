@@ -75,11 +75,14 @@ export function FilterSelect<TFilters extends Record<string, unknown>>(
         )}
       >
         <SelectTrigger class="h-8 text-xs">
-          <SelectValue<string>>
-            {(state) =>
-              props.options.find((opt) => opt.value === state.selectedOption())?.label ??
-              state.selectedOption()
-            }
+          <SelectValue<string> class={value() ? undefined : "text-border-strong"}>
+            {(state) => {
+              const selectedOption = state.selectedOption();
+              return selectedOption
+                ? (props.options.find((opt) => opt.value === selectedOption)?.label ??
+                    selectedOption)
+                : (props.placeholder ?? "All");
+            }}
           </SelectValue>
         </SelectTrigger>
         <SelectContent />

@@ -995,3 +995,22 @@ export type {
   TableHeaderRenderer,
   TableRowContext,
 } from "./table-types.ts";
+export {
+  getGridCanvasPhase,
+  getGridCanvasPixelRatio,
+  interpolateWorkspaceCamera,
+  screenToWorldPoint,
+  worldToScreenPoint,
+  zoomCameraAtPoint,
+} from "./workspace/workspace-canvas.ts";
+export type {
+  WorkspaceApi,
+  WorkspaceBounds,
+  WorkspaceCamera,
+  WorkspaceCameraTransition,
+  WorkspaceInitialCamera,
+  WorkspacePoint,
+  WorkspaceProps,
+  WorkspaceViewport,
+} from "./workspace/workspace.tsx";
+export { Workspace } from "./workspace/workspace.tsx";
