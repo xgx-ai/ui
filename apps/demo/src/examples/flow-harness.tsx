@@ -134,6 +134,14 @@ export function FlowHarness() {
           class="h-full w-full"
           edges={initialEdges}
           nodeTypes={nodeTypes}
+          /*
+           * Start drags on the first move rather than after the default 1px
+           * threshold. XYDrag absorbs whatever movement the event that crosses
+           * the threshold carried, which is ~1px for a real pointer but a whole
+           * step for a synthetic one — so the drag assertions below can only
+           * hold against exact deltas with the threshold out of the way.
+           */
+          nodeDragThreshold={0}
           nodes={initialNodes}
           onconnect={(connection) => {
             setConnectCount((count) => count + 1);

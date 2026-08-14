@@ -67,10 +67,17 @@ export function NodeRenderer<
 
 	return (
 		<div class="xy-flow__nodes">
-			<For each={nodeEntries()}>
+			{/*
+			 * Keyed by id, not by identity. `adoptUserNodes` replaces the InternalNode
+			 * objects when it measures, so an identity-keyed list remounts every wrapper
+			 * on every measurement — and the remount's render effect schedules the next
+			 * measurement, which loops at the frame rate and detaches nodes under the
+			 * pointer. See docs/solid-2-beta-issues.md S12.
+			 */}
+			<For each={nodeEntries()} keyed={(node) => node.id}>
 				{(node) => (
 					<NodeWrapper
-						node={node}
+						node={node()}
 						store={store}
 						resizeObserver={resizeObserver}
 						nodeClickDistance={props.nodeClickDistance}

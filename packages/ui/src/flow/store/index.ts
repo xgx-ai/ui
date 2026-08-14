@@ -1,5 +1,5 @@
 import { addEdge as addEdgeUtil, type Connection, type ConnectionState, type CoordinateExtent, calculateNodePosition, errorMessages, getHandlePosition, type InternalNodeUpdate, initialConnection, Position, panBy as panBySystem, type SetCenterOptions, snapPosition, type UpdateConnection, type UpdateNodePositions, updateAbsolutePositions, updateNodeInternals as updateNodeInternalsSystem, type ViewportHelperFunctionOptions, type XYPosition, } from "@xyflow/system";
-import { createContext } from "solid-js";
+import { createContext, flush } from "solid-js";
 
 import type {
 	Edge,
@@ -328,6 +328,16 @@ export function createStore<
 			unselectNodesAndEdges({ nodes: [node], edges: [] });
 			requestAnimationFrame(() => nodeRef?.blur());
 		}
+
+		/*
+		 * XYDrag calls this from `startDrag` and then immediately builds its drag
+		 * set from `nodeLookup`, taking every entry whose `selected` is true. The
+		 * writes above land on `store.nodes`; `nodeLookup` only catches up when
+		 * `adoptUserNodes` re-runs, so without this flush the drag set is built
+		 * from the previous selection and the node selected before this one gets
+		 * dragged along with it. See docs/solid-2-beta-issues.md S13.
+		 */
+		flush();
 	}
 
 	function handleEdgeSelection(id: string) {
@@ -418,14 +428,26 @@ export function createStore<
 		});
 	}
 
+	/*
+	 * Both of these are driven imperatively by @xyflow/system's XYHandle, which
+	 * writes the connection and then reads it straight back inside the same
+	 * pointer event — `startConnection()` calls `updateConnection(...)` and the
+	 * next line bails out unless `getFromHandle()` already returns the new value.
+	 * Solid 2 makes setter writes visible only after the microtask flush, so
+	 * without the explicit `flush()` that read sees the previous (empty)
+	 * connection and every drag cancels itself on its first move.
+	 * See docs/solid-2-beta-issues.md S13.
+	 */
 	const updateConnection: UpdateConnection = (
 		newConnection: ConnectionState,
 	) => {
 		store._connection = { ...newConnection };
+		flush();
 	};
 
 	function cancelConnection() {
 		store._connection = initialConnection;
+		flush();
 	}
 
 	function reset() {
