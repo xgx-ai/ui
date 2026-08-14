@@ -497,6 +497,10 @@ raw accessor throws, and that the memo form does not.
 
 **Ours, not Solid.** Found on rc.0, confirmed present on beta.31.
 
+> The `flow` module these examples came from has since been deleted — it wrapped
+> `@xyflow/system`, no app ever imported it, and the workspace canvas replaced it. The
+> lesson stands for any list fed objects that a library replaces underneath us.
+
 **Symptom.** Nothing looks wrong. The flow canvas renders correctly, nodes are measured,
 positions are right, and a screenshot is perfect. But no pointer interaction works —
 clicking a node does not select it, nodes cannot be dragged, handles cannot be connected —
@@ -543,6 +547,10 @@ loop itself, observe the node container's mutations for a second and assert zero
 
 **Sharp edge.** Working as designed, and the single most expensive Solid 2 behaviour to
 port onto third-party imperative code. Confirmed on beta.31 and rc.0.
+
+> The `flow` module the worked examples came from has since been deleted, but this is the
+> entry to reach for whenever Solid state is handed to a library that drives its own
+> pointer events — the workspace canvas included.
 
 **The contract.** Setter writes become visible only after the microtask flush:
 `setX(v); x()` returns the **previous** value. Within Solid this is invisible, because
