@@ -5,7 +5,7 @@ import {
 	XYDrag,
 	type XYDragParams,
 } from "@xyflow/system";
-import type { JSX } from "@solidjs/web";
+import { dynamic, type JSX } from "@solidjs/web";
 import {
 	createMemo,
 	createRenderEffect,
@@ -133,10 +133,7 @@ function NodeWrapper<
 	const getNodeComponent = () =>
 		store.nodeTypes[node().type ?? "default"] ?? DefaultNode;
 
-	function RenderNodeComponent(nodeProps: any) {
-		const Comp = getNodeComponent();
-		return <Comp {...nodeProps} />;
-	}
+	const RenderNodeComponent = dynamic(getNodeComponent);
 
 	const nodeStyle = createMemo(() => {
 		const n = node();
@@ -237,6 +234,7 @@ function NodeWrapper<
 		dragHandle: string | undefined;
 		draggable: boolean;
 		element: HTMLDivElement | undefined;
+		noDragClass: string;
 		nodeClickDistance: number | undefined;
 		selectable: boolean;
 	}) => {
@@ -257,7 +255,7 @@ function NodeWrapper<
 
 		dragInstance.update({
 			domNode: params.element,
-			noDragClassName: store.noDragClass,
+			noDragClassName: params.noDragClass,
 			handleSelector: params.dragHandle,
 			nodeId: id,
 			isSelectable: params.selectable,
@@ -271,6 +269,7 @@ function NodeWrapper<
 			dragHandle: node().dragHandle,
 			draggable: draggable(),
 			element: nodeRef(),
+			noDragClass: store.noDragClass,
 			nodeClickDistance: props.nodeClickDistance,
 			selectable: selectable(),
 		}),
@@ -406,9 +405,12 @@ function NodeWrapper<
 					<RenderNodeComponent
 						id={id}
 						data={node().internals.userNode.data}
-						type={node().type}
-						selected={node().selected}
-						dragging={node().dragging}
+						type={node().type ?? "default"}
+						selected={!!node().selected}
+						dragging={!!node().dragging}
+						draggable={draggable()}
+						selectable={selectable()}
+						deletable={node().deletable ?? true}
 						zIndex={node().internals.z}
 						positionAbsoluteX={node().internals.positionAbsolute.x}
 						positionAbsoluteY={node().internals.positionAbsolute.y}

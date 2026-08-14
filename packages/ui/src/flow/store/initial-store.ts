@@ -37,7 +37,7 @@ import {
 	type Viewport,
 	type ZIndexMode,
 } from "@xyflow/system";
-import { createMemo, createSignal } from "solid-js";
+import { createMemo, createSignal, untrack } from "solid-js";
 import {
 	BezierEdgeInternal,
 	SmoothStepEdgeInternal,
@@ -362,13 +362,15 @@ export function getInitialStore<
 
 	// Viewport
 	const [_viewport, set_Viewport] = createSignal<Viewport>(
-		getInitialViewport(
-			nodesInitialized(),
-			signals.props.fitView,
-			signals.props.initialViewport,
-			width(),
-			height(),
-			nodeLookup,
+		untrack(() =>
+			getInitialViewport(
+				nodesInitialized(),
+				signals.props.fitView,
+				signals.props.initialViewport,
+				width(),
+				height(),
+				nodeLookup,
+			),
 		),
 	);
 

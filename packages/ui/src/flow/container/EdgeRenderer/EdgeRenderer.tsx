@@ -1,4 +1,5 @@
 import { getMarkerId } from "@xyflow/system";
+import { dynamic } from "@solidjs/web";
 import { createMemo, For, Show } from "solid-js";
 import { BezierEdgeInternal } from "../../components/edges";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -70,6 +71,10 @@ function ReactiveEdge<
 
 	const selectable = () => edgeData()?.selectable ?? store.elementsSelectable;
 	const focusable = () => edgeData()?.focusable ?? store.edgesFocusable;
+	const RenderEdgeComponent = dynamic(() => {
+		const e = edgeData();
+		return store.edgeTypes[e?.type ?? "default"] ?? BezierEdgeInternal;
+	});
 
 	const markerStartUrl = () => {
 		const e = edgeData();
@@ -96,8 +101,6 @@ function ReactiveEdge<
 	return (
 		<Show when={edgeData()} keyed>
 			{(e) => {
-				const Comp = store.edgeTypes[e.type ?? "default"] ?? BezierEdgeInternal;
-
 				return (
 					<EdgeIdContext value={id}>
 						<svg
@@ -146,7 +149,7 @@ function ReactiveEdge<
 								role={e.ariaRole ?? (focusable() ? "group" : "img")}
 								aria-roledescription="edge"
 							>
-								<Comp
+								<RenderEdgeComponent
 									id={id}
 									source={e.source}
 									target={e.target}
