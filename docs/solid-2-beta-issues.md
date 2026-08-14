@@ -4,7 +4,43 @@ A register of SolidJS 2 beta behaviour we have hit in `@xgx/ui`, `@xgx/query`,
 `@xgx/prefabs` and `@xgx/solid`, and what we did about it.
 
 Pinned version: **`solid-js` / `@solidjs/web` / `@solidjs/signals` / `babel-preset-solid`
-2.0.0-beta.31**.
+2.0.0-rc.0**.
+
+### beta.31 → rc.0
+
+Upgraded 14 August 2026. Every typecheck, unit suite, probe, demo build and static test
+passes. **The RC introduced no regression of its own**: the browser suite went from 36
+passed / 23 failed to 51 passed / 8 failed, and the entire improvement came from fixing
+defects that were already present on beta.31.
+
+That distinction is the main result of this walk, and it was only visible because the
+browser suite was given a **beta.31 baseline before the pin moved**. Without that baseline
+the flow failures below read as an RC regression; they are not. Take the baseline first.
+
+| | How it was re-checked | Result |
+| --- | --- | --- |
+| **S1** | Needs the real application — see the procedure in the entry | Not re-checked in this repo; carried forward |
+| **S2** | `beta-probes/halts-s2.test.ts` | Still halts the graph with `[REACTIVITY_HALTED]` |
+| **S3** | `packages/query/test/fetch-storm.test.ts` | Still no reproduction |
+| **S5** | Deferral is unchanged; `latest` still required | Carried forward |
+| **S6** | Full Playwright suite, including the async-portal `DialogClose` guard | Remains fixed |
+| **S7** | `beta-probes/register.test.ts` | Still treats an `undefined` default as missing |
+| **S10** | `query.test.ts` "mutation pending includes awaited query invalidation" | Still `fetching() === false`, `pending() === true` |
+| **S11** | `beta-probes/register.test.ts` | The real `<Show>` accessor still throws after its condition goes falsy |
+| **S8** | `lucide-solid@0.563.0` npm metadata | Still peers `solid-js: ^1.4.7` |
+
+No registered workaround became clearable. Two new entries were added — **S12** and **S13**
+— both found by baselining the browser suite, and both pre-dating the RC.
+
+**Three browser failures remain, none of them Solid's.** Six `visual.spec.ts` snapshots
+compare darwin baselines against a linux renderer and cannot pass off a Mac.
+`dnd.spec.ts`'s `dragItem` helper measures the drop target *before* `mouse.down()`, but
+lifting a row reflows the list upward, so the precomputed y can land past the target's
+midpoint — it is sensitive to row height and therefore to platform. And `flow.spec.ts`'s
+"refuses to connect a node to itself" now fails **honestly**: it had only ever passed
+because no connection could be completed at all (S13). Upstream xyflow permits self-loops
+in strict mode and this port adds no guard, so the assertion describes behaviour nobody has
+implemented. It needs a product decision, not a fix.
 
 ### beta.29 → beta.31
 
@@ -454,6 +490,102 @@ child's read can be triggered by a query, a timer or any other outside source, r
 
 **Re-check.** `ui/packages/query/test/show-stale-accessor.test.ts` pins both halves — that the
 raw accessor throws, and that the memo form does not.
+
+---
+
+## S12 — An identity-keyed list over objects a library replaces remounts at the frame rate
+
+**Ours, not Solid.** Found on rc.0, confirmed present on beta.31.
+
+**Symptom.** Nothing looks wrong. The flow canvas renders correctly, nodes are measured,
+positions are right, and a screenshot is perfect. But no pointer interaction works —
+clicking a node does not select it, nodes cannot be dragged, handles cannot be connected —
+and Playwright reports `has no bounding box` for an element that is plainly visible in the
+page snapshot it attaches.
+
+**Mechanism.** `<For>` is keyed by item identity by default. `NodeRenderer` fed it
+`InternalNode` objects out of the store, and `adoptUserNodes` *replaces* those objects when
+it measures. So every measurement remounted every wrapper, and each fresh wrapper's render
+effect scheduled another measurement through `requestAnimationFrame` — a loop running at
+the frame rate for as long as the canvas is mounted. A `MutationObserver` on the node
+container counted **385 add/removes in 1.5 seconds** across five nodes, which is one full
+remount per animation frame.
+
+Interaction is impossible under that loop for two compounding reasons: the DOM node under
+the pointer is destroyed between `mousedown` and `mousemove`, and every listener attached to
+it dies with it. `boundingBox()` returns null because Playwright resolves the element in one
+protocol round-trip and measures it in the next, by which time it has been replaced.
+
+**Why it hid for so long.** Every static assertion passes — mount, count, measurement,
+viewport, screenshots. Only pointer-driven tests fail, and they fail with geometry errors
+that read as flakiness or as a headless-browser quirk rather than as a reactivity fault.
+
+**The fix.** Key by something stable:
+
+```tsx
+<For each={nodeEntries()} keyed={(node) => node.id}>
+  {(node) => <NodeWrapper node={node()} … />}   {/* custom key ⇒ item is an accessor */}
+</For>
+```
+
+**Rule for new code.** If a list's items are objects owned and recycled by a library —
+anything that measures, adopts, normalises or reconciles them — do not let `<For>` key on
+their identity. Key on the domain id.
+
+- [`packages/ui/src/flow/container/NodeRenderer/NodeRenderer.tsx`](../packages/ui/src/flow/container/NodeRenderer/NodeRenderer.tsx)
+
+**Re-check.** `tests/flow.spec.ts`, the `selection` and `dragging nodes` groups. For the
+loop itself, observe the node container's mutations for a second and assert zero.
+
+---
+
+## S13 — An imperative library that reads its own write back in the same event sees the old value
+
+**Sharp edge.** Working as designed, and the single most expensive Solid 2 behaviour to
+port onto third-party imperative code. Confirmed on beta.31 and rc.0.
+
+**The contract.** Setter writes become visible only after the microtask flush:
+`setX(v); x()` returns the **previous** value. Within Solid this is invisible, because
+everything that reads `x` is a computation that re-runs after the flush.
+
+**Where it bites.** A library that Solid does not own, driving a DOM event, writing state
+through a callback we gave it and then reading that state back through another callback we
+gave it — all inside one synchronous handler. `@xyflow/system` does exactly this, twice:
+
+```js
+// XYHandle.onPointerMove — startConnection() calls updateConnection(...)
+startConnection();
+if (!getFromHandle() || !fromHandle) { onPointerUp(event); return; }   // reads it straight back
+```
+
+```js
+// XYDrag.startDrag — onNodeMouseDown -> handleNodeSelection writes the selection
+onNodeMouseDown?.(nodeId);
+dragItems = getDragItems(nodeLookup, …);   // then collects every node whose .selected is true
+```
+
+**Symptoms, which look nothing like a batching problem.** Connections aborted on the first
+pointer move with no console output — a drag that just does nothing. And dragging a node
+also dragged whichever node had been selected *before* it, because the drag set was built
+from the previous selection. The second is worse than a dead interaction: it silently
+corrupts data.
+
+`nodeLookup` made this harder to see. It is a plain `Map` that `adoptUserNodes` mutates from
+a memo, so it lags `store.nodes` by a flush even though it is not itself reactive.
+
+**The fix.** An explicit `flush()` at the imperative boundary — the store action the outside
+library calls — not at the read site, which we do not own.
+
+- [`packages/ui/src/flow/store/index.ts`](../packages/ui/src/flow/store/index.ts) —
+  `updateConnection`, `cancelConnection`, `handleNodeSelection`
+
+**Rule for new code.** When a store action exists to be called by non-Solid code, ask
+whether that code reads the result back before yielding. If it can, `flush()` before
+returning. Wrapping an imperative library is the case to watch: `d3-drag`, map libraries,
+editors and canvas kits all do write-then-read inside a single event.
+
+**Re-check.** `tests/flow.spec.ts`, the `connecting nodes` group and "drags each node in
+turn without ever moving a different one". Both fail without the flushes.
 
 ---
 
