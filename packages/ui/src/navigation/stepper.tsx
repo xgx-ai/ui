@@ -1,4 +1,4 @@
-import { type Component, For, omit, Show } from "solid-js";
+import { type Component, For, Show } from "solid-js";
 import { cn } from "../cn";
 import { Check } from "../icons.index";
 
@@ -88,7 +88,6 @@ function getStepStatus(index: number, currentStep: number): StepStatus {
  */
 export const Stepper: Component<StepperProps> = (props) => {
   const local = props;
-  const _others = omit(props, "class", "variant", "size", "currentStep");
 
   const variant = () => local.variant ?? "dots";
   const size = () => local.size ?? "default";
