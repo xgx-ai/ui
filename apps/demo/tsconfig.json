@@ -3,5 +3,5 @@
   "compilerOptions": {
     "types": ["bun"]
   },
-  "include": ["src", "build.ts", "../../packages/ui/src/bun-plugins/babel.d.ts"]
+  "include": ["src", "build.ts"]
 }

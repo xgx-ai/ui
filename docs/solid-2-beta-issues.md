@@ -355,48 +355,67 @@ package publishes Solid 2 output.
 
 ---
 
-## S9 — Hot updates mount a second app and then stop applying
+## S9 — Bun's HMR reloads the page instead of patching components — RESOLVED AS WONTFIX
 
-**Ours, not Solid.** Two faults in this repo's Solid HMR layer, found from the Onshyft app and
-reproduced standalone on Bun 1.3.11. The dev server is not at fault: it rebuilds on every
-change and serves a bundle that matches the source.
+**Bun, not Solid.** Superseded 14 August 2026 by the move off the hand-rolled refresh layer.
 
-**Symptom.** After an edit the page renders a subtree twice; or it shows the *previous* edit
-and ignores every later one; or it drops into the error boundary with `Context must either be
-created with a default value…` alongside `You appear to have multiple instances of Solid`.
-A page reload always recovers.
+**History.** This entry used to record two faults in a refresh transform and runtime this repo
+maintained itself: a bare `import.meta.hot.accept()` on the entry module mounted a *second*
+copy of the application, and a registry that chained proxies across generations left the
+mounted tree patching a proxy of itself. Symptoms were a subtree rendered twice, updates that
+froze after the first edit, and `You appear to have multiple instances of Solid`.
 
-**What was wrong.**
+Both are gone with the code that caused them. The Bun plugin now compiles through
+`@dom-expressions/compiler` and emits Solid's own refresh runtime (`solid-js/refresh`), so
+there is no first-party registry here to drift. `createSolidHmrPlugin` and
+`solid-refresh-runtime.ts` were deleted.
 
-1. Bun re-evaluates most of the graph for a single leaf edit — including the entry module.
-   The plugin gave the entry a bare `import.meta.hot.accept()`, so its module-scope
-   `render(...)` ran again and mounted a **second copy of the application**. Two live trees is
-   what "old and new modules mixed" actually looked like. Root renders now go through
-   `$$root`/`$$disposeRoot`, so the previous root is torn down first.
-2. `$$component` created a new record and proxy on every evaluation, and `patchRegistry`
-   chained them by storing one record's *proxy* as another's component. The mounted tree
-   drifted onto a proxy from an older generation that later patches never reached, and a
-   second patch round left a record rendering a proxy of itself. There is now exactly one
-   record per component id (`liveRecords`), re-evaluations queue a `pendingUpdates` entry, and
-   `$$refresh` applies them in one bracketed pass.
+**What remains, and it is Bun's.** Hot updates are **reliable but not granular**: every edit
+applies, and every edit costs a full page reload. Measured on Bun 1.3.11 against the demo — a
+one-word edit to a leaf component inside a 41-component module wipes `window` state, as does
+an edit to a data-only module. Solid's refresh runtime is reached and `$$refresh` runs; it is
+Bun that re-evaluates most of the graph for a single leaf edit, so the patch attempt bails to
+`hot.invalidate()` and Bun reloads.
 
-**Re-check.** Two component modules, one rendering the other under a provider. Edit the leaf
-twice, then edit provider and leaf together, then the leaf again. The DOM must hold exactly
-one copy of the leaf and show the newest text of both. Before the fix the leaf duplicated on
-the first edit and froze after the combined one.
+This is why Onshyft runs Vite for development and why ama-app now does too. Vite invalidates
+precisely and patches components in place; Bun does not. Treat Bun's dev server as live-reload.
 
-**Still open.** Swapping a component that receives `children` cannot be patched in place — the
-children were built by its parent and stay bound to the owner the swap disposed, so they
-render once more and then never update. The runtime detects this (`rendersChildren`) and
-returns false so the module calls `import.meta.hot.invalidate()`, but Bun's reload can still
-land the page on a discarded bundle generation, leaving it stale with no live HMR socket.
-
-**Restart required.** The dev server does not watch these two files — they are reached through
-a plugin-generated relative path — so a consuming app must restart its frontend process to
-pick up a change to either.
+**Re-check.** Set a marker on `window`, edit a leaf component's JSX, and read the marker back.
+Granular HMR keeps it; today it is always `null`.
 
 - [`packages/ui/src/bun-plugins/solid.ts`](../packages/ui/src/bun-plugins/solid.ts)
-- [`packages/ui/src/bun-plugins/solid-refresh-runtime.ts`](../packages/ui/src/bun-plugins/solid-refresh-runtime.ts)
+
+---
+
+## S14 — Bun rejects `import.meta.hot` passed as a value
+
+**Bun, not Solid.** Found 14 August 2026 while swapping to the first-party refresh transform.
+
+**Symptom.** Every module throws `import.meta.hot.data cannot be used indirectly` from Bun's
+client runtime and the app renders nothing. The HMR socket still connects, which makes it look
+like a Solid fault rather than a bundler one.
+
+**Mechanism.** `transformRefresh` has bundler targets for `esm`, `vite`, `webpack5`,
+`rspack-esm` and `standard` — **there is no Bun target**. The closest is `esm`, which gates on
+`import.meta.hot` (right for Bun; `standard` gates on `module.hot`, which Bun does not define)
+but then passes the whole hot object into the runtime:
+
+```js
+if (import.meta.hot) _$$refresh("esm", import.meta.hot, _REGISTRY);
+```
+
+Bun resolves `import.meta.hot.data` statically and refuses to hand the object to a callee that
+would read `.data` off it later.
+
+**The fix.** The plugin rewrites that one call site to pass a shim whose every access is a
+direct member expression Bun can see — `bridgeHotToBun`. `invalidate` is feature-detected
+because Bun does not declare it in `bun-types`; it is preferred over `location.reload()`, which
+races the rebuild and can land the page on a discarded bundle generation.
+
+**Re-check.** Delete the `bridgeHotToBun` call and load the demo. Every module fails on load.
+Remove this workaround once the compiler ships a Bun target.
+
+- [`packages/ui/src/bun-plugins/solid.ts`](../packages/ui/src/bun-plugins/solid.ts) — `bridgeHotToBun`
 
 ---
 
