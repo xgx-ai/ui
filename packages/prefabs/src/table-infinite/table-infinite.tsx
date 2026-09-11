@@ -506,19 +506,19 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
         enableHiding: false,
         meta: { displayName: "Select", pinned: "left" },
         header: () => {
-          const currentData = getRenderableTableData(props.table);
-          const allSelected =
-            currentData.length > 0 && currentData.every((row) => props.table.isRowSelected(row));
-          const someSelected = currentData.some((row) => props.table.isRowSelected(row));
+          const currentData = () => getRenderableTableData(props.table);
+          const allSelected = () =>
+            currentData().length > 0 && currentData().every((row) => props.table.isRowSelected(row));
+          const someSelected = () => currentData().some((row) => props.table.isRowSelected(row));
 
           return (
             <div class="flex items-center justify-center h-full">
               <Checkbox
                 aria-label="Select all"
                 size="md"
-                checked={allSelected}
+                checked={allSelected()}
                 onChange={(value) => props.table.toggleSelectAll(value)}
-                indeterminate={someSelected && !allSelected}
+                indeterminate={someSelected() && !allSelected()}
               />
             </div>
           );
@@ -849,7 +849,8 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
                     <div class="text-xs text-muted-foreground">Loading more...</div>
                   </div>
                 </Show>
-                <Show when={showEndOfResults()}>
+                {/* An explicit empty string opts out of the end-of-results row entirely. */}
+                <Show when={showEndOfResults() && props.statusBarEndMessage !== ""}>
                   <div class="flex justify-center py-4">
                     <div class="text-xs text-muted-foreground/70">
                       {props.statusBarEndMessage ?? "End of results"}
