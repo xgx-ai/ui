@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.5/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -68,11 +68,7 @@
     }
   },
   "javascript": {
-    "globals": [
-      "Bun"
-    ]
+    "globals": ["Bun"]
   },
-  "extends": [
-    "@xgx/solid/biome"
-  ]
+  "extends": ["@xgx/solid/biome"]
 }

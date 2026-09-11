@@ -36,6 +36,10 @@ async function itemCentre(page: Page, item: Locator) {
 
 async function dragItem(page: Page, item: Locator, target: Locator) {
   const start = await itemCentre(page, item);
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(start.x, start.y + 10, { steps: 2 });
+  // Lifting an item reflows the list, so measure the drop target after the lift.
   const targetBox = await target.boundingBox();
   if (!targetBox) throw new Error("Sortable target has no bounding box");
   const targetCentreY = targetBox.y + targetBox.height / 2;
@@ -47,8 +51,6 @@ async function dragItem(page: Page, item: Locator, target: Locator) {
         : targetBox.y + targetBox.height * 0.75,
   };
 
-  await page.mouse.move(start.x, start.y);
-  await page.mouse.down();
   await page.mouse.move(end.x, end.y, { steps: 8 });
   await page.mouse.up();
 }

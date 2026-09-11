@@ -36,8 +36,8 @@ function solidRuntimeEntrypoints(development: boolean): Record<string, string> {
 
   return {
     "@solidjs/signals": join(signalsRoot, development ? "dist/dev.js" : "dist/prod/index.js"),
-    "@solidjs/web": join(solidWebRoot, development ? "dist/dev.js" : "dist/web.js"),
-    "solid-js": join(solidRoot, development ? "dist/dev.js" : "dist/solid.js"),
+    "@solidjs/web": join(solidWebRoot, development ? "dist/web.dev.js" : "dist/web.js"),
+    "solid-js": join(solidRoot, development ? "dist/solid.dev.js" : "dist/solid.js"),
     "solid-js/refresh": join(solidRoot, development ? "dist/refresh.dev.js" : "dist/refresh.js"),
   };
 }

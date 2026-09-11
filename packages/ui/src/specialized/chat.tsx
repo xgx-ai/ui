@@ -132,7 +132,7 @@ function renderInlineTokens(tokens: NonNullable<ReturnType<typeof md.parseInline
         if (token.type === "strong_open") nodes.push(<strong>{children}</strong>);
         else if (token.type === "em_open") nodes.push(<em>{children}</em>);
         else if (token.type === "link_open") {
-          const href = token.attrGet("href") ?? undefined;
+          const href = token.attrGet("href")?.toString();
           nodes.push(
             <a href={href} rel="noreferrer" target="_blank">
               {children}

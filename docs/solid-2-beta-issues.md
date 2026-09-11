@@ -3,8 +3,30 @@
 A register of SolidJS 2 beta behaviour we have hit in `@xgx/ui`, `@xgx/query`,
 `@xgx/prefabs` and `@xgx/solid`, and what we did about it.
 
-Pinned version: **`solid-js` / `@solidjs/web` / `@solidjs/signals` / `babel-preset-solid`
-2.0.0-rc.0**.
+Pinned runtime: **`solid-js` / `@solidjs/web` / `@solidjs/signals` 2.0.0-rc.7**.
+Compiler: **`@dom-expressions/compiler` 0.50.0-next.44**.
+
+### rc.0 → rc.7
+
+Upgraded 11 September 2026 alongside the repository dependencies. The full root test
+command, UI package tests, lint and all 37 browser tests pass; all six screenshot
+baselines remain unchanged. Foundations, forms and the offline map were also inspected
+manually with no new runtime diagnostics.
+
+Keep signals pinned with the core runtime: its caret dependency otherwise selected
+rc.8, which is incompatible with rc.7's development diagnostics API. The Bun plugin
+now uses the renamed `solid.dev.js` and `web.dev.js` entry points.
+
+The S2, S7, S10 and S11 probes retain their documented behaviour; the S3 fetch-storm
+suite remains stable and the Marker cleanup probe still does not reproduce
+owned-scope failures. S6's async portal browser coverage passes. S1 and S5 retain their
+workarounds pending their real-application/browser-specific re-checks; no workaround
+was removed. The drag test now measures its target after lifting the row, addressing
+the stale geometry described in the previous upgrade notes.
+
+The root test command now includes the previously separate UI package suite. Its
+obsolete reference to the deleted flow test has been removed. Repository-wide formatting
+still reports pre-existing failures with both Biome 2.5.5 and 2.5.13.
 
 ### beta.31 → rc.0
 

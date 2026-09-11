@@ -132,10 +132,18 @@ export function Layer(props: LayerProps) {
           : undefined;
 
       for (const [key, value] of changedEntries(state.layout, comparablePrevious?.layout)) {
-        state.map.setLayoutProperty(state.id, key, value);
+        state.map.setLayoutProperty(
+          state.id,
+          key as Parameters<typeof state.map.setLayoutProperty>[1],
+          value,
+        );
       }
       for (const [key, value] of changedEntries(state.paint, comparablePrevious?.paint)) {
-        state.map.setPaintProperty(state.id, key, value);
+        state.map.setPaintProperty(
+          state.id,
+          key as Parameters<typeof state.map.setPaintProperty>[1],
+          value,
+        );
       }
 
       if (

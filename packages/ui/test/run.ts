@@ -24,7 +24,6 @@ const solidSsrRuntimePlugin: Bun.BunPlugin = {
   },
 };
 const entrypoints = [
-  path.join(import.meta.dir, "flow.spec.ts"),
   path.join(import.meta.dir, "map.spec.ts"),
   path.join(import.meta.dir, "workspace.spec.ts"),
 ];
