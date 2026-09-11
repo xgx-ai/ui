@@ -638,6 +638,21 @@ turn without ever moving a different one". Both fail without the flushes.
 
 ---
 
+## S15 — File upload refs read reactive context outside compute — CORRECTED
+
+**Symptom.** Mounting `FileUploadHiddenInput` reported `STRICT_READ_UNTRACKED` because its
+imperative ref callback called the upload-context accessor, reading reactive file and
+control state outside a tracking scope.
+
+**Correction.** The ref captures the input element; a split render effect resolves the
+context's registration callback in compute and registers the element in apply. The
+trigger, file selection and provider behaviour are unchanged. This is ordinary Solid 2
+phase separation, not a compatibility shim.
+
+- [`packages/ui/src/forms/file-upload.tsx`](../packages/ui/src/forms/file-upload.tsx)
+
+---
+
 ## Related
 
 - `solid-js/CHEATSHEET.md` in `node_modules` is the most current API reference for the

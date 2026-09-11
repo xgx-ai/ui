@@ -1,5 +1,5 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createSignal, For, omit, useContext } from "solid-js";
+import { createContext, createRenderEffect, createSignal, For, omit, useContext } from "solid-js";
 import { cn } from "../cn.ts";
 
 type FileUploadState = {
@@ -178,9 +178,18 @@ export type FileUploadHiddenInputProps = ComponentProps<"input">;
 
 export function FileUploadHiddenInput(props: FileUploadHiddenInputProps) {
   const context = useFileUploadContext();
+  const [input, setInputElement] = createSignal<HTMLInputElement>();
+  // A ref callback is imperative: resolve the reactive upload context in compute,
+  // then register the element in apply rather than reading the context in the ref.
+  createRenderEffect(
+    () => [input(), context().setInput] as const,
+    ([element, registerInput]) => {
+      if (element) registerInput(element);
+    },
+  );
   return (
     <input
-      ref={(input) => context().setInput(input)}
+      ref={setInputElement}
       type="file"
       hidden
       accept={context().accept}
