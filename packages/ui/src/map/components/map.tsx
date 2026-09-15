@@ -27,6 +27,8 @@ export interface MapDebugOptions {
 }
 
 interface MapLifecycleProps {
+  /** URL of the separately emitted MapLibre worker when the app bundles MapLibre. */
+  workerUrl?: string;
   cursorStyle?: Cursor;
   debug?: MapDebugOptions;
   disableResize?: boolean;
@@ -124,6 +126,9 @@ export function useCreateMap(props: UseCreateMapProps): MapContext {
           await maplibre.setRTLTextPlugin(rtlTextPluginUrl, true);
         }
         if (cancelled) return;
+
+        const workerUrl = untrack(() => props.workerUrl);
+        if (workerUrl) maplibre.setWorkerUrl(workerUrl);
 
         const options = untrack(() => props.options) ?? {};
         const disableResize = untrack(() => props.disableResize) ?? false;
@@ -306,6 +311,9 @@ export function MapBox(props: MapBoxProps) {
   const [mapTarget, setMapTarget] = createSignal<HTMLDivElement>();
   const mapContext = useCreateMap({
     container: mapTarget,
+    get workerUrl() {
+      return props.workerUrl;
+    },
     get cursorStyle() {
       return props.cursorStyle;
     },
