@@ -219,10 +219,19 @@ export function RichTextEditor(props: RichTextEditorProps) {
       // TipTap may serialise equivalent documents differently (for example, custom atom nodes can
       // render text that is absent from the input HTML). Replacing the document on that superficial
       // difference resets ProseMirror's selection, so compare parsed documents before syncing.
-      const incomingDocument = createDocument(newValue, currentEditor.schema);
+      // Preserve whitespace when parsing: the editor's own getHTML() output keeps trailing spaces
+      // (`<p>hello </p>`), and the default parser would drop them, making the docs look different
+      // and replacing the document mid-keystroke (eating the space the user just typed).
+      const parseOptions = { preserveWhitespace: "full" as const };
+      const incomingDocument = createDocument(
+        newValue,
+        currentEditor.schema,
+        parseOptions,
+      );
       if (!incomingDocument.eq(currentEditor.state.doc)) {
         currentEditor.commands.setContent(newValue, {
           emitUpdate: false,
+          parseOptions,
         });
       }
     },
