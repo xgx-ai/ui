@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "bun test/run.ts",
-    "typecheck": "tsgo -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "sideEffects": [
     "*.css",

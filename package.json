@@ -42,15 +42,15 @@
     "test:visual": "env -u FORCE_COLOR -u NO_COLOR playwright test tests/visual.spec.ts",
     "test:visual:update": "env -u FORCE_COLOR -u NO_COLOR playwright test tests/visual.spec.ts --update-snapshots",
     "test:ci": "bun run lint && bun run format:check && bun run test && bun run test:browser",
-    "typecheck": "tsgo -p packages/ui/tsconfig.json --noEmit",
-    "solid:typecheck": "tsgo -p packages/solid/tsconfig.json --noEmit",
+    "typecheck": "tsc -p packages/ui/tsconfig.json --noEmit",
+    "solid:typecheck": "tsc -p packages/solid/tsconfig.json --noEmit",
     "solid:test": "bun test --conditions=browser packages/solid/test",
     "beta:probes": "bun test --conditions=browser --conditions=development packages/solid/beta-probes/register.test.ts && bun test --conditions=browser --conditions=development packages/solid/beta-probes/halts-s2.test.ts && bun test --conditions=browser --conditions=development packages/solid/beta-probes/owned-scope-write.test.ts",
-    "query:typecheck": "tsgo -p packages/query/tsconfig.json --noEmit",
+    "query:typecheck": "tsc -p packages/query/tsconfig.json --noEmit",
     "query:test": "bun test --conditions=browser --preload ./packages/query/test/preload.ts packages/query/test",
-    "prefabs:typecheck": "tsgo -p packages/prefabs/tsconfig.json --noEmit",
+    "prefabs:typecheck": "tsc -p packages/prefabs/tsconfig.json --noEmit",
     "prefabs:test": "bun test --conditions=browser --preload ./packages/query/test/preload.ts packages/prefabs/test",
-    "demo:typecheck": "tsgo -p apps/demo/tsconfig.json --noEmit",
+    "demo:typecheck": "tsc -p apps/demo/tsconfig.json --noEmit",
     "ui:test": "bun run --cwd packages/ui test"
   },
   "dependencies": {
@@ -136,6 +136,7 @@
     "@solidjs/signals": "2.0.0-rc.7"
   },
   "devDependencies": {
+    "typescript": "7.0.2",
     "@axe-core/playwright": "^4.13.0",
     "@biomejs/biome": "2.5.13",
     "@playwright/test": "^1.63.0",
