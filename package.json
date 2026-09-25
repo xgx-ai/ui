@@ -145,7 +145,7 @@
     "@types/markdown-it": "^14.2.0",
     "@types/sortablejs": "^1.15.9",
     "@xgx/solid": "workspace:*",
-    "better-auth": "^1.7.4",
+    "better-auth": "1.7.6",
     "bun-plugin-tailwind": "^0.1.2",
     "lucide-solid": "^1.45.0",
     "solid-js": "2.0.0-rc.9",
