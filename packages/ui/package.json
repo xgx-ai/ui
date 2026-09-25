@@ -34,7 +34,7 @@
     "@ampproject/remapping": "^2.3.0",
     "@solidjs/compiler": "2.0.0-rc.9",
     "@floating-ui/dom": "^1.8.0",
-    "@tanstack/router-generator": "^1.167.35",
+    "@tanstack/router-generator": "^1.167.38",
     "@tiptap/core": "3.31.3",
     "@tiptap/extension-bubble-menu": "3.31.3",
     "@tiptap/extension-collaboration": "3.31.3",
@@ -59,20 +59,20 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "markdown-it": "^15.0.2",
-    "maplibre-gl": "^6.9.0",
+    "maplibre-gl": "^6.11.2",
     "sortablejs": "^1.15.7",
-    "tailwind-merge": "^3.6.0",
+    "tailwind-merge": "^3.7.0",
     "vega": "^6.4.0",
     "vega-embed": "^7.2.0",
     "vega-lite": "^6.4.3",
     "y-websocket": "^3.1.0",
-    "yjs": "^13.6.32"
+    "yjs": "^13.6.33"
   },
   "peerDependencies": {
     "@solidjs/web": "^2.0.0-rc.9",
     "better-auth": "^1.5.5",
     "solid-js": "^2.0.0-rc.9",
-    "zod": "^4.0.0"
+    "zod": "^4.6.5"
   },
   "peerDependenciesMeta": {
     "better-auth": {
