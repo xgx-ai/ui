@@ -3,8 +3,30 @@
 A register of SolidJS 2 beta behaviour we have hit in `@xgx/ui`, `@xgx/query`,
 `@xgx/prefabs` and `@xgx/solid`, and what we did about it.
 
-Pinned runtime: **`solid-js` / `@solidjs/web` / `@solidjs/signals` 2.0.0-rc.7**.
-Compiler: **`@dom-expressions/compiler` 0.50.0-next.44**.
+Pinned runtime: **`solid-js` / `@solidjs/web` / `@solidjs/signals` 2.0.0-rc.9**.
+Compiler: **`@solidjs/compiler` 2.0.0-rc.9**.
+
+### rc.7 → rc.9 — 25 September 2026
+
+Runtime pins, peer floors and the lockfile now use rc.9. The Bun plugin switches
+from `@dom-expressions/compiler` to the matching `@solidjs/compiler`: rc.9 changes
+delegated-event keys, so older compiler output silently loses event handlers.
+
+All root tests, typechecks, UI DOM/SSR tests, demo build/static tests and lint pass.
+The rc.7 browser baseline initially passed 37/37; a repeated baseline passed 73/74
+with a drag placement failure. Two rc.9 full runs passed 36/37 (handle-drag placement),
+while three repetitions of all drag tests passed 12/12. The suite is intermittent
+on both versions; a version-specific timing contribution is not ruled out.
+All six visual baselines pass.
+
+S1 is a removal candidate: with both prefab table hooks temporarily reading
+`query.data()`, Onshyft's real clients table updated to XGX (one row/Results: 1)
+and Berkeley (four rows/Results: 4). The experiment was reverted pending checks
+of other retention consumers and identity-scoped tables. S2/S7/S10/S11 retain
+their probed behaviour; S3 remains non-reproducible and S6's portal test passes.
+No workaround was removed. See the
+[full upgrade assessment](../../onshyft/docs/solid-rc9-upgrade.md) for new features,
+API changes, application results and untested workaround paths.
 
 ### rc.0 → rc.7
 

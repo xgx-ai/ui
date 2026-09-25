@@ -1,6 +1,6 @@
 import { dirname, join } from "node:path";
 import remapping from "@ampproject/remapping";
-import { transform, transformRefresh } from "@dom-expressions/compiler";
+import { transform, transformRefresh } from "@solidjs/compiler";
 
 type SolidPluginOptions = {
   generate?: "dom" | "ssr" | "universal";
