@@ -696,7 +696,7 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
               itemClass={(column, state) =>
                 cn(
                   tableHeadClass,
-                  "whitespace-nowrap transition-[opacity,box-shadow,background-color] [&:focus-within_.column-drag-handle]:opacity-100 [&:hover_.column-drag-handle]:opacity-100",
+                  "relative whitespace-nowrap transition-[opacity,box-shadow,background-color] [&:focus-within_.column-drag-handle]:opacity-100 [&:hover_.column-drag-handle]:opacity-100",
                   enableColumnVisibility() &&
                     !column.columnDef.meta?.pinned &&
                     "cursor-grab active:cursor-grabbing",
@@ -739,7 +739,10 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
                       column.id !== "settings"
                     }
                   >
-                    <span class="column-drag-handle mr-1 inline-flex align-middle opacity-0 transition-opacity">
+                    {/* Absolutely positioned in the cell's left padding, so a handle that is
+                        invisible until hover does not push the label out of line with the
+                        column's cells. */}
+                    <span class="column-drag-handle pointer-events-none absolute left-0.5 top-1/2 inline-flex -translate-y-1/2 opacity-0 transition-opacity">
                       <GripVertical aria-hidden="true" class="size-3 text-muted-foreground/60" />
                     </span>
                   </Show>
