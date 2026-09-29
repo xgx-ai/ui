@@ -120,9 +120,17 @@ assertNoMatch(
 );
 
 assertNoMatch(
-  runtimeFiles,
+  // RC 10 names the ESM HMR protocol "vite"; the Bun compiler adapter uses
+  // that protocol without loading Vite. Check its imports separately below.
+  runtimeFiles.filter((file) => file !== "packages/ui/src/bun-plugins/solid.ts"),
   /(^|[^a-zA-Z])vite([^a-zA-Z]|$)|@tailwindcss\/vite|vite-plugin-solid/,
   "Vite runtime references found",
+);
+
+assertNoMatch(
+  ["packages/ui/src/bun-plugins/solid.ts"],
+  /(?:from\s*|import\s*\(?\s*|require\s*\(\s*)["'](?:vite(?:["'/])|@solidjs\/vite-plugin|vite-plugin-solid|@tailwindcss\/vite)/,
+  "Bun compiler adapter must not import Vite",
 );
 
 assertNoMatch(

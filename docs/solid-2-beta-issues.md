@@ -3,8 +3,29 @@
 A register of SolidJS 2 beta behaviour we have hit in `@xgx/ui`, `@xgx/query`,
 `@xgx/prefabs` and `@xgx/solid`, and what we did about it.
 
-Pinned runtime: **`solid-js` / `@solidjs/web` / `@solidjs/signals` 2.0.0-rc.9**.
-Compiler: **`@solidjs/compiler` 2.0.0-rc.9**.
+Pinned runtime: **`solid-js` / `@solidjs/web` / `@solidjs/signals` 2.0.0-rc.11**.
+Compiler: **`@solidjs/compiler` 2.0.0-rc.11**.
+
+### rc.9 → rc.11 — 29 September 2026
+
+Runtime pins, compiler, peer floors and both workspace lockfiles are aligned at
+rc.11. The Bun plugin uses `transformRefresh({ bundler: "vite" })`: RC 10 removed
+`esm`, and `vite` retains the ESM accept contract. This is a compiler protocol,
+not a Vite dependency; the demo remains Bun-native. S14's direct-access hot-object
+bridge remains necessary. The static guard permits this protocol name only in
+the adapter and separately forbids Vite imports there.
+
+The full root test command and lint pass, including all reactive probes, package
+typechecks, UI DOM/SSR checks and demo build/static checks. The browser suite
+passes 36/37, including all six visual baselines; handle-drag placement fails.
+Twelve parallel drag checks pass 7/12 on rc.11 and 9/12 on an isolated unchanged
+rc.9 checkout. With one worker, both versions pass 12/12. This supports an existing
+concurrency-sensitive test problem, but does not exclude a version-specific timing
+contribution. Repository-wide formatting still reports pre-existing failures.
+
+No reactive workaround was removed. See the
+[Onshyft upgrade record](../../onshyft/docs/solid-rc11-upgrade.md) for application
+verification, remaining diagnostics and test limitations.
 
 ### rc.7 → rc.9 — 25 September 2026
 
@@ -439,13 +460,13 @@ Granular HMR keeps it; today it is always `null`.
 client runtime and the app renders nothing. The HMR socket still connects, which makes it look
 like a Solid fault rather than a bundler one.
 
-**Mechanism.** `transformRefresh` has bundler targets for `esm`, `vite`, `webpack5`,
-`rspack-esm` and `standard` — **there is no Bun target**. The closest is `esm`, which gates on
-`import.meta.hot` (right for Bun; `standard` gates on `module.hot`, which Bun does not define)
-but then passes the whole hot object into the runtime:
+**Mechanism.** Since RC 10, `transformRefresh` accepts only `vite` and `standard`.
+There is no Bun target. `vite` is the remaining ESM protocol: it gates on
+`import.meta.hot` and accepts the updated module, whereas `standard` gates on
+`module.hot`. The generated ESM call passes the whole hot object:
 
 ```js
-if (import.meta.hot) _$$refresh("esm", import.meta.hot, _REGISTRY);
+if (import.meta.hot) _$$refresh("vite", import.meta.hot, _REGISTRY);
 ```
 
 Bun resolves `import.meta.hot.data` statically and refuses to hand the object to a callee that

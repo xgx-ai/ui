@@ -65,9 +65,10 @@ function shouldApplyHmr(path: string, enabled: boolean): boolean {
 }
 
 /**
- * `bundler: "esm"` hands the whole `import.meta.hot` object to the refresh
+ * `bundler: "vite"` hands the whole `import.meta.hot` object to the refresh
  * runtime, and Bun rejects that: it resolves `import.meta.hot.data` statically
  * and fails the module with "import.meta.hot.data cannot be used indirectly".
+ * RC 10 removed the esm target; vite retains the same ESM accept contract.
  * There is no Bun target in the compiler, so the call site is rewritten to pass
  * a shim whose every access is a direct member expression Bun can see.
  *
@@ -75,7 +76,7 @@ function shouldApplyHmr(path: string, enabled: boolean): boolean {
  * path we want when it exists — a bare `location.reload()` races the rebuild and
  * can land the page on a bundle generation the server already discarded.
  */
-const hotArgumentPattern = /(\b[A-Za-z_$][\w$]*)\((["'])esm\2,\s*import\.meta\.hot,/g;
+const hotArgumentPattern = /(\b[A-Za-z_$][\w$]*)\((["'])vite\2,\s*import\.meta\.hot,/g;
 
 const HOT_SHIM =
   "{" +
@@ -89,7 +90,7 @@ const HOT_SHIM =
 
 function bridgeHotToBun(code: string): string {
   return code.replace(hotArgumentPattern, (_match, callee, quote) =>
-    [callee, "(", quote, "esm", quote, ", ", HOT_SHIM, ","].join(""),
+    [callee, "(", quote, "vite", quote, ", ", HOT_SHIM, ","].join(""),
   );
 }
 
@@ -174,12 +175,12 @@ export function SolidPlugin(options: SolidPluginOptions = {}): Bun.BunPlugin {
           const maps: SourceMap[] = [compiled.map];
 
           if (shouldApplyHmr(path, development)) {
-            // `jsx: false` because the pass above already lowered it. `bundler: "esm"`
+            // `jsx: false` because the pass above already lowered it. `bundler: "vite"`
             // drives the module through `hot.data` / `hot.accept(mod)` / `hot.invalidate()`,
             // which is the subset of the HMR API Bun implements.
             const refreshed = transformRefresh(code, {
               filename: path,
-              bundler: "esm",
+              bundler: "vite",
               importSource: "solid-js/refresh",
               granular: true,
               fixRender: true,

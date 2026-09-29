@@ -32,7 +32,7 @@
     "@atlaskit/pragmatic-drag-and-drop": "^3.1.0",
     "@atlaskit/pragmatic-drag-and-drop-hitbox": "^2.2.0",
     "@ampproject/remapping": "^2.3.0",
-    "@solidjs/compiler": "2.0.0-rc.9",
+    "@solidjs/compiler": "2.0.0-rc.11",
     "@floating-ui/dom": "^1.8.0",
     "@tanstack/router-generator": "^1.167.38",
     "@tiptap/core": "3.31.3",
@@ -69,9 +69,9 @@
     "yjs": "^13.6.33"
   },
   "peerDependencies": {
-    "@solidjs/web": "^2.0.0-rc.9",
+    "@solidjs/web": "^2.0.0-rc.11",
     "better-auth": "^1.5.5",
-    "solid-js": "^2.0.0-rc.9",
+    "solid-js": "^2.0.0-rc.11",
     "zod": "^4.6.5"
   },
   "peerDependenciesMeta": {

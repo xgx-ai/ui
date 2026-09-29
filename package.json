@@ -58,7 +58,7 @@
     "@atlaskit/pragmatic-drag-and-drop": "^3.1.0",
     "@atlaskit/pragmatic-drag-and-drop-hitbox": "^2.2.0",
     "@ampproject/remapping": "^2.3.0",
-    "@solidjs/compiler": "2.0.0-rc.9",
+    "@solidjs/compiler": "2.0.0-rc.11",
     "@floating-ui/dom": "^1.8.0",
     "@tanstack/router-generator": "^1.167.38",
     "@tiptap/core": "3.31.3",
@@ -133,14 +133,14 @@
     "@tiptap/extensions": "3.31.3",
     "@tiptap/pm": "3.31.3",
     "@tiptap/starter-kit": "3.31.3",
-    "@solidjs/signals": "2.0.0-rc.9"
+    "@solidjs/signals": "2.0.0-rc.11"
   },
   "devDependencies": {
     "typescript": "7.0.2",
     "@axe-core/playwright": "^4.13.0",
     "@biomejs/biome": "2.5.14",
     "@playwright/test": "^1.63.0",
-    "@solidjs/web": "2.0.0-rc.9",
+    "@solidjs/web": "2.0.0-rc.11",
     "@types/bun": "latest",
     "@types/markdown-it": "^14.2.0",
     "@types/sortablejs": "^1.15.9",
@@ -148,7 +148,7 @@
     "better-auth": "1.7.6",
     "bun-plugin-tailwind": "^0.1.2",
     "lucide-solid": "^1.45.0",
-    "solid-js": "2.0.0-rc.9",
+    "solid-js": "2.0.0-rc.11",
     "tailwindcss": "^4.3.3",
     "zod": "^4.6.5"
   },
