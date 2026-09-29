@@ -25,7 +25,7 @@ function normaliseHex(value: string | undefined) {
 }
 
 export function ColorPickerField(props: ColorPickerFieldProps) {
-  const [internalValue, setInternalValue] = createSignal(normaliseHex(props.value));
+  const [internalValue, setInternalValue] = createSignal(() => normaliseHex(props.value));
   const value = () => normaliseHex(props.value ?? internalValue());
 
   const update = (next: string) => {
