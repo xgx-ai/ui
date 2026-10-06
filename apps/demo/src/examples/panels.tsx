@@ -47,6 +47,8 @@ import {
   DropdownMenuTrigger,
   ErrorAlert,
   FileDropzone,
+  FilterItem,
+  FilterPopover,
   Flex,
   H4,
   IconButton,
@@ -2659,6 +2661,8 @@ export function WorkflowsPanel(props: {
 }
 
 export function OverlaysPanel() {
+  const [defaultArchived, setDefaultArchived] = createSignal(false);
+  const [customArchived, setCustomArchived] = createSignal(false);
   const [dialogOpen, setDialogOpen] = createSignal(false);
   const { showResponseDialog, DialogResponse } = useResponseDialog();
 
@@ -2759,6 +2763,48 @@ export function OverlaysPanel() {
             <AlertTriangle />
             Warning
           </Button>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Filter popovers</CardTitle>
+          <CardDescription>
+            Named filter triggers with optional size and badge styling.
+          </CardDescription>
+        </CardHeader>
+        <CardContent class="flex flex-wrap gap-3">
+          <FilterPopover
+            activeCount={defaultArchived() ? 1 : 0}
+            onReset={() => setDefaultArchived(false)}
+            icon={<Filter />}
+            data-testid="default-filter-content"
+          >
+            <FilterItem label="Include archived records">
+              <Checkbox
+                checked={defaultArchived()}
+                onChange={setDefaultArchived}
+                aria-label="Include archived records"
+              />
+            </FilterItem>
+          </FilterPopover>
+          <FilterPopover
+            triggerLabel="Filter records"
+            triggerSize="sm"
+            triggerClass="rounded-full"
+            countClass="bg-secondary text-secondary-foreground"
+            activeCount={customArchived() ? 1 : 0}
+            onReset={() => setCustomArchived(false)}
+            icon={<Filter />}
+            data-testid="custom-filter-content"
+          >
+            <FilterItem label="Show archived records">
+              <Checkbox
+                checked={customArchived()}
+                onChange={setCustomArchived}
+                aria-label="Show archived records"
+              />
+            </FilterItem>
+          </FilterPopover>
         </CardContent>
       </Card>
       <DialogResponse />

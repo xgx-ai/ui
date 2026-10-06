@@ -1,11 +1,19 @@
 import type { JSX } from "@solidjs/web";
 import { omit, type ParentProps, Show } from "solid-js";
 import { cn } from "../cn";
-import { Button } from "../forms/button";
+import { Button, type ButtonProps } from "../forms/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
 export interface FilterPopoverProps extends ParentProps {
   class?: string;
+  /** Accessible name for the filter trigger. Defaults to "Filter". */
+  triggerLabel?: string;
+  /** Additional classes for the trigger button. */
+  triggerClass?: string;
+  /** Trigger size, using the shared Button sizes. */
+  triggerSize?: ButtonProps["size"];
+  /** Additional classes for the active-filter count badge. */
+  countClass?: string;
   /** Number of active filters (shown as badge) */
   activeCount?: number;
   /** Called when reset button is clicked */
@@ -37,23 +45,45 @@ export interface FilterPopoverProps extends ParentProps {
  */
 export function FilterPopover(props: FilterPopoverProps): JSX.Element {
   const local = props;
-  const rest = omit(props, "class", "activeCount", "onReset", "title", "icon", "width", "children");
+  const rest = omit(
+    props,
+    "class",
+    "activeCount",
+    "onReset",
+    "title",
+    "icon",
+    "width",
+    "triggerLabel",
+    "triggerClass",
+    "triggerSize",
+    "countClass",
+    "children",
+  );
 
   return (
     <Popover>
-      <PopoverTrigger>
-        <Button variant="outline" class="text-xs relative">
-          <Show when={local.icon}>
-            <span class="mr-2">{local.icon}</span>
-          </Show>
-          Filter
-          <Show when={(local.activeCount ?? 0) > 0}>
-            <span class="absolute -top-1 -right-1 size-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
-              {local.activeCount}
-            </span>
-          </Show>
-        </Button>
-      </PopoverTrigger>
+      <Button
+        as={PopoverTrigger}
+        variant="outline"
+        size={local.triggerSize}
+        class={cn("text-xs relative", local.triggerClass)}
+        aria-label={local.triggerLabel ?? "Filter"}
+        data-filter-button=""
+      >
+        <Show when={local.icon}>{local.icon}</Show>
+        Filter
+        <Show when={(local.activeCount ?? 0) > 0}>
+          <span
+            data-filter-count=""
+            class={cn(
+              "absolute -top-1 -right-1 size-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center",
+              local.countClass,
+            )}
+          >
+            {local.activeCount}
+          </span>
+        </Show>
+      </Button>
       <PopoverContent class={cn(local.width ?? "w-80", local.class)} {...rest}>
         <div class="flex flex-col gap-2">
           <div class="flex justify-between items-center pb-2 border-b">
