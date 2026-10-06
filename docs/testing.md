@@ -1,6 +1,6 @@
 # UI Test Strategy
 
-CI runs three browser layers against the real Bun demo:
+Local verification runs these browser layers against the real Bun demo:
 
 - Functional: Playwright interaction flows for routing, async portals, deferred select data, and schema forms.
 - Accessibility: axe scans for core WCAG 2.0/2.1 A/AA violations on representative catalog routes.
@@ -8,7 +8,7 @@ CI runs three browser layers against the real Bun demo:
 - ARIA snapshots: Playwright accessibility-tree assertions for core named regions and generated controls.
 - Keyboard: Playwright keyboard-only flows for navigation, menus, toggles, and auth segmented controls.
 
-PR CI is intentionally fast: one browser, representative route coverage, and stable snapshots only.
+Push/pull-request CI runs lint only. Run the local test commands below before merging.
 Scheduled/manual audits run deeper Lighthouse and Pa11y checks without blocking normal PR flow.
 
 Commands:

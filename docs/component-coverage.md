@@ -9,7 +9,7 @@
 | Forms | Text field, validation, textarea, number field, slider, radio, checkbox, switch | Live | Add select/combobox validation flows |
 | Data | Filtered `DataGrid`, saved views, empty state, bulk actions | Live | Add virtual/infinite table workflow |
 | Workflows | List-to-detail, approval/review flow, task queue, progress | Live | Add editable CRUD mutation flow |
-| Overlays | Dialog, dropdown menu, toast region | Live | Add sheet/popover examples |
+| Overlays | Dialog, dropdown menu, filter popover, toast region | Live | Add sheet examples |
 | Feedback | Badges, callouts, error, skeleton, empty, progress, toast | Live | Add query boundary states |
 | Advanced | Calendar, document preview, rich text editor, file dropzone, detail sidebar | Live | Add drag reorder and document toolbar examples |
 
