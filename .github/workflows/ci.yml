@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  lint:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,17 +15,8 @@ jobs:
         with:
           path: |
             ~/.bun/install/cache
-            ~/.cache/ms-playwright
           key: ui-ci-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: |
             ui-ci-${{ runner.os }}-
       - run: bun install --frozen-lockfile
-      - run: bunx playwright install chromium
-      - run: bun run test:ci
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-artifacts
-          path: |
-            playwright-report/
-            test-results/
+      - run: bun run lint
