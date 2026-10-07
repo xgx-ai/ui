@@ -47,15 +47,25 @@ export interface FieldBinding<T = unknown> {
 }
 
 export interface CreateFormOptions<T extends Record<string, unknown> = Record<string, unknown>> {
+  /** Re-validate on every change. Defaults to `true`. */
   validateOnChange?: boolean;
+  /** Re-validate when a field blurs; only matters without `validateOnChange`. Defaults to `true`. */
   validateOnBlur?: boolean;
+  /**
+   * Values merged over the schema defaults; also the clean baseline for `isDirty`. Kept loose
+   * because existing callers seed records wider than the schema; `reset(values)` is typed.
+   */
   initialValues?: Record<string, unknown>;
-  disabled?: boolean;
-  /** Schema used for submit validation; defaults to the field schema. */
+  /** Disables every field. Pass an accessor (or a getter) to follow reactive state. */
+  disabled?: boolean | Accessor<boolean>;
+  /**
+   * Schema used for submit validation; defaults to the field schema. Its errors, such as
+   * cross-field refinements, are shown from the first submit attempt, and `isValid` reflects it.
+   */
   submitSchema?: z.ZodType<T>;
 }
 
-export interface FormInstance<T extends Record<string, unknown>> {
+export interface FormInstance<T extends Record<string, unknown>, Input = T> {
   field: <K extends keyof T & string>(name: K) => FieldBinding<T[K]>;
   Field: Component<FieldProps>;
   Rest: Component;
@@ -63,7 +73,12 @@ export interface FormInstance<T extends Record<string, unknown>> {
     handler: (data: T) => void | Promise<void>,
     onError?: (errors: Record<string, string[]>) => void,
   ) => (e?: Event) => void;
-  reset: () => void;
+  /**
+   * Restores the clean values and clears touched fields and submit errors. With `values`, they
+   * are merged over the current baseline, which becomes the new clean state for `isDirty`.
+   */
+  reset(values?: Partial<Input>): void;
+  /** Whether the current values pass submit validation (`submitSchema` when provided). */
   isValid: Accessor<boolean>;
   isDirty: Accessor<boolean>;
   isSubmitting: Accessor<boolean>;
@@ -78,8 +93,8 @@ export interface FieldProps {
   class?: string;
 }
 
-export interface FormProps<T extends Record<string, unknown>> {
-  form: FormInstance<T>;
+export interface FormProps<T extends Record<string, unknown>, Input = T> {
+  form: FormInstance<T, Input>;
   onSubmit: (data: T) => void | Promise<void>;
   onError?: (errors: Record<string, string[]>) => void;
   children?: JSX.Element;

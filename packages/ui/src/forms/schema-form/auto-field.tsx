@@ -33,8 +33,8 @@ function resolveComponent(meta: FieldMeta | undefined): Component<{ binding: Fie
   }
 }
 
-export function createAutoField<T extends Record<string, unknown>>(
-  form: FormInstance<T>,
+export function createAutoField<T extends Record<string, unknown>, Input = T>(
+  form: FormInstance<T, Input>,
 ): Component<{
   name: string;
   component?: Component<{ binding: FieldBinding }>;

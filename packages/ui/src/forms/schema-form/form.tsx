@@ -6,12 +6,22 @@ import { createForm as createFormCore } from "./create-form.ts";
 import { createRest } from "./rest.tsx";
 import type { CreateFormOptions, FormInstance, FormProps } from "./types.ts";
 
+/**
+ * Creates schema-driven form state with automatic `Field` and `Rest` renderers.
+ *
+ * `reset(values)` takes the schema's input shape. See the core `createForm` for validation
+ * timing, `isValid`, `reset` and reactive `disabled`.
+ */
 export function createForm<Schema extends z.ZodType<Record<string, unknown>>>(
   schema: Schema,
   options?: CreateFormOptions<z.output<Schema>>,
-): FormInstance<z.output<Schema>> {
+): FormInstance<z.output<Schema>, z.input<Schema>> {
   type FormValues = z.output<Schema>;
-  const form = createFormCore<FormValues>(schema as unknown as z.ZodType<FormValues>, options);
+  type FormInput = z.input<Schema>;
+  const form = createFormCore<FormValues, FormInput>(
+    schema as unknown as z.ZodType<FormValues, FormInput>,
+    options,
+  );
   form.Field = createAutoField(form);
   form.Rest = createRest(form);
   return form;
@@ -22,7 +32,7 @@ export function createForm<Schema extends z.ZodType<Record<string, unknown>>>(
  *
  * Best used with createForm so validation, automatic fields and explicit custom field layouts share one source of truth.
  */
-export function Form<T extends Record<string, unknown>>(props: FormProps<T>) {
+export function Form<T extends Record<string, unknown>, Input = T>(props: FormProps<T, Input>) {
   return (
     <form
       onSubmit={(event: Event) => props.form.submit(props.onSubmit, props.onError)(event)}
