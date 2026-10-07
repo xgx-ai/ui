@@ -24,6 +24,22 @@ export function focusFirstMenuItem(root: HTMLElement | undefined, selector = def
   getMenuItems(root, selector)[0]?.focus();
 }
 
+/**
+ * Focuses the item at `index`, wrapping like arrow-key movement, so -1 is the last item.
+ * Returns whether focus landed there; hidden content cannot take focus.
+ */
+export function focusMenuItemAt(
+  root: HTMLElement | undefined,
+  index: number,
+  selector = defaultItemSelector,
+): boolean {
+  const items = getMenuItems(root, selector);
+  if (items.length === 0) return false;
+  const item = items[((index % items.length) + items.length) % items.length];
+  item.focus();
+  return document.activeElement === item;
+}
+
 export function createMenuKeyboard(options: MenuKeyboardOptions) {
   let typeahead = "";
   let clearTypeahead: ReturnType<typeof setTimeout> | undefined;

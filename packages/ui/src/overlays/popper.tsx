@@ -9,12 +9,14 @@ import {
   size,
 } from "@floating-ui/dom";
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createEffect, createSignal, omit, useContext } from "solid-js";
+import { createContext, createEffect, createSignal, omit, untrack, useContext } from "solid-js";
 
 import { assignRef } from "./floating";
 
 type PopperContextValue = {
   open: () => boolean;
+  /** The content has been positioned and revealed; hidden content cannot take focus. */
+  placed: () => boolean;
   setPositionerRef: (element: HTMLElement) => void;
 };
 
@@ -52,6 +54,7 @@ type PopperSnapshot = {
 
 export function PopperRoot(props: PopperRootProps) {
   const [positionerRef, setPositionerRef] = createSignal<HTMLElement>();
+  const [placed, setPlaced] = createSignal(false);
 
   const updatePosition = async (snapshot: PopperSnapshot) => {
     if (!snapshot.anchor || !snapshot.positioner || !snapshot.open) return;
@@ -103,12 +106,15 @@ export function PopperRoot(props: PopperRootProps) {
       element.dataset.align = placement.split("-")[1] ?? "center";
     }
 
+    // A position computed for an opening that has since closed must not reveal the content.
+    if (!untrack(props.open)) return;
     Object.assign(snapshot.positioner.style, {
       left: "0",
       top: "0",
       transform: `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`,
       visibility: "visible",
     });
+    setPlaced(true);
   };
 
   createEffect(
@@ -142,6 +148,7 @@ export function PopperRoot(props: PopperRootProps) {
     (snapshot) => {
       if (!snapshot.open) {
         if (snapshot.positioner) snapshot.positioner.style.visibility = "hidden";
+        setPlaced(false);
         return;
       }
 
@@ -171,8 +178,19 @@ export function PopperRoot(props: PopperRootProps) {
   );
 
   return (
-    <PopperContext value={{ open: props.open, setPositionerRef }}>{props.children}</PopperContext>
+    <PopperContext value={{ open: props.open, placed, setPositionerRef }}>
+      {props.children}
+    </PopperContext>
   );
+}
+
+/**
+ * Whether the floating content has been positioned and revealed, so it can take focus.
+ * Content outside a `PopperRoot` is never hidden for positioning, so it reads as placed.
+ */
+export function usePopperPlaced(): () => boolean {
+  const context = useContext(PopperContext);
+  return () => context?.placed() ?? true;
 }
 
 export function PopperPositioner(props: PopperPositionerProps) {

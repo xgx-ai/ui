@@ -21,7 +21,6 @@ import {
   createEffect,
   createSignal,
   omit,
-  onSettled,
   Show,
   untrack,
   useContext,
@@ -30,11 +29,11 @@ import { cn } from "../cn";
 import { Check, ChevronRight, Circle } from "../icons.index";
 import { createDismissableLayer, DismissableLayerContext } from "../overlays/dismissable-layer";
 import { assignRef, containsNode } from "../overlays/floating";
-import { PopperPositioner, PopperRoot } from "../overlays/popper";
+import { PopperPositioner, PopperRoot, usePopperPlaced } from "../overlays/popper";
 import { PortalMount } from "../overlays/portal";
 import { callEventHandler } from "../utils/event-handler";
 import type { PolymorphicProps } from "../utils/polymorphic";
-import { createMenuKeyboard, focusFirstMenuItem } from "./menu-behavior";
+import { createMenuKeyboard, focusFirstMenuItem, focusMenuItemAt } from "./menu-behavior";
 
 const DynamicAny = Dynamic as any;
 
@@ -79,6 +78,9 @@ type DropdownMenuContextValue = {
   parent?: DropdownMenuContextValue;
   setActiveSubmenu: (submenu: DropdownMenuContextValue | null) => void;
   setOpen: (open: boolean, by?: MenuOpener) => void;
+  /** Arrow presses made before a keyboard-opened menu could take focus; applied when it does. */
+  queueFocusMove: (delta: number) => void;
+  takeQueuedFocus: () => number;
   setContentRef: (element: HTMLElement) => void;
   setTriggerRef: (element: HTMLElement) => void;
   triggerRef: () => HTMLElement | undefined;
@@ -118,6 +120,8 @@ const DropdownMenuRoot = (props: DropdownMenuProps & { parent?: DropdownMenuCont
   const defaultOpen = untrack(() => local.defaultOpen ?? false);
   const [uncontrolledOpen, setUncontrolledOpen] = createSignal(defaultOpen);
   const [openedBy, setOpenedBy] = createSignal<MenuOpener>("pointer");
+  // Event bookkeeping, not render state: nothing renders from it.
+  let queuedFocusMoves = 0;
   const [rootRef, setRootRef] = createSignal<HTMLDivElement>();
   const [triggerRef, setTriggerRef] = createSignal<HTMLElement>();
   const [contentRef, setContentRef] = createSignal<HTMLElement>();
@@ -142,7 +146,10 @@ const DropdownMenuRoot = (props: DropdownMenuProps & { parent?: DropdownMenuCont
     setActiveSubmenuSignal(next);
   };
   const setOpen = (open: boolean, by: MenuOpener = "pointer") => {
-    if (open && !isOpen()) setOpenedBy(by);
+    if (open && !isOpen()) {
+      setOpenedBy(by);
+      queuedFocusMoves = 0;
+    }
     if (parent) {
       if (open) parent.setActiveSubmenu(menu);
       else if (requestedOpen()) parent.setActiveSubmenu(null);
@@ -195,6 +202,14 @@ const DropdownMenuRoot = (props: DropdownMenuProps & { parent?: DropdownMenuCont
     setContentRef,
     setTriggerRef,
     triggerRef,
+    queueFocusMove: (delta: number) => {
+      queuedFocusMoves += delta;
+    },
+    takeQueuedFocus: () => {
+      const moves = queuedFocusMoves;
+      queuedFocusMoves = 0;
+      return moves;
+    },
   } satisfies DropdownMenuContextValue);
 
   return (
@@ -250,9 +265,11 @@ const DropdownMenuTrigger = <T extends ValidComponent = "button">(
 
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      // Opening focuses the first item once the content mounts.
-      if (menu.open()) focusFirstMenuItem(menu.contentRef());
-      else menu.setOpen(true, "keyboard");
+      // Opening focuses the first item once the content can take focus. A press before then
+      // is remembered, so a quick second ArrowDown still moves to the second item.
+      if (!menu.open()) menu.setOpen(true, "keyboard");
+      else if (!focusMenuItemAt(menu.contentRef(), 0))
+        menu.queueFocusMove(event.key === "ArrowDown" ? 1 : -1);
     }
   };
 
@@ -320,7 +337,17 @@ const DropdownMenuPanel = (props: DropdownMenuContentProps) => {
   const onKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (event) => {
     callEventHandler(local.onKeyDown, event);
     if (!event.defaultPrevented) {
-      if (event.key === "Escape" && menu.activeSubmenu()?.open()) {
+      const submenu = menu.activeSubmenu();
+      if (
+        (event.key === "ArrowDown" || event.key === "ArrowUp") &&
+        submenu?.open() &&
+        submenu.openedBy() === "keyboard" &&
+        !holdsFocus(submenu)
+      ) {
+        // The keyboard-opened submenu has not taken focus yet; the press belongs to it.
+        event.preventDefault();
+        submenu.queueFocusMove(event.key === "ArrowDown" ? 1 : -1);
+      } else if (event.key === "Escape" && menu.activeSubmenu()?.open()) {
         // Escape closes the innermost menu first, even before focus has moved into it.
         event.preventDefault();
         menu.closeSubmenus();
@@ -334,14 +361,22 @@ const DropdownMenuPanel = (props: DropdownMenuContentProps) => {
     if (event.defaultPrevented) event.stopPropagation();
   };
 
-  // A pointer-opened submenu leaves focus where the pointer user left it. The popper reveals
-  // the content only after its first asynchronous position, and hidden content cannot take
-  // focus, so focus waits one frame.
-  onSettled(() => {
-    if (menu.parent && menu.openedBy() === "pointer") return;
-    const frame = requestAnimationFrame(() => focusFirstMenuItem(element));
-    return () => cancelAnimationFrame(frame);
-  });
+  // A pointer-opened submenu leaves focus where the pointer user left it. Otherwise focus
+  // moves in once the popper has revealed the content: hidden content cannot take focus, and
+  // positioning is asynchronous. Arrow presses made in the meantime were queued.
+  const placed = usePopperPlaced();
+  let focusedOnOpen = false;
+  createEffect(
+    () => ({
+      placed: placed(),
+      leaveFocus: Boolean(menu.parent) && menu.openedBy() === "pointer",
+    }),
+    (state) => {
+      if (!state.placed || focusedOnOpen) return;
+      focusedOnOpen = true;
+      if (!state.leaveFocus) focusMenuItemAt(element, menu.takeQueuedFocus());
+    },
+  );
 
   return (
     <PopperPositioner>
