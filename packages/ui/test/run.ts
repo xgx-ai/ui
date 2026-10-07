@@ -34,7 +34,11 @@ const entrypoints = [
   path.join(import.meta.dir, "schema-form.spec.ts"),
 ];
 const ssrEntrypoint = path.join(import.meta.dir, "map-ssr.spec.ts");
-const calendarEntrypoint = path.join(import.meta.dir, "calendar-context.spec.tsx");
+const ownershipEntrypoints = [
+  path.join(import.meta.dir, "dialog-response-lifecycle.spec.tsx"),
+  path.join(import.meta.dir, "calendar-context.spec.tsx"),
+  path.join(import.meta.dir, "popover-dismissal.spec.ts"),
+];
 
 await rm(outDir, { force: true, recursive: true });
 await mkdir(outDir, { recursive: true });
@@ -80,24 +84,25 @@ if (!ssrResult.success) {
   throw new Error("SSR test build failed");
 }
 
-// Controlled props are lazily compiled memos. Keep ownership diagnostics enabled
-// for this regression and execute it in its own runtime, away from the DOM suites.
-const calendarResult = await Bun.build({
+// Keep ownership diagnostics enabled for native lifecycle regressions and execute
+// them in isolated runtimes, away from the production and DOM suites.
+const ownershipResult = await Bun.build({
   define: { "process.env.NODE_ENV": JSON.stringify("development") },
-  entrypoints: [calendarEntrypoint],
+  entrypoints: ownershipEntrypoints,
   format: "esm",
   minify: false,
-  outdir: path.join(tmpDir, "calendar"),
+  outdir: path.join(tmpDir, "ownership"),
   conditions: ["browser", "development"],
   plugins: [SolidPlugin({ hmr: true })],
   target: "bun",
 });
-if (!calendarResult.success) {
-  for (const log of calendarResult.logs) console.error(log);
-  throw new Error("Controlled calendar test build failed");
+if (!ownershipResult.success) {
+  for (const log of ownershipResult.logs) console.error(log);
+  throw new Error("Native ownership test build failed");
 }
-const calendarBundle = calendarResult.outputs.find((output) => output.kind === "entry-point");
-if (!calendarBundle) throw new Error("Controlled calendar test bundle is missing");
+const ownershipBundles = ownershipResult.outputs.filter((output) => output.kind === "entry-point");
+if (ownershipBundles.length !== ownershipEntrypoints.length)
+  throw new Error("Native ownership test bundles are missing");
 
 const bundles = result.outputs.filter((output) => output.kind === "entry-point");
 if (bundles.length !== entrypoints.length) {
@@ -120,12 +125,13 @@ try {
   const ssrSpec = await import(pathToFileURL(ssrBundle.path).href);
   await ssrSpec.default();
 
-  const calendarTest = Bun.spawn([process.execPath, calendarBundle.path], {
-    stdout: "inherit",
-    stderr: "inherit",
-  });
-  if ((await calendarTest.exited) !== 0)
-    throw new Error("Controlled calendar ownership test failed");
+  for (const bundle of ownershipBundles) {
+    const ownershipTest = Bun.spawn([process.execPath, bundle.path], {
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    if ((await ownershipTest.exited) !== 0) throw new Error("Native ownership test failed");
+  }
 } finally {
   await rm(tmpDir, { force: true, recursive: true });
 }

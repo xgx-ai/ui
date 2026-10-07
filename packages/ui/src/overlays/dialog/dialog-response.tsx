@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { createSignal, createStore, flush, Match, Show, Switch } from "solid-js";
+import { Match, Show, Switch } from "solid-js";
 import { cn } from "../../cn.ts";
 import { Button } from "../../forms/button.tsx";
 import { TriangleAlert } from "../../icons.index";
@@ -10,6 +10,7 @@ import {
   DialogTemplate,
   DialogTitle,
 } from "../dialog.tsx";
+import { createResponseDialogState } from "./dialog-response-state";
 
 export type DialogContentProps<T> = {
   resolve: (value: T) => void;
@@ -19,22 +20,6 @@ export type DialogContentProps<T> = {
   setDescription?: (d: string) => void;
   setMount?: (m: HTMLDivElement) => void;
 };
-interface DialogProps<T> {
-  content?: (props: DialogContentProps<T>) => JSX.Element;
-  title?: string;
-  description?: string;
-  class?: string;
-  mount?: HTMLDivElement;
-  modal?: boolean;
-  preventScroll?: boolean;
-  closeOnInteractOutside?: boolean;
-  zIndex?: string;
-  hideCloseButton?: boolean;
-  template?: "alert";
-  templateProps?: {
-    action: string;
-  };
-}
 
 /**
  * A utility hook that creates a controlled dialog (modal) which can return a value.
@@ -68,41 +53,8 @@ interface DialogProps<T> {
  */
 
 export function useResponseDialog() {
-  const [isOpen, setIsOpen] = createSignal(false);
-  const [dialogProps, setDialogProps] = createStore<DialogProps<unknown>>({
-    title: "",
-    description: "",
-    content: DialogContentPlaceholder,
-  });
-  let activePromise: Promise<unknown | null> | undefined;
-  let settleDialog: ((value: unknown) => void) | undefined;
-
-  const showResponseDialog = <T,>(props: DialogProps<T>): Promise<T | null> => {
-    if (activePromise) return activePromise as Promise<T | null>;
-
-    setDialogProps((state) => {
-      Object.assign(state, props);
-    });
-    setIsOpen(true);
-
-    const promise = new Promise<T | null>((resolve) => {
-      let settled = false;
-
-      settleDialog = (value: unknown) => {
-        if (settled) return;
-
-        settled = true;
-        setIsOpen(false);
-        flush();
-        activePromise = undefined;
-        settleDialog = undefined;
-        resolve(value as T | null);
-      };
-    });
-
-    activePromise = promise;
-    return promise;
-  };
+  const { isOpen, dialogProps, showResponseDialog, settleDialog, setDialogProps } =
+    createResponseDialogState(DialogContentPlaceholder);
 
   const DialogResponse = () => {
     function handleClose() {

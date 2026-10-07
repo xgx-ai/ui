@@ -13,10 +13,11 @@
  */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
-import { createContext, createEffect, createSignal, omit, Show, useContext } from "solid-js";
+import { createContext, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
-import { assignRef, containsNode } from "./floating";
+import { assignRef } from "./floating";
 import { type PopperAnchorRect, PopperPositioner, PopperRoot } from "./popper";
+import { createPopoverDismissal, type PopoverDismissal } from "./popover-dismissal";
 import { PortalMount } from "./portal";
 
 const DynamicAny = Dynamic as any;
@@ -56,6 +57,7 @@ type PopoverContextValue = {
   anchorRef: () => HTMLElement | undefined;
   close: () => void;
   contentRef: () => HTMLElement | undefined;
+  dismissal: PopoverDismissal;
   gutter: () => number;
   open: () => boolean;
   placement: () => Placement;
@@ -73,6 +75,7 @@ function usePopover() {
 }
 
 const Popover = (props: PopoverProps) => {
+  const parent = useContext(PopoverContext);
   const [rootRef, setRootRef] = createSignal<HTMLDivElement>();
   const [triggerRef, setTriggerRef] = createSignal<HTMLElement>();
   const [contentRef, setContentRef] = createSignal<HTMLElement>();
@@ -102,29 +105,12 @@ const Popover = (props: PopoverProps) => {
     local.onOpenChange?.(next);
   };
 
-  createEffect(open, (isOpen) => {
-    if (!isOpen) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      const root = rootRef();
-      const content = contentRef();
-      // A nested select can remove its option before this bubble listener runs.
-      // The dispatch path still identifies the popover where the event started.
-      const path = event.composedPath();
-      const startedInside = path.some((node) => node === root || node === content);
-      if (!startedInside && !containsNode(root, target) && !containsNode(content, target)) {
-        setOpen(false);
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
+  const dismissal = createPopoverDismissal({
+    close: () => setOpen(false),
+    contentRef,
+    open,
+    parent: parent?.dismissal,
+    rootRef,
   });
 
   return (
@@ -133,6 +119,7 @@ const Popover = (props: PopoverProps) => {
         anchorRef,
         close: () => setOpen(false),
         contentRef,
+        dismissal,
         gutter,
         open,
         placement,
