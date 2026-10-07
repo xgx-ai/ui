@@ -16,7 +16,7 @@ import { Dynamic } from "@solidjs/web";
 import { createContext, createEffect, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
 import { assignRef, containsNode } from "./floating";
-import { PopperPositioner, PopperRoot } from "./popper";
+import { PopperPositioner, PopperRoot, type PopperAnchorRect } from "./popper";
 import { PortalMount } from "./portal";
 
 const DynamicAny = Dynamic as any;
@@ -43,6 +43,8 @@ type PopoverProps = Omit<ComponentProps<"div">, "onChange"> & {
   onOpenChange?: (open: boolean) => void;
   placement?: Placement;
   gutter?: number;
+  /** Use a viewport rectangle as the anchor; undefined falls back to the trigger. */
+  getAnchorRect?: () => PopperAnchorRect | undefined;
   positioning?: {
     placement?: Placement;
     gutter?: number;
@@ -81,6 +83,7 @@ const Popover = (props: PopoverProps) => {
     "class",
     "defaultOpen",
     "gutter",
+    "getAnchorRect",
     "isOpen",
     "onOpenChange",
     "open",
@@ -136,6 +139,7 @@ const Popover = (props: PopoverProps) => {
         anchorRef={anchorRef}
         contentRef={contentRef}
         gutter={gutter()}
+        getAnchorRect={local.getAnchorRect}
         open={open}
         placement={placement()}
       >
@@ -259,6 +263,7 @@ const PopoverContent = <T extends ValidComponent = "div">(props: PopoverContentP
         <PopperPositioner>
           <Dynamic
             component={local.as ?? "div"}
+            role="dialog"
             ref={(element: HTMLElement) => {
               popover.setContentRef(element);
               assignRef(local.ref, element);

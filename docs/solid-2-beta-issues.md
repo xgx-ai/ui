@@ -522,6 +522,13 @@ transition-aware signal and reports `true` correctly throughout, so that is what
 reads during a mutation. `fetching()` remains correct for observer-driven and directly
 invalidated refetches, which are not inside an action.
 
+**Pagination.** Next-page reads use ordinary async fetches rather than mutation actions.
+An action also holds reactive filter reads made by a later fetch on its old snapshot;
+rejecting an earlier page can therefore leave a newly selected filter showing old rows.
+Page status and deduplication are tracked per exact key so an old request cannot hide a
+new key's active request. `packages/query/test/infinite-pagination-key-change.test.ts`
+reproduces the rejection and checks concurrent-key status and deduplication.
+
 **Re-check.** `packages/query/test/query.test.ts`, "mutation pending includes awaited query
 invalidation" asserts `pending() === true` and `fetching() === false` together. If a pin bump
 makes `fetching()` true there, the assertion fails and this entry can be narrowed.

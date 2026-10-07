@@ -21,6 +21,7 @@ import {
   createEffect,
   createSignal,
   omit,
+  onCleanup,
   Show,
   untrack,
   useContext,
@@ -61,17 +62,22 @@ type DropdownMenuProps = Omit<ComponentProps<"div">, "onChange"> & {
 };
 
 type DropdownMenuContextValue = {
+  closeAll: () => void;
+  closeChildren: () => void;
+  children: Set<DropdownMenuContextValue>;
+  elements: Set<HTMLElement>;
   contentRef: () => HTMLElement | undefined;
   gutter: () => number;
   open: () => boolean;
   placement: () => Placement;
+  parent?: DropdownMenuContextValue;
   setOpen: (open: boolean) => void;
   setContentRef: (element: HTMLElement) => void;
   setTriggerRef: (element: HTMLElement) => void;
   triggerRef: () => HTMLElement | undefined;
 };
 
-const DropdownMenuContext = createContext<DropdownMenuContextValue>();
+const DropdownMenuContext = createContext<DropdownMenuContextValue | null>(null);
 
 function useDropdownMenu() {
   const context = useContext(DropdownMenuContext);
@@ -79,7 +85,7 @@ function useDropdownMenu() {
   return context;
 }
 
-const DropdownMenu = (props: DropdownMenuProps) => {
+const DropdownMenuRoot = (props: DropdownMenuProps & { parent?: DropdownMenuContextValue }) => {
   const local = props;
   const rest = omit(
     props,
@@ -91,16 +97,33 @@ const DropdownMenu = (props: DropdownMenuProps) => {
     "open",
     "placement",
     "positioning",
+    "parent",
   );
   const [uncontrolledOpen, setUncontrolledOpen] = createSignal(
     untrack(() => local.defaultOpen ?? false),
   );
   const [triggerRef, setTriggerRef] = createSignal<HTMLElement>();
   const [contentRef, setContentRef] = createSignal<HTMLElement>();
+  const parent = untrack(() => props.parent);
+  const elements = parent?.elements ?? new Set<HTMLElement>();
+  const children = new Set<DropdownMenuContextValue>();
   const isOpen = () => local.open ?? uncontrolledOpen();
+  const closeChildren = () => {
+    for (const child of children) child.setOpen(false);
+  };
   const setOpen = (open: boolean) => {
+    if (!open) closeChildren();
+    if (open && parent) {
+      for (const sibling of parent.children) {
+        if (sibling !== menu) sibling.setOpen(false);
+      }
+    }
     if (local.open === undefined) setUncontrolledOpen(open);
     local.onOpenChange?.(open);
+  };
+  const closeAll = () => {
+    if (parent) parent.closeAll();
+    else setOpen(false);
   };
   const placement = () => local.placement || local.positioning?.placement || "bottom";
   const gutter = () => local.gutter ?? 4;
@@ -111,7 +134,10 @@ const DropdownMenu = (props: DropdownMenuProps) => {
 
     const closeOutside = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (!containsNode(rootRef, target) && !containsNode(contentRef(), target)) {
+      if (
+        !containsNode(rootRef, target) &&
+        ![...elements].some((element) => containsNode(element, target))
+      ) {
         setOpen(false);
       }
     };
@@ -120,42 +146,43 @@ const DropdownMenu = (props: DropdownMenuProps) => {
     return () => document.removeEventListener("pointerdown", closeOutside);
   });
 
-  const onClick = (event: MouseEvent) => {
-    const target = event.target as HTMLElement;
-
-    if (target.closest("[data-xgx-dropdown-trigger]")) {
-      setOpen(!isOpen());
-      return;
-    }
-
-    const checkbox = target.closest<HTMLElement>("[data-xgx-dropdown-checkbox]");
-    if (checkbox) return;
-
-    const item = target.closest<HTMLElement>("[data-xgx-dropdown-item]");
-    if (item && item.dataset.closeOnSelect !== "false") setOpen(false);
-  };
-
   const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key === "Escape") {
+    if (event.key === "Escape" && !event.defaultPrevented) {
       event.stopPropagation();
       setOpen(false);
       triggerRef()?.focus();
     }
   };
 
+  const menu: DropdownMenuContextValue = {
+    closeAll,
+    closeChildren,
+    children,
+    elements,
+    contentRef,
+    gutter,
+    open: isOpen,
+    placement,
+    parent,
+    setOpen,
+    setContentRef: (element) => {
+      const previous = untrack(contentRef);
+      if (previous) elements.delete(previous);
+      elements.add(element);
+      setContentRef(element);
+    },
+    setTriggerRef,
+    triggerRef,
+  };
+  parent?.children.add(menu);
+  onCleanup(() => {
+    parent?.children.delete(menu);
+    const content = untrack(contentRef);
+    if (content) elements.delete(content);
+  });
+
   return (
-    <DropdownMenuContext
-      value={{
-        contentRef,
-        gutter,
-        open: isOpen,
-        placement,
-        setOpen,
-        setContentRef,
-        setTriggerRef,
-        triggerRef,
-      }}
-    >
+    <DropdownMenuContext value={menu}>
       <PopperRoot
         anchorRef={() => triggerRef() ?? rootRef}
         contentRef={contentRef}
@@ -165,10 +192,9 @@ const DropdownMenu = (props: DropdownMenuProps) => {
       >
         <div
           ref={rootRef}
-          class={cn("relative inline-block", local.class)}
+          class={cn(parent ? "relative block" : "relative inline-block", local.class)}
           data-xgx-dropdown-open={isOpen() ? "true" : "false"}
           data-xgx-dropdown-placement={placement()}
-          onClick={onClick}
           onKeyDown={onKeyDown}
           {...rest}
         >
@@ -179,9 +205,21 @@ const DropdownMenu = (props: DropdownMenuProps) => {
   );
 };
 
+const DropdownMenu = (props: DropdownMenuProps) => <DropdownMenuRoot {...props} />;
+
+function callMenuHandler<TElement, TEvent>(
+  handler: unknown,
+  event: TEvent & { currentTarget: TElement },
+) {
+  if (typeof handler === "function") handler(event);
+  else if (Array.isArray(handler) && typeof handler[0] === "function")
+    handler[0](handler[1], event);
+}
+
 type DropdownMenuTriggerOwnProps = {
   children?: JSX.Element;
   class?: string | undefined;
+  onClick?: JSX.EventHandlerUnion<HTMLElement, MouseEvent>;
   onKeyDown?: JSX.EventHandler<HTMLElement, KeyboardEvent>;
   ref?: any;
   type?: ComponentProps<"button">["type"];
@@ -197,7 +235,7 @@ const DropdownMenuTrigger = <T extends ValidComponent = "button">(
 ) => {
   const menu = useDropdownMenu();
   const local = props;
-  const rest = omit(props, "as", "class", "onKeyDown", "ref", "type");
+  const rest = omit(props, "as", "class", "onClick", "onKeyDown", "ref", "type");
   const onKeyDown: JSX.EventHandler<HTMLElement, KeyboardEvent> = (event) => {
     const handler = local.onKeyDown as JSX.EventHandler<HTMLElement, KeyboardEvent> | undefined;
     handler?.(event);
@@ -214,6 +252,7 @@ const DropdownMenuTrigger = <T extends ValidComponent = "button">(
     <DynamicAny
       component={local.as ?? "button"}
       data-xgx-dropdown-trigger
+      aria-haspopup="menu"
       type={local.type ?? "button"}
       aria-expanded={menu.open() ? "true" : "false"}
       data-expanded={menu.open() ? "" : undefined}
@@ -222,6 +261,10 @@ const DropdownMenuTrigger = <T extends ValidComponent = "button">(
         assignRef(local.ref, element);
       }}
       class={local.class}
+      onClick={(event: MouseEvent & { currentTarget: HTMLElement }) => {
+        callMenuHandler(local.onClick, event);
+        if (!event.defaultPrevented) menu.setOpen(!menu.open());
+      }}
       onKeyDown={onKeyDown}
       {...rest}
     />
@@ -231,7 +274,12 @@ const DropdownMenuTrigger = <T extends ValidComponent = "button">(
 const DropdownMenuPortal = (props: { children?: JSX.Element }) => (
   <PortalMount>{props.children}</PortalMount>
 );
-const DropdownMenuSub = (props: ComponentProps<"div">) => <div {...props} />;
+const DropdownMenuSub = (props: DropdownMenuProps) => {
+  const parent = useDropdownMenu();
+  return (
+    <DropdownMenuRoot {...props} parent={parent} placement={props.placement ?? "right-start"} />
+  );
+};
 const DropdownMenuGroup = (props: ComponentProps<"div">) => <div role="group" {...props} />;
 const DropdownMenuRadioGroup = (props: ComponentProps<"div">) => <div role="group" {...props} />;
 
@@ -251,7 +299,12 @@ const DropdownMenuContent = (props: DropdownMenuContentProps) => {
   const onKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (event) => {
     const handler = local.onKeyDown as JSX.EventHandler<HTMLDivElement, KeyboardEvent> | undefined;
     handler?.(event);
-    menuKeyboard(event);
+    if (event.key === "ArrowLeft" && menu.parent) {
+      event.preventDefault();
+      menu.setOpen(false);
+      menu.triggerRef()?.focus();
+    } else menuKeyboard(event);
+    if (event.defaultPrevented) event.stopPropagation();
   };
 
   createEffect(menu.open, (open) => {
@@ -289,8 +342,17 @@ type DropdownMenuItemProps = ComponentProps<"div"> & {
 };
 
 const DropdownMenuItem = (props: DropdownMenuItemProps) => {
+  const menu = useDropdownMenu();
   const local = props;
-  const rest = omit(props, "class", "closeOnSelect", "disabled", "value");
+  const rest = omit(
+    props,
+    "class",
+    "closeOnSelect",
+    "disabled",
+    "value",
+    "onClick",
+    "onPointerMove",
+  );
 
   return (
     <div
@@ -299,7 +361,21 @@ const DropdownMenuItem = (props: DropdownMenuItemProps) => {
       data-value={local.value}
       data-xgx-dropdown-item
       role="menuitem"
+      aria-disabled={local.disabled ? "true" : undefined}
       tabindex={local.disabled ? undefined : -1}
+      onClick={(event) => {
+        if (local.disabled) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        callMenuHandler(local.onClick, event);
+        if (!event.defaultPrevented && local.closeOnSelect !== false) menu.closeAll();
+      }}
+      onPointerMove={(event) => {
+        callMenuHandler(local.onPointerMove, event);
+        if (!local.disabled && !event.defaultPrevented) menu.closeChildren();
+      }}
       class={cn(
         "relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-xs outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:hidden",
         local.class,
@@ -319,6 +395,7 @@ type DropdownMenuCheckboxItemProps = Omit<ComponentProps<"div">, "onChange"> & {
 };
 
 const DropdownMenuCheckboxItem = (props: DropdownMenuCheckboxItemProps) => {
+  const menu = useDropdownMenu();
   const local = props;
   const rest = omit(
     props,
@@ -328,15 +405,23 @@ const DropdownMenuCheckboxItem = (props: DropdownMenuCheckboxItemProps) => {
     "closeOnSelect",
     "disabled",
     "onChange",
+    "onClick",
     "onCheckedChange",
     "value",
   );
 
-  const onClick = () => {
-    if (local.disabled) return;
+  const onClick: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
+    if (local.disabled) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    callMenuHandler(local.onClick, event);
+    if (event.defaultPrevented) return;
     const checked = !local.checked;
     local.onCheckedChange?.(checked);
     local.onChange?.(checked);
+    if (local.closeOnSelect === true) menu.closeAll();
   };
 
   return (
@@ -348,6 +433,7 @@ const DropdownMenuCheckboxItem = (props: DropdownMenuCheckboxItemProps) => {
       data-xgx-dropdown-checkbox
       data-xgx-dropdown-item
       role="menuitemcheckbox"
+      aria-disabled={local.disabled ? "true" : undefined}
       aria-checked={local.checked ? "true" : "false"}
       tabindex={local.disabled ? undefined : -1}
       onClick={onClick}
@@ -374,8 +460,9 @@ type DropdownMenuRadioItemProps = ComponentProps<"div"> & {
 };
 
 const DropdownMenuRadioItem = (props: DropdownMenuRadioItemProps) => {
+  const menu = useDropdownMenu();
   const local = props;
-  const rest = omit(props, "checked", "children", "class", "disabled", "value");
+  const rest = omit(props, "checked", "children", "class", "disabled", "value", "onClick");
 
   return (
     <div
@@ -384,6 +471,16 @@ const DropdownMenuRadioItem = (props: DropdownMenuRadioItemProps) => {
       data-value={local.value}
       data-xgx-dropdown-item
       role="menuitemradio"
+      aria-disabled={local.disabled ? "true" : undefined}
+      onClick={(event) => {
+        if (local.disabled) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        callMenuHandler(local.onClick, event);
+        if (!event.defaultPrevented) menu.closeAll();
+      }}
       aria-checked={local.checked ? "true" : "false"}
       tabindex={local.disabled ? undefined : -1}
       class={cn(
@@ -433,16 +530,62 @@ const DropdownMenuGroupLabel = (props: ComponentProps<"span">) => {
   return <span class={cn("px-2 py-1.5 text-sm font-semibold", local.class)} {...rest} />;
 };
 
-const DropdownMenuSubTrigger = (props: ComponentProps<"div"> & { children?: JSX.Element }) => {
+const DropdownMenuSubTrigger = (props: ComponentProps<"div"> & { disabled?: boolean }) => {
+  const menu = useDropdownMenu();
   const local = props;
-  const rest = omit(props, "class", "children");
+  const rest = omit(
+    props,
+    "class",
+    "children",
+    "disabled",
+    "onClick",
+    "onKeyDown",
+    "onPointerMove",
+    "ref",
+  );
+  const open = (focus: boolean) => {
+    if (local.disabled) return;
+    menu.setOpen(true);
+    if (focus) requestAnimationFrame(() => focusFirstMenuItem(menu.contentRef()));
+  };
   return (
     <div
       data-xgx-dropdown-item
+      data-xgx-dropdown-sub-trigger
       role="menuitem"
-      tabindex={-1}
+      aria-haspopup="menu"
+      aria-expanded={menu.open() ? "true" : "false"}
+      aria-disabled={local.disabled ? "true" : undefined}
+      data-disabled={local.disabled ? "" : undefined}
+      tabindex={local.disabled ? undefined : -1}
+      ref={(element) => {
+        menu.setTriggerRef(element);
+        assignRef(local.ref, element);
+      }}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (local.disabled) {
+          event.preventDefault();
+          return;
+        }
+        callMenuHandler(local.onClick, event);
+        if (!event.defaultPrevented) open(true);
+      }}
+      onPointerMove={(event) => {
+        callMenuHandler(local.onPointerMove, event);
+        if (!event.defaultPrevented && event.pointerType !== "touch") open(false);
+      }}
+      onKeyDown={(event) => {
+        callMenuHandler(local.onKeyDown, event);
+        if (event.defaultPrevented || local.disabled) return;
+        if (event.key === "ArrowRight" || event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          open(true);
+        }
+      }}
       class={cn(
-        "flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-xs outline-hidden hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+        "flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-xs outline-hidden hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         local.class,
       )}
       {...rest}

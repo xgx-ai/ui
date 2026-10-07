@@ -10,7 +10,9 @@ const defaultItemSelector =
 
 export function getMenuItems(root: HTMLElement | undefined, selector = defaultItemSelector) {
   if (!root) return [];
-  return Array.from(root.querySelectorAll<HTMLElement>(selector));
+  return Array.from(root.querySelectorAll<HTMLElement>(selector)).filter(
+    (item) => item.closest("[role=menu]") === root,
+  );
 }
 
 export function focusFirstMenuItem(root: HTMLElement | undefined, selector = defaultItemSelector) {

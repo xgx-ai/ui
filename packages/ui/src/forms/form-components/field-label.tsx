@@ -8,9 +8,9 @@ const labelVariants = cva(
   {
     variants: {
       variant: {
-        label: "data-invalid:text-error text-xs",
+        label: "data-invalid:text-error-foreground text-xs",
         description: "font-normal text-muted-foreground text-xs",
-        error: "text-xs text-error text-xs",
+        error: "text-xs text-error-foreground text-xs",
       },
     },
     defaultVariants: {
@@ -29,7 +29,7 @@ export const FieldLabel = <T extends "label">(props: LabelProps<T>) => {
   const others = omit(props, "class", "required", "children");
   return (
     <div class={cn(labelVariants(), local.class)} {...others}>
-      {local.children} {local.required && <span class="text-error">*</span>}
+      {local.children} {local.required && <span class="text-error-foreground">*</span>}
     </div>
   );
 };

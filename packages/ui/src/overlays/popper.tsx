@@ -4,6 +4,7 @@ import {
   flip,
   offset,
   type Placement,
+  type VirtualElement,
   shift,
   size,
 } from "@floating-ui/dom";
@@ -19,11 +20,14 @@ type PopperContextValue = {
 
 const PopperContext = createContext<PopperContextValue>();
 
+export type PopperAnchorRect = { x: number; y: number; width: number; height: number };
+
 export type PopperRootProps = {
   anchorRef: () => HTMLElement | undefined;
   children?: JSX.Element;
   contentRef: () => HTMLElement | undefined;
   fitViewport?: boolean;
+  getAnchorRect?: () => PopperAnchorRect | undefined;
   gutter?: number;
   open: () => boolean;
   overflowPadding?: number;
@@ -34,7 +38,7 @@ export type PopperRootProps = {
 export type PopperPositionerProps = ComponentProps<"div">;
 
 type PopperSnapshot = {
-  anchor: HTMLElement | undefined;
+  anchor: HTMLElement | VirtualElement | undefined;
   content: HTMLElement | undefined;
   fitViewport: boolean;
   gutter: number;
@@ -107,17 +111,33 @@ export function PopperRoot(props: PopperRootProps) {
   };
 
   createEffect(
-    () => ({
-      anchor: props.anchorRef(),
-      content: props.contentRef(),
-      fitViewport: props.fitViewport ?? false,
-      gutter: props.gutter ?? 0,
-      open: props.open(),
-      overflowPadding: props.overflowPadding ?? 8,
-      placement: props.placement ?? "bottom",
-      positioner: positionerRef(),
-      sameWidth: props.sameWidth ?? false,
-    }),
+    () => {
+      const element = props.anchorRef();
+      const rect = props.open() ? props.getAnchorRect?.() : undefined;
+      const anchor: HTMLElement | VirtualElement | undefined = rect
+        ? {
+            contextElement: element,
+            getBoundingClientRect: () => ({
+              ...rect,
+              top: rect.y,
+              left: rect.x,
+              right: rect.x + rect.width,
+              bottom: rect.y + rect.height,
+            }),
+          }
+        : element;
+      return {
+        anchor,
+        content: props.contentRef(),
+        fitViewport: props.fitViewport ?? false,
+        gutter: props.gutter ?? 0,
+        open: props.open(),
+        overflowPadding: props.overflowPadding ?? 8,
+        placement: props.placement ?? "bottom",
+        positioner: positionerRef(),
+        sameWidth: props.sameWidth ?? false,
+      };
+    },
     (snapshot) => {
       if (!snapshot.open) {
         if (snapshot.positioner) snapshot.positioner.style.visibility = "hidden";

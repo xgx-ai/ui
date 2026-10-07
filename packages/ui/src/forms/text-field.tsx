@@ -32,7 +32,7 @@ type TextFieldContextValue = {
   value: () => string | undefined;
 };
 
-const TextFieldContext = createContext<TextFieldContextValue>();
+const TextFieldContext = createContext<TextFieldContextValue | null>(null);
 
 function useTextFieldContext() {
   return useContext(TextFieldContext);

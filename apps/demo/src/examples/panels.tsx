@@ -43,7 +43,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   ErrorAlert,
   FileDropzone,
@@ -1650,6 +1654,8 @@ export function NavigationPanel(props: {
 }
 
 export function FormsPanel() {
+  const [requestName, setRequestName] = createSignal("");
+  const [decisionNotes, setDecisionNotes] = createSignal("");
   const [reviewerEmail, setReviewerEmail] = createSignal("missing-domain");
   const generatedForm = createForm(
     z.object({
@@ -1680,11 +1686,19 @@ export function FormsPanel() {
           <CardDescription>Labels, helper text, error text, disabled state.</CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
-          <TextField>
-            <TextFieldLabel>Request name</TextFieldLabel>
-            <TextFieldInput placeholder="Operational review" />
-            <TextFieldDescription>Use concise names that scan well in tables.</TextFieldDescription>
-          </TextField>
+          <div class="flex flex-col gap-1.5">
+            <TextFieldLabel for="request-name">Request name</TextFieldLabel>
+            <TextFieldInput
+              id="request-name"
+              aria-describedby="request-name-description"
+              placeholder="Operational review"
+              value={requestName()}
+              onInput={(event) => setRequestName(event.currentTarget.value.trimStart())}
+            />
+            <TextFieldDescription id="request-name-description">
+              Use concise names that scan well in tables.
+            </TextFieldDescription>
+          </div>
           <TextField validationState="invalid">
             <TextFieldLabel>Reviewer email</TextFieldLabel>
             <TextFieldInput
@@ -1694,7 +1708,10 @@ export function FormsPanel() {
             />
             <TextFieldErrorMessage>Enter a valid reviewer email.</TextFieldErrorMessage>
           </TextField>
-          <TextField>
+          <TextField
+            value={decisionNotes()}
+            onChange={(value) => setDecisionNotes(value.trimStart())}
+          >
             <TextFieldLabel>Decision notes</TextFieldLabel>
             <TextFieldTextArea placeholder="Summarise the decision context" />
           </TextField>
@@ -2661,6 +2678,12 @@ export function WorkflowsPanel(props: {
 }
 
 export function OverlaysPanel() {
+  const [popoverAnchor, setPopoverAnchor] = createSignal<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>();
   const [defaultArchived, setDefaultArchived] = createSignal(false);
   const [customArchived, setCustomArchived] = createSignal(false);
   const [dialogOpen, setDialogOpen] = createSignal(false);
@@ -2714,11 +2737,61 @@ export function OverlaysPanel() {
             <DropdownMenuContent>
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Assign owner</DropdownMenuItem>
-              <DropdownMenuItem>Duplicate record</DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toast.success("Owner assigned");
+                }}
+              >
+                Assign owner
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger onClick={(event) => event.stopPropagation()}>
+                  Record tools
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem disabled onClick={() => toast.error("Locked action ran")}>
+                      Locked record
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toast.success("Record duplicated");
+                      }}
+                    >
+                      Duplicate record
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger disabled>Unavailable tools</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem>Unavailable action</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuItem>Archive</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Popover placement="bottom-start" gutter={8} getAnchorRect={popoverAnchor}>
+            <PopoverTrigger
+              data-testid="pointer-popover-trigger"
+              class="inline-flex h-20 w-60 items-center justify-center rounded-md border border-input text-xs"
+              onClick={(event) =>
+                setPopoverAnchor(
+                  event.detail > 0
+                    ? { x: event.clientX, y: event.clientY, width: 0, height: 0 }
+                    : undefined,
+                )
+              }
+            >
+              Point-anchored details
+            </PopoverTrigger>
+            <PopoverContent data-testid="pointer-popover-content" class="w-44">
+              Details open at the pointer, or below the trigger when using a keyboard.
+            </PopoverContent>
+          </Popover>
           <Dialog open={dialogOpen()} onOpenChange={setDialogOpen}>
             <DialogTemplate
               class="w-full max-w-md"

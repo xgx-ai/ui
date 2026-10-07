@@ -1140,16 +1140,24 @@ function createInfiniteDescriptorQuery<TPage, TPageParam>(
     return target.getNextPageParam(lastPage, value.pages, lastPageParam);
   };
 
-  const [fetchingNextPage, setFetchingNextPage] = createOptimistic(false);
-  let activeNextPage: { hash: string; promise: Promise<void> } | undefined;
+  const [pendingPageKeys, setPendingPageKeys] = createSignal<ReadonlySet<string>>(
+    new Set(),
+    internalWritableOptions,
+  );
+  const activeNextPages = new Map<string, Promise<void>>();
+  const fetchingNextPage = () => {
+    const target = descriptor();
+    return target !== null && pendingPageKeys().has(stableQueryKey(target.key));
+  };
 
-  const runNextPage = action(function* (
+  // Pagination is a read, not an optimistic mutation. A suspended action would
+  // hold later filter reads on its previous snapshot (S10 in the beta register).
+  const runNextPage = async (
     target: InfiniteDescriptor<TPage, TPageParam>,
     pageParam: TPageParam,
-  ) {
-    setFetchingNextPage(true);
+  ): Promise<void> => {
     const controller = new AbortController();
-    const page = yield target.fetch({
+    const page = await target.fetch({
       pageParam,
       queryKey: target.key,
       signal: controller.signal,
@@ -1159,23 +1167,30 @@ function createInfiniteDescriptorQuery<TPage, TPageParam>(
     if (!current) return;
     client.setQueryData<InfiniteData<TPage, TPageParam>>(target.key, {
       pageParams: [...current.pageParams, pageParam],
-      pages: [...current.pages, page as TPage],
+      pages: [...current.pages, page],
     });
-  });
+  };
 
   const fetchNextPage = () => {
     const target = untrack(descriptor);
     if (!target) return Promise.resolve();
     const hash = stableQueryKey(target.key);
-    if (activeNextPage?.hash === hash) return activeNextPage.promise;
+    const active = activeNextPages.get(hash);
+    if (active) return active;
 
     const pageParam = nextPageParam(readEntry(target));
     if (pageParam === undefined) return Promise.resolve();
 
+    setPendingPageKeys((current) => new Set([...current, hash]));
     const promise = runNextPage(target, pageParam).finally(() => {
-      if (activeNextPage?.promise === promise) activeNextPage = undefined;
+      activeNextPages.delete(hash);
+      setPendingPageKeys((current) => {
+        const next = new Set(current);
+        next.delete(hash);
+        return next;
+      });
     });
-    activeNextPage = { hash, promise };
+    activeNextPages.set(hash, promise);
     return promise;
   };
 
