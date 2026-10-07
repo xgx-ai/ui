@@ -33,7 +33,15 @@ const Card: Component<CardProps> = (props) => {
 const CardHeader: Component<ComponentProps<"div">> = (props) => {
   const local = props;
   const others = omit(props, "class");
-  return <div class={cn("flex flex-col space-y-1 p-4", local.class)} {...others} />;
+  return (
+    <div
+      class={cn(
+        "flex flex-col space-y-1 p-[var(--card-padding,calc(var(--spacing)*4))]",
+        local.class,
+      )}
+      {...others}
+    />
+  );
 };
 
 const CardTitle: Component<ComponentProps<"h3">> = (props) => {
@@ -51,13 +59,29 @@ const CardDescription: Component<ComponentProps<"p">> = (props) => {
 const CardContent: Component<ComponentProps<"div">> = (props) => {
   const local = props;
   const others = omit(props, "class");
-  return <div class={cn("p-4 pt-0", local.class)} {...others} />;
+  return (
+    <div
+      class={cn(
+        "p-[var(--card-padding,calc(var(--spacing)*4))] pt-[var(--card-section-gap,0px)]",
+        local.class,
+      )}
+      {...others}
+    />
+  );
 };
 
 const CardFooter: Component<ComponentProps<"div">> = (props) => {
   const local = props;
   const others = omit(props, "class");
-  return <div class={cn("flex items-center p-4 pt-0", local.class)} {...others} />;
+  return (
+    <div
+      class={cn(
+        "flex items-center p-[var(--card-padding,calc(var(--spacing)*4))] pt-[var(--card-section-gap,0px)]",
+        local.class,
+      )}
+      {...others}
+    />
+  );
 };
 
 /**

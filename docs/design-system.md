@@ -45,15 +45,17 @@ Control tokens are independent from brand tokens:
 --control-border: var(--border-subtle);
 ```
 
-Button and control shape tokens are optional; each falls back to the library default:
+Button, card and control shape tokens are optional. Each falls back to the exact value the component used before (`rounded-md`, `h-10`, `px-4`, `p-4`, `pt-0`), so apps that set nothing are unchanged:
 
 ```css
 --button: var(--primary); /* default Button fill */
 --button-foreground: var(--primary-foreground);
---button-radius: calc(var(--radius) - 2px);
---button-height: 2.5rem; /* default Button size */
---button-padding-x: 1rem;
+--button-radius: var(--radius-md);
+--button-height: calc(var(--spacing) * 10); /* default Button size */
+--button-padding-x: calc(var(--spacing) * 4);
 --control-font-size: 0.8125rem; /* xgx-control-text-sm and -md */
+--card-padding: calc(var(--spacing) * 4); /* CardHeader, CardContent and CardFooter */
+--card-section-gap: 0px; /* top padding of CardContent and CardFooter */
 ```
 
 Typography role classes (`xgx-text-*`, `xgx-control-text-*`) sit in `@layer components`, so a size utility passed through `class` overrides the role's size.

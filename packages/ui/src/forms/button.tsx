@@ -20,7 +20,7 @@ import { Spinner } from "../feedback/spinner.tsx";
 import type { PolymorphicProps } from "../utils/polymorphic";
 
 const buttonVariants = cva(
-  "cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--button-radius,calc(var(--radius)_-_2px))] font-medium ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--button-radius,var(--radius-md))] font-medium ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -42,7 +42,7 @@ const buttonVariants = cva(
       },
       size: {
         default:
-          "xgx-control-text-md h-[var(--button-height,2.5rem)] px-[var(--button-padding-x,1rem)] py-2",
+          "xgx-control-text-md h-[var(--button-height,calc(var(--spacing)*10))] px-[var(--button-padding-x,calc(var(--spacing)*4))] py-2",
         sm: "xgx-control-text-sm h-8 px-3",
         lg: "xgx-control-text-md h-11 px-8",
         icon: "size-10",
