@@ -193,6 +193,7 @@ import {
 import { z } from "zod";
 import { AccordionDemo } from "./accordion-demo";
 import { NestedLayersDemo } from "./layers-demo";
+import { ResponseDialogLifecycleDemo } from "./response-dialog-demo";
 
 import {
   type AsyncQueueItem,
@@ -2900,6 +2901,7 @@ export function OverlaysPanel() {
         </CardContent>
       </Card>
       <NestedLayersDemo />
+      <ResponseDialogLifecycleDemo />
       <DialogResponse />
     </div>
   );
