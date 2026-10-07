@@ -86,3 +86,59 @@ test("hovered submenus close on sibling actions and disabled submenus stay close
   await expect(page.getByRole("menu")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("Escape on a closed submenu trigger closes the parent menu and restores trigger focus", async ({
+  page,
+}) => {
+  const errors = observeErrors(page);
+  await page.goto("#overlays");
+  const trigger = page.getByRole("button", { name: "Menu", exact: true });
+  await trigger.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("menuitem", { name: "Assign owner", exact: true })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  const submenu = page.getByRole("menuitem", { name: "Record tools", exact: true });
+  await expect(submenu).toBeFocused();
+  await expect(submenu).toHaveAttribute("aria-expanded", "false");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  expect(errors).toEqual([]);
+});
+
+test("pointer-opened submenus leave focus in the parent menu", async ({ page }) => {
+  const errors = observeErrors(page);
+  await page.goto("#overlays");
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  const assign = page.getByRole("menuitem", { name: "Assign owner", exact: true });
+  await expect(assign).toBeFocused();
+  const submenu = page.getByRole("menuitem", { name: "Record tools", exact: true });
+  await submenu.hover();
+  await expect(page.getByRole("menuitem", { name: "Duplicate record", exact: true })).toBeVisible();
+  await expect(assign).toBeFocused();
+  await page.getByRole("menuitem", { name: "Archive", exact: true }).hover();
+  await expect(page.getByRole("menu")).toHaveCount(1);
+  await expect(assign).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(submenu).toBeFocused();
+  expect(errors).toEqual([]);
+});
+
+test("closing a keyboard-opened submenu by pointer keeps focus in the menu", async ({ page }) => {
+  const errors = observeErrors(page);
+  await page.goto("#overlays");
+  const trigger = page.getByRole("button", { name: "Menu", exact: true });
+  await trigger.focus();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  const submenu = page.getByRole("menuitem", { name: "Record tools", exact: true });
+  await expect(submenu).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("menuitem", { name: "Duplicate record", exact: true })).toBeFocused();
+  await page.getByRole("menuitem", { name: "Archive", exact: true }).hover();
+  await expect(page.getByRole("menu")).toHaveCount(1);
+  await expect(submenu).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("menuitem", { name: "Archive", exact: true })).toBeFocused();
+  expect(errors).toEqual([]);
+});

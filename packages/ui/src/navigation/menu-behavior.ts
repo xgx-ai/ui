@@ -8,11 +8,16 @@ type MenuKeyboardOptions = {
 const defaultItemSelector =
   "[role='menuitem']:not([data-disabled]), [role='menuitemcheckbox']:not([data-disabled]), [role='menuitemradio']:not([data-disabled])";
 
+/**
+ * The enabled items that belong to `root`, skipping items of menus nested inside it, such as
+ * an unportalled submenu. `root` is usually the `[role=menu]` element, but any container works.
+ */
 export function getMenuItems(root: HTMLElement | undefined, selector = defaultItemSelector) {
   if (!root) return [];
-  return Array.from(root.querySelectorAll<HTMLElement>(selector)).filter(
-    (item) => item.closest("[role=menu]") === root,
-  );
+  return Array.from(root.querySelectorAll<HTMLElement>(selector)).filter((item) => {
+    const menu = item.closest("[role=menu]");
+    return menu === root || !menu || !root.contains(menu);
+  });
 }
 
 export function focusFirstMenuItem(root: HTMLElement | undefined, selector = defaultItemSelector) {

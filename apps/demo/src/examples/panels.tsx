@@ -192,6 +192,7 @@ import {
 } from "solid-js";
 import { z } from "zod";
 import { AccordionDemo } from "./accordion-demo";
+import { NestedLayersDemo } from "./layers-demo";
 
 import {
   type AsyncQueueItem,
@@ -2898,6 +2899,7 @@ export function OverlaysPanel() {
           </FilterPopover>
         </CardContent>
       </Card>
+      <NestedLayersDemo />
       <DialogResponse />
     </div>
   );

@@ -13,6 +13,8 @@ import {
 interface DropdownMoreItemsProps extends Omit<ComponentProps<"div">, "children"> {
   children: JSX.Element;
   triggerClass?: string;
+  /** Accessible name for the icon-only trigger. Defaults to "More actions". */
+  triggerLabel?: string;
   contentClass?: string;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -45,11 +47,12 @@ interface DropdownMoreItemsProps extends Omit<ComponentProps<"div">, "children">
  */
 const DropdownMoreItems: Component<DropdownMoreItemsProps> = (props) => {
   const local = props;
-  const rest = omit(props, "placement", "triggerClass", "contentClass", "children");
+  const rest = omit(props, "placement", "triggerClass", "triggerLabel", "contentClass", "children");
 
   return (
     <DropdownMenu placement={local.placement || "bottom"} {...rest}>
       <DropdownMenuTrigger
+        aria-label={local.triggerLabel ?? "More actions"}
         class={cn(
           "flex h-6 w-6 cursor-pointer items-center justify-center rounded-md p-0.5 text-muted-foreground transition-colors hover:bg-hover hover:text-hover-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
           local.triggerClass,

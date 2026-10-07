@@ -43,12 +43,16 @@ test("dropdown menu supports arrows, typeahead, and activation", async ({ page }
     .poll(() => page.evaluate(() => document.activeElement?.textContent?.trim()))
     .toBe("Assign owner");
 
-  await page.keyboard.press("d");
+  await page.keyboard.press("r");
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.textContent?.trim()))
+    .toBe("Record tools");
+  await page.keyboard.press("Enter");
   await expect
     .poll(() => page.evaluate(() => document.activeElement?.textContent?.trim()))
     .toBe("Duplicate record");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("menu")).toBeHidden();
+  await expect(page.getByRole("menu")).toHaveCount(0);
 });
 
 test("dialog traps focus, closes on Escape, and restores focus", async ({ page }) => {

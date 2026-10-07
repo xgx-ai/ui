@@ -16,11 +16,13 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createEffect, createSignal, omit, Show, useContext } from "solid-js";
+import { createContext, createSignal, omit, onSettled, Show, useContext } from "solid-js";
 import { cn } from "../cn";
 import { Check, ChevronRight, Circle } from "../icons.index";
-import { containsNode } from "../overlays/floating";
+import { createDismissableLayer, DismissableLayerContext } from "../overlays/dismissable-layer";
+import { assignRef } from "../overlays/floating";
 import { PortalMount } from "../overlays/portal";
+import { callEventHandler } from "../utils/event-handler";
 import { createMenuKeyboard, focusFirstMenuItem } from "./menu-behavior";
 
 type Menubar = {
@@ -33,7 +35,7 @@ type Menubar = {
   triggerRef: () => HTMLElement | undefined;
 };
 
-const MenubarMenuContext = createContext<Menubar>();
+const MenubarMenuContext = createContext<Menubar | null>(null);
 
 function useMenubarMenu() {
   const context = useContext(MenubarMenuContext);
@@ -64,57 +66,41 @@ type MenubarMenuProps = ComponentProps<"div"> & {
 };
 
 const MenubarMenu = (props: MenubarMenuProps) => {
-  let root: HTMLDivElement | undefined;
   const local = props;
   const others = omit(props, "children", "class");
   const [open, setOpen] = createSignal(false);
+  const [rootRef, setRootRef] = createSignal<HTMLDivElement>();
   const [contentRef, setContentRef] = createSignal<HTMLElement>();
   const [triggerRef, setTriggerRef] = createSignal<HTMLElement>();
 
-  createEffect(open, (isOpen) => {
-    if (!isOpen) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (!containsNode(root, target) && !containsNode(contentRef(), target)) {
-        setOpen(false);
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        triggerRef()?.focus();
-      }
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
+  const layer = createDismissableLayer({
+    open,
+    elements: () => [rootRef(), contentRef()],
+    onPointerDownOutside: () => setOpen(false),
+    onEscapeKeyDown: () => {
+      setOpen(false);
+      triggerRef()?.focus();
+    },
   });
 
   return (
-    <MenubarMenuContext
-      value={{
-        close: () => setOpen(false),
-        contentRef,
-        open,
-        setContentRef,
-        setOpen,
-        setTriggerRef,
-        triggerRef,
-      }}
-    >
-      <div
-        ref={(element) => {
-          root = element;
+    <DismissableLayerContext value={layer}>
+      <MenubarMenuContext
+        value={{
+          close: () => setOpen(false),
+          contentRef,
+          open,
+          setContentRef,
+          setOpen,
+          setTriggerRef,
+          triggerRef,
         }}
-        class={cn("relative", local.class)}
-        {...others}
       >
-        {local.children}
-      </div>
-    </MenubarMenuContext>
+        <div ref={setRootRef} class={cn("relative", local.class)} {...others}>
+          {local.children}
+        </div>
+      </MenubarMenuContext>
+    </DismissableLayerContext>
   );
 };
 
@@ -125,20 +111,17 @@ const MenubarTrigger = (props: MenubarTriggerProps) => {
   const local = props;
   const others = omit(props, "class", "onClick", "onKeyDown", "ref", "type");
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
-    const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
-    handler?.(event);
+    callEventHandler(local.onClick, event);
     if (!event.defaultPrevented) menu.setOpen(!menu.open());
   };
   const onKeyDown: JSX.EventHandler<HTMLButtonElement, KeyboardEvent> = (event) => {
-    const handler = local.onKeyDown as
-      | JSX.EventHandler<HTMLButtonElement, KeyboardEvent>
-      | undefined;
-    handler?.(event);
+    callEventHandler(local.onKeyDown, event);
     if (event.defaultPrevented) return;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      menu.setOpen(true);
-      requestAnimationFrame(() => focusFirstMenuItem(menu.contentRef()));
+      // Opening focuses the first item once the content mounts.
+      if (menu.open()) focusFirstMenuItem(menu.contentRef());
+      else menu.setOpen(true);
     }
   };
 
@@ -155,8 +138,7 @@ const MenubarTrigger = (props: MenubarTriggerProps) => {
       onKeyDown={onKeyDown}
       ref={(element) => {
         menu.setTriggerRef(element);
-        const ref = local.ref;
-        if (typeof ref === "function") ref(element);
+        assignRef(local.ref, element);
       }}
       {...others}
     />
@@ -174,42 +156,47 @@ type MenubarContentProps = ComponentProps<"div">;
 
 const MenubarContent = (props: MenubarContentProps) => {
   const menu = useMenubarMenu();
+  return (
+    <Show when={menu.open()}>
+      <MenubarPanel {...props} />
+    </Show>
+  );
+};
+
+/** The mounted menu. Each opening mounts a fresh panel, which focuses its first item once. */
+const MenubarPanel = (props: MenubarContentProps) => {
+  const menu = useMenubarMenu();
   const local = props;
   const others = omit(props, "class", "onKeyDown", "ref");
+  let element: HTMLDivElement | undefined;
   const menuKeyboard = createMenuKeyboard({
     close: menu.close,
     root: menu.contentRef,
     trigger: menu.triggerRef,
   });
   const onKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (event) => {
-    const handler = local.onKeyDown as JSX.EventHandler<HTMLDivElement, KeyboardEvent> | undefined;
-    handler?.(event);
+    callEventHandler(local.onKeyDown, event);
     menuKeyboard(event);
   };
 
-  createEffect(menu.open, (open) => {
-    if (open) requestAnimationFrame(() => focusFirstMenuItem(menu.contentRef()));
-  });
+  onSettled(() => focusFirstMenuItem(element));
 
   return (
-    <Show when={menu.open()}>
-      <div
-        role="menu"
-        tabindex={-1}
-        ref={(element) => {
-          menu.setContentRef(element);
-          const ref = local.ref;
-          if (typeof ref === "function") ref(element);
-          requestAnimationFrame(() => focusFirstMenuItem(element));
-        }}
-        class={cn(
-          "absolute left-0 top-full z-50 mt-1 min-w-48 overflow-hidden rounded-md border border-border-subtle bg-popover p-1 text-popover-foreground shadow-elevation-medium",
-          local.class,
-        )}
-        onKeyDown={onKeyDown}
-        {...others}
-      />
-    </Show>
+    <div
+      role="menu"
+      tabindex={-1}
+      ref={(node) => {
+        element = node;
+        menu.setContentRef(node);
+        assignRef(local.ref, node);
+      }}
+      class={cn(
+        "absolute left-0 top-full z-50 mt-1 min-w-48 overflow-hidden rounded-md border border-border-subtle bg-popover p-1 text-popover-foreground shadow-elevation-medium",
+        local.class,
+      )}
+      onKeyDown={onKeyDown}
+      {...others}
+    />
   );
 };
 
@@ -226,8 +213,7 @@ const MenubarItem = (props: MenubarItemProps) => {
   const local = props;
   const others = omit(props, "class", "closeOnSelect", "disabled", "inset", "onClick");
   const onClick: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
-    const handler = local.onClick as JSX.EventHandler<HTMLDivElement, MouseEvent> | undefined;
-    handler?.(event);
+    callEventHandler(local.onClick, event);
     if (!event.defaultPrevented && !local.disabled && local.closeOnSelect !== false) {
       menu.close();
     }

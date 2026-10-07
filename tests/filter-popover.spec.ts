@@ -42,7 +42,7 @@ test("filter styling stays configurable while counts update and reset", async ({
   const trigger = page.getByRole("button", { name: "Filter records", exact: true });
   const count = trigger.locator("[data-filter-count]");
   const content = page.getByTestId("custom-filter-content");
-  await expect(defaultTrigger).toHaveClass(/h-10/);
+  await expect(defaultTrigger).toHaveClass(/--button-height/);
   await expect(defaultTrigger).not.toHaveClass(/rounded-full/);
   await expect(trigger).toHaveClass(/rounded-full/);
   await expect(trigger).toHaveClass(/h-8/);
