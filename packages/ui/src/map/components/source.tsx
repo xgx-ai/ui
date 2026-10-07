@@ -19,14 +19,15 @@ interface SourceContextValue {
   registerLayer: (id: string) => () => void;
 }
 
-const SourceContext = createContext<SourceContextValue | undefined>(undefined);
+// Solid 2 treats an undefined default as missing (S7), so layers outside a Source read null.
+const SourceContext = createContext<SourceContextValue | null>(null);
 
 export function useSourceId(): string {
   return useContext(SourceContext)?.id ?? "";
 }
 
 export function useSourceRegistration(): SourceContextValue | undefined {
-  return useContext(SourceContext);
+  return useContext(SourceContext) ?? undefined;
 }
 
 function sourceSpecification(props: SourceProps): SourceSpecification {

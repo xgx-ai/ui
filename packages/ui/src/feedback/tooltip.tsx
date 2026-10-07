@@ -39,7 +39,7 @@ type TooltipContextValue = {
   trigger: () => HTMLElement | undefined;
 };
 
-const TooltipContext = createContext<TooltipContextValue>();
+const TooltipContext = createContext<TooltipContextValue | null>(null);
 
 function useTooltip() {
   const context = useContext(TooltipContext);

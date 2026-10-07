@@ -56,7 +56,7 @@ type NumberFieldContextValue = {
   varyValue: (direction: 1 | -1) => void;
 };
 
-const NumberFieldContext = createContext<NumberFieldContextValue>();
+const NumberFieldContext = createContext<NumberFieldContextValue | null>(null);
 
 function useNumberFieldContext() {
   const context = useContext(NumberFieldContext);

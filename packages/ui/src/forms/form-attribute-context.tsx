@@ -5,9 +5,10 @@ import type { TextFieldFormProps } from "./form-components/text-field-form";
 
 type TextFieldFormExtendedProps = Partial<TextFieldFormProps> & JSX.IntrinsicElements["input"];
 
+// Optional: fields read extra attributes only when a provider supplies them.
 const FormAttributeContext = createContext<{
   props: TextFieldFormExtendedProps;
-}>();
+} | null>(null);
 
 export const FormAttributeProvider = (
   props: TextFieldFormExtendedProps & { children?: JSX.Element },

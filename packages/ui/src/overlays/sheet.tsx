@@ -36,7 +36,7 @@ type SheetContextValue = {
   titleId: string;
 };
 
-const SheetContext = createContext<SheetContextValue>();
+const SheetContext = createContext<SheetContextValue | null>(null);
 
 function useSheet() {
   const context = useContext(SheetContext);

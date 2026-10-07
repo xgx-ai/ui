@@ -27,7 +27,7 @@ type HoverCardContextValue = {
   trigger: () => HTMLElement | undefined;
 };
 
-const HoverCardContext = createContext<HoverCardContextValue>();
+const HoverCardContext = createContext<HoverCardContextValue | null>(null);
 
 function useHoverCard() {
   const context = useContext(HoverCardContext);

@@ -61,7 +61,7 @@ interface SortableContextValue<T = unknown> {
   onReorder?: (event: ReorderEvent<T>) => void;
 }
 
-const SortableContext = createContext<SortableContextValue>();
+const SortableContext = createContext<SortableContextValue | null>(null);
 
 /**
  * Props for SortableProvider

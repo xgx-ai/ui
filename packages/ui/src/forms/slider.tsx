@@ -29,7 +29,7 @@ type SliderContextValue = {
   value: () => number;
 };
 
-const SliderContext = createContext<SliderContextValue>();
+const SliderContext = createContext<SliderContextValue | null>(null);
 
 function useSliderContextValue() {
   const context = useContext(SliderContext);

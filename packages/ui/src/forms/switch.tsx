@@ -21,7 +21,7 @@ type SwitchContextValue = {
   disabled: () => boolean;
 };
 
-const SwitchContext = createContext<SwitchContextValue>();
+const SwitchContext = createContext<SwitchContextValue | null>(null);
 
 function useSwitchContextValue() {
   return useContext(SwitchContext);

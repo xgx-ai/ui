@@ -100,8 +100,8 @@ type SearchContextValue = {
   triggerMode: () => "focus" | "input";
 };
 
-const SearchContext = createContext<SearchContextValue>();
-const SearchItemContext = createContext<SearchOption>();
+const SearchContext = createContext<SearchContextValue | null>(null);
+const SearchItemContext = createContext<SearchOption | null>(null);
 
 export function useSearchContext() {
   const context = useContext(SearchContext);
@@ -110,7 +110,7 @@ export function useSearchContext() {
 }
 
 export function useSearchItemContext() {
-  return useContext(SearchItemContext);
+  return useContext(SearchItemContext) ?? undefined;
 }
 
 const getOptionValue = <T,>(option: T, getter: OptionGetter<T, unknown> | undefined) => {
