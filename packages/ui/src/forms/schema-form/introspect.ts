@@ -159,7 +159,7 @@ export function introspectSchema(objectSchema: ZodSchema): Record<string, FieldM
     throw new Error("introspectSchema expects a z.object() schema");
   }
 
-  const jsonSchema = z.toJSONSchema(objectSchema) as JsonSchema;
+  const jsonSchema = z.toJSONSchema(objectSchema, { unrepresentable: "any" }) as JsonSchema;
   const properties = jsonSchema.properties ?? {};
   const result: Record<string, FieldMeta> = {};
   for (const [key, fieldSchema] of Object.entries(shape)) {

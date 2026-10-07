@@ -26,6 +26,8 @@ const solidSsrRuntimePlugin: Bun.BunPlugin = {
 const entrypoints = [
   path.join(import.meta.dir, "map.spec.ts"),
   path.join(import.meta.dir, "workspace.spec.ts"),
+  path.join(import.meta.dir, "table-state.spec.ts"),
+  path.join(import.meta.dir, "schema-form.spec.ts"),
 ];
 const ssrEntrypoint = path.join(import.meta.dir, "map-ssr.spec.ts");
 

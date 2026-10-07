@@ -8,7 +8,7 @@ import type { CreateFormOptions, FormInstance, FormProps } from "./types.ts";
 
 export function createForm<Schema extends z.ZodType<Record<string, unknown>>>(
   schema: Schema,
-  options?: CreateFormOptions,
+  options?: CreateFormOptions<z.output<Schema>>,
 ): FormInstance<z.output<Schema>> {
   type FormValues = z.output<Schema>;
   const form = createFormCore<FormValues>(schema as unknown as z.ZodType<FormValues>, options);

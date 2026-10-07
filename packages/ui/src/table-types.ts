@@ -2,6 +2,8 @@ import type { JSX } from "@solidjs/web";
 import type { Accessor } from "solid-js";
 
 export type SortDirection = false | "asc" | "desc";
+export type TableSortingState = { id: string; desc: boolean }[];
+export type TableUpdater<T> = T | ((previous: T) => T);
 
 export interface TableColumnMeta {
   displayName?: string;
@@ -51,6 +53,7 @@ export interface ColumnDef<TData, TValue = unknown> {
   cell?: TableCellRenderer<TData, TValue>;
   size?: number;
   enableSorting?: boolean;
+  sortDescFirst?: boolean;
   enableHiding?: boolean;
   meta?: TableColumnMeta;
 }

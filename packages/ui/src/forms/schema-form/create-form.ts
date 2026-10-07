@@ -1,5 +1,5 @@
 import { createMemo, createSignal, createStore, deep, snapshot } from "solid-js";
-import type { z } from "zod";
+import { z } from "zod";
 import { getSchemaDefaults, introspectSchema } from "./introspect.ts";
 import type { CreateFormOptions, FieldBinding, FieldMeta, FormInstance } from "./types.ts";
 
@@ -17,7 +17,7 @@ type ParseResult<T> =
 
 export function createForm<T extends Record<string, unknown>>(
   schema: ZodSchema<T>,
-  options?: CreateFormOptions,
+  options?: CreateFormOptions<T>,
 ): FormInstance<T> {
   const meta = introspectSchema(schema);
   const fieldNames = Object.keys(meta);
@@ -38,8 +38,11 @@ export function createForm<T extends Record<string, unknown>>(
   const validateOnChange = options?.validateOnChange ?? true;
   const validateOnBlur = options?.validateOnBlur ?? true;
 
-  function parseValues(values: Record<string, unknown>): ParseResult<T> {
-    const result = schema.safeParse(values);
+  function parseValues(
+    values: Record<string, unknown>,
+    validationSchema: ZodSchema<T> = schema,
+  ): ParseResult<T> {
+    const result = validationSchema.safeParse(values);
     if (result.success) {
       return { success: true, data: result.data as T, errors: {} };
     }
@@ -61,8 +64,11 @@ export function createForm<T extends Record<string, unknown>>(
     });
   }
 
-  function validate(values = snapshot(state).values): ParseResult<T> {
-    const result = parseValues(values);
+  function validate(
+    values = snapshot(state).values,
+    validationSchema: ZodSchema<T> = schema,
+  ): ParseResult<T> {
+    const result = parseValues(values, validationSchema);
     setErrors(result.errors);
     return result;
   }
@@ -141,7 +147,7 @@ export function createForm<T extends Record<string, unknown>>(
         }
       });
 
-      const result = validate(submittedValues);
+      const result = validate(submittedValues, options?.submitSchema ?? schema);
       if (!result.success) {
         onError?.(result.errors);
         return;
@@ -228,6 +234,10 @@ function resolveInputType(meta: FieldMeta | undefined): string | undefined {
 type ZodIssue = any;
 
 function humaniseError(issue: ZodIssue, fieldMeta: FieldMeta | undefined): string {
+  const localeError = z.config().localeError?.(issue);
+  const defaultMessage = typeof localeError === "string" ? localeError : localeError?.message;
+  if (issue.message && issue.message !== defaultMessage) return issue.message;
+
   const label = fieldMeta?.label ?? issue.path?.[0] ?? "This field";
   const code = issue.code as string | undefined;
 

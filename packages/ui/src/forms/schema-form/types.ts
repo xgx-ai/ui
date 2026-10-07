@@ -1,5 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import type { Accessor, Component } from "solid-js";
+import type { z } from "zod";
 
 export interface FieldMeta {
   type: "string" | "number" | "boolean" | "enum" | "string-array" | "object-array";
@@ -45,11 +46,13 @@ export interface FieldBinding<T = unknown> {
   autocomplete?: string;
 }
 
-export interface CreateFormOptions {
+export interface CreateFormOptions<T extends Record<string, unknown> = Record<string, unknown>> {
   validateOnChange?: boolean;
   validateOnBlur?: boolean;
   initialValues?: Record<string, unknown>;
   disabled?: boolean;
+  /** Schema used for submit validation; defaults to the field schema. */
+  submitSchema?: z.ZodType<T>;
 }
 
 export interface FormInstance<T extends Record<string, unknown>> {
