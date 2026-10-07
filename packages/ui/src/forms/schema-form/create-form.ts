@@ -74,7 +74,7 @@ export function createForm<T extends Record<string, unknown>>(
   }
 
   function setFieldValue(name: string, value: unknown) {
-    const nextValues = { ...state.values, [name]: value };
+    const nextValues = { ...snapshot(state).values, [name]: value };
     setState((draft) => {
       draft.values[name] = value;
     });
@@ -138,7 +138,7 @@ export function createForm<T extends Record<string, unknown>>(
   ) {
     return async (event?: Event) => {
       event?.preventDefault();
-      const submittedValues = readSubmittedValues(event, state.values, meta, fieldNames);
+      const submittedValues = readSubmittedValues(event, snapshot(state).values, meta, fieldNames);
 
       setState((draft) => {
         draft.values = submittedValues;

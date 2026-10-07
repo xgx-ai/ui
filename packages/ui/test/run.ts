@@ -19,8 +19,12 @@ const solidWebServerPath = path.join(
 const solidSsrRuntimePlugin: Bun.BunPlugin = {
   name: "xgx-solid-v2-ssr-runtime",
   setup(build) {
-    build.onResolve({ filter: /^solid-js$/ }, () => ({ path: solidServerPath }));
-    build.onResolve({ filter: /^@solidjs\/web$/ }, () => ({ path: solidWebServerPath }));
+    build.onResolve({ filter: /^solid-js$/ }, () => ({
+      path: solidServerPath,
+    }));
+    build.onResolve({ filter: /^@solidjs\/web$/ }, () => ({
+      path: solidWebServerPath,
+    }));
   },
 };
 const entrypoints = [
@@ -30,6 +34,7 @@ const entrypoints = [
   path.join(import.meta.dir, "schema-form.spec.ts"),
 ];
 const ssrEntrypoint = path.join(import.meta.dir, "map-ssr.spec.ts");
+const calendarEntrypoint = path.join(import.meta.dir, "calendar-context.spec.tsx");
 
 await rm(outDir, { force: true, recursive: true });
 await mkdir(outDir, { recursive: true });
@@ -75,6 +80,25 @@ if (!ssrResult.success) {
   throw new Error("SSR test build failed");
 }
 
+// Controlled props are lazily compiled memos. Keep ownership diagnostics enabled
+// for this regression and execute it in its own runtime, away from the DOM suites.
+const calendarResult = await Bun.build({
+  define: { "process.env.NODE_ENV": JSON.stringify("development") },
+  entrypoints: [calendarEntrypoint],
+  format: "esm",
+  minify: false,
+  outdir: path.join(tmpDir, "calendar"),
+  conditions: ["browser", "development"],
+  plugins: [SolidPlugin({ hmr: true })],
+  target: "bun",
+});
+if (!calendarResult.success) {
+  for (const log of calendarResult.logs) console.error(log);
+  throw new Error("Controlled calendar test build failed");
+}
+const calendarBundle = calendarResult.outputs.find((output) => output.kind === "entry-point");
+if (!calendarBundle) throw new Error("Controlled calendar test bundle is missing");
+
 const bundles = result.outputs.filter((output) => output.kind === "entry-point");
 if (bundles.length !== entrypoints.length) {
   throw new Error("Test build did not emit every JavaScript entrypoint");
@@ -95,6 +119,13 @@ try {
 
   const ssrSpec = await import(pathToFileURL(ssrBundle.path).href);
   await ssrSpec.default();
+
+  const calendarTest = Bun.spawn([process.execPath, calendarBundle.path], {
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  if ((await calendarTest.exited) !== 0)
+    throw new Error("Controlled calendar ownership test failed");
 } finally {
   await rm(tmpDir, { force: true, recursive: true });
 }

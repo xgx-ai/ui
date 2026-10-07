@@ -103,5 +103,45 @@ export default async function runSchemaFormSpec() {
     flush();
     equal(submittedName, "ADAM", "handlers receive the submit schema's parsed values");
   });
+  await withRoot(async () => {
+    const form = createForm(z.object({ name: z.string() }), {
+      initialValues: { name: "old" },
+    });
+    // Inputs and submit are imperative events outside the form's owned setup.
+    await Promise.resolve();
+    form.field("name").onInput("new");
+    let submittedName = "";
+    await form.submit((values) => {
+      submittedName = values.name;
+    })();
+    flush();
+    equal(submittedName, "new", "same-turn field changes reach the submit handler");
+    equal(form.field("name").value(), "new", "submit preserves pending field changes");
+  });
+  await withRoot(async () => {
+    const form = createForm(z.object({ first: z.string().min(1), second: z.string().min(1) }), {
+      initialValues: { first: "", second: "" },
+    });
+    await Promise.resolve();
+    form.field("first").onBlur();
+    form.field("second").onBlur();
+    flush();
+    form.field("first").onInput("one");
+    form.field("second").onInput("two");
+    flush();
+    equal(form.field("first").value(), "one", "same-turn updates retain the first field");
+    equal(form.field("second").value(), "two", "same-turn updates retain the second field");
+    equal(form.isValid(), true, "both updated required fields are valid");
+    equal(
+      form.field("first").errorMessage(),
+      undefined,
+      "validation includes pending first values",
+    );
+    equal(
+      form.field("second").errorMessage(),
+      undefined,
+      "validation includes pending second values",
+    );
+  });
   console.log("ok - schema-form: explicit messages, custom schemas and submit validation");
 }

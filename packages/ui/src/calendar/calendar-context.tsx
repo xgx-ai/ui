@@ -1,7 +1,14 @@
 import type { JSX } from "@solidjs/web";
 import { addDays, addMonths, endOfWeek, startOfMonth, startOfWeek } from "date-fns";
 import type { Accessor } from "solid-js";
-import { createContext, createTrackedEffect, createMemo, createSignal, useContext } from "solid-js";
+import {
+  createContext,
+  createEffect,
+  createMemo,
+  createSignal,
+  untrack,
+  useContext,
+} from "solid-js";
 import type {
   CalendarEvent,
   CalendarViewMode,
@@ -74,27 +81,29 @@ export interface CalendarProviderProps {
 }
 
 export function CalendarProvider(props: CalendarProviderProps) {
-  const weekStartsOn = props.weekStartsOn ?? 1;
+  const weekStartsOn = untrack(() => props.weekStartsOn ?? 1);
 
   const [internalViewMode, setInternalViewMode] = createSignal<CalendarViewMode>(
-    props.viewMode ?? props.defaultViewMode ?? "week",
+    untrack(() => props.viewMode ?? props.defaultViewMode ?? "week"),
   );
   const [internalCurrentDate, setInternalCurrentDate] = createSignal(
-    props.currentDate ?? props.defaultDate ?? new Date(),
+    untrack(() => props.currentDate ?? props.defaultDate ?? new Date()),
   );
   const [selectedEventId, setSelectedEventId] = createSignal<string | null>(null);
 
   // Sync controlled props → internal signals (e.g. browser back/forward)
-  createTrackedEffect(() => {
-    if (props.viewMode !== undefined) {
-      setInternalViewMode(() => props.viewMode!);
-    }
-  });
-  createTrackedEffect(() => {
-    if (props.currentDate !== undefined) {
-      setInternalCurrentDate(() => props.currentDate!);
-    }
-  });
+  createEffect(
+    () => props.viewMode,
+    (mode) => {
+      if (mode !== undefined) setInternalViewMode(mode);
+    },
+  );
+  createEffect(
+    () => props.currentDate,
+    (date) => {
+      if (date !== undefined) setInternalCurrentDate(date);
+    },
+  );
 
   const viewMode = () => internalViewMode();
   const currentDate = () => internalCurrentDate();
