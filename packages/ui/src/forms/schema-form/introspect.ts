@@ -104,6 +104,7 @@ export function introspectField(fieldSchema: ZodSchema, jsonSchema?: JsonSchema)
   };
 
   if (baseType === "string") {
+    result.acceptsEmpty = fieldSchema.safeParse("").success;
     result.format = jsonSchema?.format;
     if (jsonSchema?.minLength != null) result.minimum = jsonSchema.minLength;
     if (jsonSchema?.maxLength != null) result.maximum = jsonSchema.maxLength;

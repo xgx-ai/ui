@@ -141,7 +141,7 @@ export function useResponseDialog() {
                     }
                   }}
                 >
-                  <DialogFooter class="gap-2 pt-1 sm:space-x-0">
+                  <DialogFooter class="gap-2 pt-1 sm:!space-x-0">
                     <Button variant={"outline"} size={"sm"} onClick={() => settleDialog?.(null)}>
                       Cancel
                     </Button>

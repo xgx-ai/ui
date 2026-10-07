@@ -5,6 +5,8 @@ import type { z } from "zod";
 export interface FieldMeta {
   type: "string" | "number" | "boolean" | "enum" | "string-array" | "object-array";
   isOptional: boolean;
+  /** A text field whose schema accepts an empty string, such as a plain `z.string()`. */
+  acceptsEmpty?: boolean;
   defaultValue?: unknown;
   format?: string;
   minimum?: number;

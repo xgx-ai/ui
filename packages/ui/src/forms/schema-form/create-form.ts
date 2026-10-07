@@ -127,7 +127,8 @@ export function createForm<T extends Values, Input = T>(
       onBlur: () => touchField(name),
       validationState: () => (errorMessage() === undefined ? "valid" : "invalid"),
       errorMessage,
-      required: fieldMeta ? !fieldMeta.isOptional : true,
+      // Required means an empty value is rejected, so a plain z.string() is not marked.
+      required: fieldMeta ? !fieldMeta.isOptional && !fieldMeta.acceptsEmpty : true,
       label: fieldMeta?.label,
       placeholder: fieldMeta?.placeholder ?? fieldMeta?.label,
       get disabled() {

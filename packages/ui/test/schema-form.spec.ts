@@ -349,6 +349,32 @@ async function resetAndDisabled() {
   );
 }
 
+async function requiredMarkers() {
+  await withForm(
+    () =>
+      createForm(
+        z.object({
+          name: z.string().min(1),
+          email: z.string().email(),
+          phone: z.string(),
+          role: z.string().optional(),
+          count: z.number(),
+          notes: z.string().default(""),
+        }),
+        { initialValues: { name: "", email: "", phone: "", count: 1 } },
+      ),
+    (form) => {
+      equal(
+        ["name", "email", "phone", "role", "count", "notes"].map(
+          (name) => form.field(name as never).required,
+        ),
+        [true, true, false, false, true, false],
+        "only fields that reject an empty value are required",
+      );
+    },
+  );
+}
+
 export default async function runSchemaFormSpec() {
   const reports: unknown[][] = [];
   const originalWarn = console.warn;
@@ -360,13 +386,14 @@ export default async function runSchemaFormSpec() {
     await derivedValidation();
     await submitValidation();
     await resetAndDisabled();
+    await requiredMarkers();
   } finally {
     console.warn = originalWarn;
     console.error = originalError;
   }
   equal(reports.map(String), [], "schema forms emit no native warnings or errors");
   console.log(
-    "ok - schema-form: humanised messages, derived validation, submit, reset and disabled",
+    "ok - schema-form: humanised messages, derived validation, submit, reset, disabled and required",
   );
 }
 

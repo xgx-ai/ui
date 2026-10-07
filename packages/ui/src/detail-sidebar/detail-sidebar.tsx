@@ -87,8 +87,11 @@ const DetailSidebar: Component<DetailSidebarProps> = (props) => {
           {local.header.initials}
         </div>
         <div class="min-w-0 flex-1">
-          <div class="flex min-w-0 items-center gap-2">
-            <h3 class="truncate text-sm font-medium leading-tight">{local.header.displayName}</h3>
+          {/* Badges wrap below a long name rather than squeezing it to a letter. */}
+          <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <h3 class="min-w-0 max-w-full truncate text-sm font-medium leading-tight">
+              {local.header.displayName}
+            </h3>
             <Show when={local.header.badges && local.header.badges.length > 0}>
               <div class="flex shrink-0 gap-1">
                 <For each={local.header.badges}>
