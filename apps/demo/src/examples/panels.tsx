@@ -2685,6 +2685,7 @@ export function OverlaysPanel() {
     height: number;
   }>();
   const [defaultArchived, setDefaultArchived] = createSignal(false);
+  const [filterStatus, setFilterStatus] = createSignal<string | null>(null);
   const [customArchived, setCustomArchived] = createSignal(false);
   const [dialogOpen, setDialogOpen] = createSignal(false);
   const { showResponseDialog, DialogResponse } = useResponseDialog();
@@ -2847,11 +2848,26 @@ export function OverlaysPanel() {
         </CardHeader>
         <CardContent class="flex flex-wrap gap-3">
           <FilterPopover
-            activeCount={defaultArchived() ? 1 : 0}
-            onReset={() => setDefaultArchived(false)}
+            activeCount={(defaultArchived() ? 1 : 0) + (filterStatus() ? 1 : 0)}
+            onReset={() => {
+              setDefaultArchived(false);
+              setFilterStatus(null);
+            }}
             icon={<Filter />}
             data-testid="default-filter-content"
           >
+            <FilterItem label="Status" direction="column">
+              <Select
+                value={filterStatus()}
+                onChange={setFilterStatus}
+                options={["Active", "Dormant"]}
+              >
+                <SelectTrigger aria-label="Filter status">
+                  <SelectValue<string>>{(state) => state.selectedOption() ?? "All"}</SelectValue>
+                </SelectTrigger>
+                <SelectContent />
+              </Select>
+            </FilterItem>
             <FilterItem label="Include archived records">
               <Checkbox
                 checked={defaultArchived()}

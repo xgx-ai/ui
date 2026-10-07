@@ -66,3 +66,36 @@ test("filter styling stays configurable while counts update and reset", async ({
   await expect(content).toBeHidden();
   await expect(trigger).toHaveAttribute("aria-expanded", "false");
 });
+
+test("selecting a filter keeps its parent popover open after the option unmounts", async ({
+  page,
+}) => {
+  const diagnostics: string[] = [];
+  page.on("pageerror", (error) => diagnostics.push(error.message));
+  page.on("console", (message) => {
+    if (
+      /STRICT_READ_UNTRACKED|WRITE_UNDER|PRIMITIVE_IN_FORBIDDEN_SCOPE|REACTIVITY_HALTED|invalid cleanup/i.test(
+        message.text(),
+      )
+    ) {
+      diagnostics.push(message.text());
+    }
+  });
+  await page.goto("#overlays");
+  const trigger = page.getByRole("button", { name: "Filter", exact: true });
+  const content = page.getByTestId("default-filter-content");
+  await trigger.click();
+  const status = content.getByRole("button", { name: "Filter status", exact: true });
+  await expect(status).toHaveText("All");
+  await status.click();
+  await page.getByRole("option", { name: "Dormant", exact: true }).click();
+  await expect(content).toBeVisible();
+  await expect(status).toHaveText("Dormant");
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await content.getByRole("button", { name: "Reset", exact: true }).click();
+  await expect(status).toHaveText("All");
+  await page.getByRole("heading", { name: "Filter popovers", exact: true }).click();
+  await expect(content).toBeHidden();
+  expect(diagnostics).toEqual([]);
+});

@@ -16,7 +16,7 @@ import { Dynamic } from "@solidjs/web";
 import { createContext, createEffect, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
 import { assignRef, containsNode } from "./floating";
-import { PopperPositioner, PopperRoot, type PopperAnchorRect } from "./popper";
+import { type PopperAnchorRect, PopperPositioner, PopperRoot } from "./popper";
 import { PortalMount } from "./portal";
 
 const DynamicAny = Dynamic as any;
@@ -106,7 +106,13 @@ const Popover = (props: PopoverProps) => {
     if (!isOpen) return;
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (!containsNode(rootRef(), target) && !containsNode(contentRef(), target)) {
+      const root = rootRef();
+      const content = contentRef();
+      // A nested select can remove its option before this bubble listener runs.
+      // The dispatch path still identifies the popover where the event started.
+      const path = event.composedPath();
+      const startedInside = path.some((node) => node === root || node === content);
+      if (!startedInside && !containsNode(root, target) && !containsNode(content, target)) {
         setOpen(false);
       }
     };
