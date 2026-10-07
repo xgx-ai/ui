@@ -169,7 +169,7 @@ export function ToolbarFilterButtons<T extends string>(
             data-pressed={local.value === option.id ? "" : undefined}
             onClick={() => local.onChange(option.id)}
             class={cn(
-              "xgx-control-text-sm h-7 rounded-full px-3 font-medium transition-colors",
+              "xgx-control-text-sm h-7 whitespace-nowrap rounded-full px-3 font-medium transition-colors",
               local.value === option.id
                 ? "bg-control-active text-control-active-foreground shadow-sm"
                 : "text-control-muted-foreground hover:bg-control-hover hover:text-control-hover-foreground",
