@@ -21,7 +21,7 @@ const PortalMount = (props: PortalMountProps) => {
 
   // Claim this portal's place in the target before its children render. A portal nested in
   // this one (a menu inside a popover) renders first, so without the claim its region would
-  // come earlier in the target and its floating content would stack beneath this one's.
+  // come earlier in the target and its floating content would stack beneath this one's (S17).
   createRenderEffect(activeTarget, (target) => {
     if (target && !endMarker.parentNode) target.appendChild(endMarker);
   });

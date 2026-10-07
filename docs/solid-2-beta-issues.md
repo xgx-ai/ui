@@ -348,6 +348,10 @@ condition was added, at which point it worked and the tests became meaningful.
 touching rendering, boundaries or keyed lists needs a browser check — see S1, which passed
 every headless test while being badly broken in the app.
 
+An effect created inside a child component beneath a provider can also run its compute once
+and never apply headlessly, even with the flag. `packages/ui/test/calendar-context.spec.tsx`
+creates its observing effect in the root instead.
+
 ---
 
 ## S5 — A transition defers the whole update, not just the boundary
@@ -411,7 +415,13 @@ inside Dialog." while rendering and the test fails.
 default, so a legitimately-`undefined` default cannot be expressed. Use an explicit
 sentinel.
 
+A context created with **no** default throws `ContextNotFoundError` when it is read without a
+provider, rather than returning `undefined`. Optional contexts (read with `?.` or an
+`if (!context)` guard) use a `null` default; required ones also use `null` so their own,
+clearer error is thrown. `packages/ui/test/context-defaults.spec.tsx` checks both.
+
 - [`packages/ui/src/overlays/dialog.tsx`](../packages/ui/src/overlays/dialog.tsx)
+- [`packages/ui/src/map/components/source.tsx`](../packages/ui/src/map/components/source.tsx)
 
 ---
 
@@ -566,6 +576,13 @@ production build.
 invalidation" asserts `pending() === true` and `fetching() === false` together. If a pin bump
 makes `fetching()` true there, the assertion fails and this entry can be narrowed.
 
+
+**Also relied on by response dialogs.** A response settled inside a mutation action closes
+when the action settles, so settlement must not `flush()` (`[FLUSH_IN_ACTION]`). That close
+can land in the same flush as the caller's next `showResponseDialog`, so each dialog has an
+id, `DialogResponse` mounts keyed by it, and a settlement clears only its own id.
+
+- [`packages/ui/src/overlays/dialog/dialog-response-state.ts`](../packages/ui/src/overlays/dialog/dialog-response-state.ts)
 ---
 
 ## S11 — A `<Show>` accessor read after its condition goes falsy throws and takes the tree down
@@ -734,6 +751,38 @@ phase separation, not a compatibility shim.
 
 - [`packages/ui/src/forms/file-upload.tsx`](../packages/ui/src/forms/file-upload.tsx)
 
+
+---
+
+## S16 — Solid flushes between native listeners of one event
+
+**Sharp edge.** Working as designed: the browser runs microtasks after each native listener,
+and Solid flushes on a microtask.
+
+**Symptom.** Choosing an option in a listbox inside a popover closed the popover. A write made
+in a delegated handler is committed, effect cleanups included, before `document` bubble
+listeners see the same event, so the listbox had already released its registration with the
+popover's dismissable layer and the press looked like an outside press.
+
+**Workaround.** Outside-press checks that depend on registrations released in cleanup listen
+in the capture phase. `tests/nested-layers.spec.ts` covers it.
+
+- [`packages/ui/src/overlays/dismissable-layer.ts`](../packages/ui/src/overlays/dismissable-layer.ts)
+
+---
+
+## S17 — Render effects apply at creation
+
+**Sharp edge.** Without `schedule`, a render effect applies as soon as it is created.
+
+**Symptom.** A menu inside a popover was unclickable: its floating content stacked beneath
+the popover. A portal's children, nested portals included, render and insert before the
+portal's own effect has placed its region, so the inner region came first in the target.
+
+**Workaround.** The portal claims its place in the target (an end marker) before its children
+render. `tests/nested-layers.spec.ts` covers it.
+
+- [`packages/ui/src/overlays/portal.tsx`](../packages/ui/src/overlays/portal.tsx)
 ---
 
 ## Related

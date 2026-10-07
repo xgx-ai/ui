@@ -93,7 +93,7 @@ export function createDismissableLayer(options: DismissableLayerOptions): Dismis
     if (!open) return;
     // Pointer presses are judged in the capture phase. Solid flushes between native listeners,
     // so by the bubble phase a pressed option may already have closed its listbox and released
-    // its registration here, making a press inside a descendant look like an outside press.
+    // its registration here, making a press inside a descendant look like an outside press (S16).
     const onPointerDown = (event: PointerEvent) => {
       const path = event.composedPath();
       if (path.length ? path.some(contains) : contains(event.target)) return;
