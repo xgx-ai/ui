@@ -1,14 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { addDays, addMonths, endOfWeek, startOfMonth, startOfWeek } from "date-fns";
 import type { Accessor } from "solid-js";
-import {
-  createContext,
-  createEffect,
-  createMemo,
-  createSignal,
-  untrack,
-  useContext,
-} from "solid-js";
+import { createContext, createMemo, createSignal, untrack, useContext } from "solid-js";
 import type {
   CalendarEvent,
   CalendarViewMode,
@@ -81,40 +74,26 @@ export interface CalendarProviderProps {
 }
 
 export function CalendarProvider(props: CalendarProviderProps) {
-  const weekStartsOn = untrack(() => props.weekStartsOn ?? 1);
+  const weekStartsOn = () => props.weekStartsOn ?? 1;
 
-  const [internalViewMode, setInternalViewMode] = createSignal<CalendarViewMode>(
-    untrack(() => props.viewMode ?? props.defaultViewMode ?? "week"),
+  // Writable memos: a controlled prop always wins, and local writes (uncontrolled mode only)
+  // hold until it changes. Defaults seed once.
+  const [viewMode, setLocalViewMode] = createSignal<CalendarViewMode>(
+    (previous) => props.viewMode ?? previous ?? untrack(() => props.defaultViewMode) ?? "week",
   );
-  const [internalCurrentDate, setInternalCurrentDate] = createSignal(
-    untrack(() => props.currentDate ?? props.defaultDate ?? new Date()),
+  const [currentDate, setLocalCurrentDate] = createSignal<Date>(
+    (previous) => props.currentDate ?? previous ?? untrack(() => props.defaultDate) ?? new Date(),
   );
   const [selectedEventId, setSelectedEventId] = createSignal<string | null>(null);
 
-  // Sync controlled props → internal signals (e.g. browser back/forward)
-  createEffect(
-    () => props.viewMode,
-    (mode) => {
-      if (mode !== undefined) setInternalViewMode(mode);
-    },
-  );
-  createEffect(
-    () => props.currentDate,
-    (date) => {
-      if (date !== undefined) setInternalCurrentDate(date);
-    },
-  );
-
-  const viewMode = () => internalViewMode();
-  const currentDate = () => internalCurrentDate();
-
+  // A controlled parent decides: ignoring the callback leaves the calendar on the prop.
   const setViewMode = (mode: CalendarViewMode) => {
-    setInternalViewMode(mode);
+    if (props.viewMode === undefined) setLocalViewMode(mode);
     props.onViewModeChange?.(mode);
   };
 
   const setCurrentDate = (date: Date) => {
-    setInternalCurrentDate(date);
+    if (props.currentDate === undefined) setLocalCurrentDate(date);
     props.onCurrentDateChange?.(date);
   };
 
@@ -126,11 +105,11 @@ export function CalendarProvider(props: CalendarProviderProps) {
       return date;
     }
     if (mode === "week") {
-      return startOfWeek(date, { weekStartsOn });
+      return startOfWeek(date, { weekStartsOn: weekStartsOn() });
     }
     // month
     const monthStart = startOfMonth(date);
-    return startOfWeek(monthStart, { weekStartsOn });
+    return startOfWeek(monthStart, { weekStartsOn: weekStartsOn() });
   });
 
   const endDate = createMemo(() => {
@@ -141,14 +120,14 @@ export function CalendarProvider(props: CalendarProviderProps) {
       return date;
     }
     if (mode === "week") {
-      return endOfWeek(date, { weekStartsOn });
+      return endOfWeek(date, { weekStartsOn: weekStartsOn() });
     }
     // month - 6 weeks grid
     return addDays(startDate(), 41);
   });
 
   const weekDays = createMemo(() => {
-    const start = startOfWeek(currentDate(), { weekStartsOn });
+    const start = startOfWeek(currentDate(), { weekStartsOn: weekStartsOn() });
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   });
 
