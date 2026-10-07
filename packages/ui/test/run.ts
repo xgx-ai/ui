@@ -38,6 +38,7 @@ const ownershipEntrypoints = [
   path.join(import.meta.dir, "dialog-response-lifecycle.spec.tsx"),
   path.join(import.meta.dir, "calendar-context.spec.tsx"),
   path.join(import.meta.dir, "popover-dismissal.spec.ts"),
+  path.join(import.meta.dir, "popover-context.spec.tsx"),
 ];
 
 await rm(outDir, { force: true, recursive: true });
