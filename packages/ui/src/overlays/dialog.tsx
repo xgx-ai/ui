@@ -30,6 +30,7 @@ import {
 
 import { cn } from "../cn";
 import { X } from "../icons.index";
+import { callEventHandler } from "../utils/event-handler";
 import { assignRef } from "./floating";
 import { createModalBehavior } from "./modal-behavior";
 import { PortalMount } from "./portal";
@@ -521,19 +522,6 @@ const DialogDescription = <T extends ValidComponent = "p">(props: DialogDescript
     </Dynamic>
   );
 };
-
-function callEventHandler<TElement, TEvent>(
-  handler: unknown,
-  event: TEvent & { currentTarget: TElement },
-) {
-  if (typeof handler === "function") {
-    handler(event);
-    return;
-  }
-  if (Array.isArray(handler) && typeof handler[0] === "function") {
-    handler[0](handler[1], event);
-  }
-}
 
 export type { DialogTemplateProps };
 export {
