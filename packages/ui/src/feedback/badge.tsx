@@ -72,6 +72,7 @@ const Badge: Component<BadgeProps> = (props) => {
   return (
     <div
       {...others}
+      data-badge-variant={local.variant ?? "default"}
       class={cn(
         badgeVariants({ variant: local.variant, size: local.size }),
         local.round && "rounded-full",

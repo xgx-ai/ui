@@ -17,25 +17,31 @@ import type { ComponentProps, JSX } from "@solidjs/web";
 import { createContext, createSignal, createUniqueId, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
 
+type TabsVariant = "underline" | "segmented";
+
 type TabsProps = Omit<ComponentProps<"div">, "onChange"> & {
   value?: string;
   defaultValue?: string;
   onChange?: (value: string) => void;
+  /** Exposes the variant for app styling; shared default styles stay unchanged. */
+  variant?: TabsVariant;
 };
 
 const TabsContext = createContext<{
   baseId: string;
   value: () => string | undefined;
   setValue: (value: string) => void;
+  variant: () => TabsVariant;
 }>({
   baseId: "tabs",
   value: () => undefined,
   setValue: () => {},
+  variant: () => "underline",
 });
 
 const Tabs = (props: TabsProps) => {
   const local = props;
-  const others = omit(props, "class", "children", "value", "defaultValue", "onChange");
+  const others = omit(props, "class", "children", "value", "defaultValue", "onChange", "variant");
   const [uncontrolledValue, setUncontrolledValue] = createSignal(local.defaultValue);
   const baseId = createUniqueId();
   const value = () => local.value ?? uncontrolledValue();
@@ -45,8 +51,13 @@ const Tabs = (props: TabsProps) => {
   };
 
   return (
-    <TabsContext value={{ baseId, value, setValue }}>
-      <div class={local.class} {...others}>
+    <TabsContext value={{ baseId, value, setValue, variant: () => local.variant ?? "underline" }}>
+      <div
+        class={local.class}
+        {...others}
+        data-slot="tabs"
+        data-tabs-variant={local.variant ?? "underline"}
+      >
         {local.children}
       </div>
     </TabsContext>
@@ -56,11 +67,14 @@ const Tabs = (props: TabsProps) => {
 type TabsListProps = ComponentProps<"div">;
 
 const TabsList = (props: TabsListProps) => {
+  const context = useContext(TabsContext);
   const local = props;
   const others = omit(props, "class");
   return (
     <div
       role="tablist"
+      data-slot="tabs-list"
+      data-tabs-variant={context.variant()}
       class={cn(
         "inline-flex min-h-9 items-center gap-5 border-b border-border-subtle text-muted-foreground",
         local.class,
@@ -122,6 +136,8 @@ const TabsTrigger = (props: TabsTriggerProps) => {
       id={`${context.baseId}-trigger-${safeValue()}`}
       type={local.type ?? "button"}
       role="tab"
+      data-slot="tabs-trigger"
+      data-tabs-variant={context.variant()}
       aria-controls={`${context.baseId}-panel-${safeValue()}`}
       aria-selected={selected() ? "true" : "false"}
       disabled={local.disabled}
@@ -153,6 +169,8 @@ const TabsContent = (props: TabsContentProps) => {
       <div
         id={`${context.baseId}-panel-${safeValue()}`}
         role="tabpanel"
+        data-slot="tabs-content"
+        data-tabs-variant={context.variant()}
         aria-labelledby={`${context.baseId}-trigger-${safeValue()}`}
         class={cn(
           "mt-3 ring-offset-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -169,15 +187,18 @@ const TabsContent = (props: TabsContentProps) => {
 type TabsIndicatorProps = ComponentProps<"div">;
 
 const TabsIndicator = (props: TabsIndicatorProps) => {
+  const context = useContext(TabsContext);
   const local = props;
   const others = omit(props, "class");
   return (
     <div
+      data-slot="tabs-indicator"
+      data-tabs-variant={context.variant()}
       class={cn("absolute h-0.5 rounded-full bg-selected transition-all", local.class)}
       {...others}
     />
   );
 };
 
-export type { TabsContentProps, TabsListProps, TabsProps, TabsTriggerProps };
+export type { TabsContentProps, TabsListProps, TabsProps, TabsTriggerProps, TabsVariant };
 export { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger };

@@ -33,7 +33,10 @@ const entrypoints = [
   path.join(import.meta.dir, "table-state.spec.ts"),
   path.join(import.meta.dir, "schema-form.spec.ts"),
 ];
-const ssrEntrypoint = path.join(import.meta.dir, "map-ssr.spec.ts");
+const ssrEntrypoints = [
+  path.join(import.meta.dir, "map-ssr.spec.ts"),
+  path.join(import.meta.dir, "styling-hooks-ssr.spec.tsx"),
+];
 const ownershipEntrypoints = [
   path.join(import.meta.dir, "dialog-response-lifecycle.spec.tsx"),
   path.join(import.meta.dir, "calendar-context.spec.tsx"),
@@ -70,7 +73,7 @@ const ssrResult = await Bun.build({
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
   },
-  entrypoints: [ssrEntrypoint],
+  entrypoints: ssrEntrypoints,
   format: "esm",
   minify: false,
   outdir: ssrOutDir,
@@ -110,8 +113,8 @@ if (bundles.length !== entrypoints.length) {
   throw new Error("Test build did not emit every JavaScript entrypoint");
 }
 
-const ssrBundle = ssrResult.outputs.find((output) => output.path.endsWith(".js"));
-if (!ssrBundle) {
+const ssrBundles = ssrResult.outputs.filter((output) => output.kind === "entry-point");
+if (ssrBundles.length !== ssrEntrypoints.length) {
   throw new Error("SSR test build did not emit a JavaScript entrypoint");
 }
 
@@ -123,8 +126,10 @@ try {
     await spec.default();
   }
 
-  const ssrSpec = await import(pathToFileURL(ssrBundle.path).href);
-  await ssrSpec.default();
+  for (const bundle of ssrBundles) {
+    const ssrSpec = await import(pathToFileURL(bundle.path).href);
+    await ssrSpec.default();
+  }
 
   for (const bundle of ownershipBundles) {
     const ownershipTest = Bun.spawn([process.execPath, bundle.path], {

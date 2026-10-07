@@ -60,6 +60,12 @@ Button, card and control shape tokens are optional. Each falls back to the exact
 
 Typography role classes (`xgx-text-*`, `xgx-control-text-*`) sit in `@layer components`, so a size utility passed through `class` overrides the role's size.
 
+## App styling hooks
+
+`Tabs` accepts `variant="underline"` (default) or `variant="segmented"`. The variant is exposed as `data-tabs-variant` on each part; `data-slot` identifies `tabs`, `tabs-list`, `tabs-trigger`, `tabs-content` and `tabs-indicator`. Shared classes do not change with the variant, so apps provide their own variant styling.
+
+`Badge` exposes `data-badge-variant`. An empty `SelectValue` exposes `data-placeholder-shown` and `data-placeholder` without adding placeholder content; custom child fallback rendering stays intact. `TableColumnHeader` exposes `data-sort-direction` on its direction span and retains its default `asc`/`desc` text.
+
 ## Icons
 
 - Use `@xgx/ui/icons` for shared UI and demo iconography.

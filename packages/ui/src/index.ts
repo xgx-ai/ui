@@ -724,6 +724,7 @@ export {
   TabsIndicator,
   TabsList,
   TabsTrigger,
+  type TabsVariant,
 } from "./layout/tabs.tsx";
 export type {
   ToolbarFilterButtonsProps,

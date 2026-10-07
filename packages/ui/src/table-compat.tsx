@@ -621,7 +621,9 @@ export function TableColumnHeader(props: {
       }}
     >
       {props.title ?? props.children}
-      <Show when={props.sorted}>{(direction) => <span>{direction()}</span>}</Show>
+      <Show when={props.sorted}>
+        {(direction) => <span data-sort-direction={direction()}>{direction()}</span>}
+      </Show>
     </button>
   );
 }

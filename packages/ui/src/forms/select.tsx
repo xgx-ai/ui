@@ -59,8 +59,16 @@ const SelectValue = <T,>(props: SelectValueProps<T>) => {
     selectedOption,
     selectedOptions,
   };
+  const empty = () => {
+    const selected = context.selectedOption();
+    return Array.isArray(selected) ? selected.length === 0 : selected == null;
+  };
   return (
-    <span {...others}>
+    <span
+      {...others}
+      data-placeholder-shown={empty() ? "" : undefined}
+      data-placeholder={empty() ? context.placeholder() : undefined}
+    >
       {typeof local.children === "function"
         ? local.children(state)
         : selectedOption()?.toString?.()}
