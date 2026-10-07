@@ -103,7 +103,7 @@ export function ColorPickerField(props: ColorPickerFieldProps) {
 
       <div
         class={cn(
-          "h-0 text-xs text-error opacity-0 transition-all",
+          "h-0 text-xs text-error-foreground opacity-0 transition-all",
           props.error && "h-4 opacity-100",
         )}
       >

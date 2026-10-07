@@ -36,7 +36,7 @@ const Label: Component<LabelProps> = (props) => {
       {local.children}
       <Show when={local.required}>
         {" "}
-        <span class="text-error">*</span>
+        <span class="text-error-foreground">*</span>
       </Show>
     </label>
   );

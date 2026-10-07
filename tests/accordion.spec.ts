@@ -1,19 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { watchNativeDiagnostics } from "./native-diagnostics";
 
 test("reactive accordion defaults seed once and controlled values keep updating", async ({
   page,
 }) => {
-  const diagnostics: string[] = [];
-  page.on("pageerror", (error) => diagnostics.push(error.message));
-  page.on("console", (message) => {
-    if (
-      /STRICT_READ_UNTRACKED|WRITE_UNDER|PRIMITIVE_IN_FORBIDDEN_SCOPE|REACTIVITY_HALTED|invalid cleanup/i.test(
-        message.text(),
-      )
-    ) {
-      diagnostics.push(message.text());
-    }
-  });
+  const diagnostics = watchNativeDiagnostics(page);
   await page.goto("#overlays");
   const defaults = page.getByTestId("default-accordion");
   const defaultFirst = defaults.getByRole("button", { name: "First section", exact: true });
@@ -42,5 +33,31 @@ test("reactive accordion defaults seed once and controlled values keep updating"
   await page.getByRole("button", { name: "Clear controlled sections", exact: true }).click();
   await expect(controlledFirst).toHaveAttribute("aria-expanded", "false");
   await expect(controlledSecond).toHaveAttribute("aria-expanded", "false");
+  expect(diagnostics).toEqual([]);
+});
+
+test("a controlled single accordion closes when its value is cleared", async ({ page }) => {
+  const diagnostics = watchNativeDiagnostics(page);
+  await page.goto("#overlays");
+  const single = page.getByTestId("single-accordion");
+  const first = single.getByRole("button", { name: "First section", exact: true });
+  const second = single.getByRole("button", { name: "Second section", exact: true });
+  await expect(first).toHaveAttribute("aria-expanded", "true");
+  await expect(second).toHaveAttribute("aria-expanded", "false");
+
+  // Collapsing reports undefined; the echoed value must close it, not fall back to the default.
+  await first.click();
+  await expect(first).toHaveAttribute("aria-expanded", "false");
+  await expect(second).toHaveAttribute("aria-expanded", "false");
+  await second.click();
+  await expect(second).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("button", { name: "Clear single section", exact: true }).click();
+  await expect(first).toHaveAttribute("aria-expanded", "false");
+  await expect(second).toHaveAttribute("aria-expanded", "false");
+  await first.click();
+  await expect(first).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("button", { name: "Close single section", exact: true }).click();
+  await expect(first).toHaveAttribute("aria-expanded", "false");
+  await expect(second).toHaveAttribute("aria-expanded", "false");
   expect(diagnostics).toEqual([]);
 });

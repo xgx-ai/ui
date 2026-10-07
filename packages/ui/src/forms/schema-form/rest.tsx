@@ -1,7 +1,9 @@
 import { type Component, For } from "solid-js";
 import type { FormInstance } from "./types.ts";
 
-export function createRest<T extends Record<string, unknown>>(form: FormInstance<T>): Component {
+export function createRest<T extends Record<string, unknown>, Input = T>(
+  form: FormInstance<T, Input>,
+): Component {
   return () => {
     const unclaimed = () => form.fieldNames.filter((name) => !form.claimed.has(name));
 
