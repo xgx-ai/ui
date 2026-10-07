@@ -1,4 +1,5 @@
 import { createEffect } from "solid-js";
+import { createDismissableLayer, type DismissableLayer } from "./dismissable-layer";
 import { containsNode } from "./floating";
 
 const focusableSelector = [
@@ -23,10 +24,21 @@ export function getFocusableElements(container: HTMLElement) {
 export function createModalBehavior(options: {
   open: () => boolean;
   content: () => HTMLElement | undefined;
+  /** Other elements of this surface, such as its overlay, that count as inside ancestor layers. */
+  elements?: () => ReadonlyArray<HTMLElement | undefined>;
   modal?: () => boolean;
   preventScroll?: () => boolean;
   onClose: () => void;
-}) {
+}): DismissableLayer {
+  // Escape is captured so content inside the surface cannot swallow it, but an open popover,
+  // menu or listbox inside it closes first. Provide the returned layer to the surface's children.
+  const layer = createDismissableLayer({
+    open: options.open,
+    elements: () => [options.content(), ...(options.elements?.() ?? [])],
+    onEscapeKeyDown: () => options.onClose(),
+    escapeCapture: true,
+  });
+
   createEffect(
     () => ({
       content: options.content(),
@@ -53,12 +65,6 @@ export function createModalBehavior(options: {
       });
 
       const onKeyDown = (event: KeyboardEvent) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          options.onClose();
-          return;
-        }
-
         if (!state.modal || event.key !== "Tab") return;
 
         const focusable = getFocusableElements(content);
@@ -89,4 +95,6 @@ export function createModalBehavior(options: {
       };
     },
   );
+
+  return layer;
 }
