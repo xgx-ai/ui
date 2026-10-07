@@ -87,6 +87,17 @@ function ResponseDialogHost(props: { onResult: (result: string) => void }) {
     props.onResult(`Long details: ${details ?? "dismissed"}`);
   };
 
+  const outsideAlert = async () => {
+    const confirmed = await showResponseDialog<boolean>({
+      title: "Remove access",
+      description: "They will no longer see this workspace.",
+      template: "alert",
+      templateProps: { action: "Remove" },
+      footerPlacement: "outside",
+    });
+    props.onResult(`Remove access: ${String(confirmed)}`);
+  };
+
   const pendingDecision = async () => {
     const decision = await showResponseDialog<boolean>({ title: "Pending decision" });
     props.onResult(`Pending decision: ${String(decision)}`);
@@ -105,6 +116,9 @@ function ResponseDialogHost(props: { onResult: (result: string) => void }) {
       </Button>
       <Button variant="outline" onClick={longDetails}>
         Long details
+      </Button>
+      <Button variant="outline" onClick={outsideAlert}>
+        Outside alert
       </Button>
       <DialogResponse />
     </>

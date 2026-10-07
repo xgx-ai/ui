@@ -474,7 +474,10 @@ const DialogTemplate: Component<DialogTemplateProps> = (props) => {
           {local.header}
         </Show>
         <DialogTemplateContext value={{ stickyFooter: !footerSlot, footerSlot }}>
-          <div class={cn("min-h-0 overflow-y-auto", local.bodyClass)}>{local.children}</div>
+          {/* Hidden when empty, e.g. once its only child, a footer, has moved below it. */}
+          <div class={cn("min-h-0 overflow-y-auto empty:hidden", local.bodyClass)}>
+            {local.children}
+          </div>
         </DialogTemplateContext>
         {footerSlot}
         <Show when={local.footer}>

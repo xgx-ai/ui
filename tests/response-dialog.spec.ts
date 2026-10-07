@@ -116,3 +116,19 @@ test("an outside footer stays in view below the scrolling body and still submits
   await expect(result).toHaveText("Long details: Second pass");
   expect(errors).toEqual([]);
 });
+
+test("an alert whose footer moves out leaves no empty body behind", async ({ page }) => {
+  await page.goto("#overlays");
+  await page.getByRole("button", { name: "Outside alert", exact: true }).click();
+  const alert = page.getByRole("dialog", { name: "Remove access" });
+  await expect(alert).toBeVisible();
+  const gap = await alert.evaluate((element) => {
+    const description = element.querySelector("p");
+    const slot = element.querySelector("[data-slot='dialog-footer-slot']");
+    if (!description || !slot) return -1;
+    return slot.getBoundingClientRect().top - description.getBoundingClientRect().bottom;
+  });
+  // Header to footer is one layout gap, not two around an empty body.
+  expect(gap).toBeLessThanOrEqual(24);
+  await alert.getByRole("button", { name: "Cancel", exact: true }).click();
+});
