@@ -6,6 +6,7 @@ import { EllipsisVertical } from "../icons.index";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuPortal,
   DropdownMenuTrigger,
 } from "../navigation/dropdown-menu.tsx";
 
@@ -56,7 +57,9 @@ const DropdownMoreItems: Component<DropdownMoreItemsProps> = (props) => {
       >
         <EllipsisVertical aria-hidden="true" class="size-4" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent class={local.contentClass}>{local.children}</DropdownMenuContent>
+      <DropdownMenuPortal>
+        <DropdownMenuContent class={local.contentClass}>{local.children}</DropdownMenuContent>
+      </DropdownMenuPortal>
     </DropdownMenu>
   );
 };
