@@ -1,5 +1,11 @@
 import { render } from "@solidjs/web";
-import { createInfiniteQuery, QueryClient, QueryClientProvider } from "@xgx/query";
+import {
+  createInfiniteQuery,
+  infiniteQuery,
+  QueryClient,
+  QueryClientProvider,
+  queryGroup,
+} from "@xgx/query";
 import { createMemo, createSignal, For, isPending, Loading, latest } from "solid-js";
 
 /**
@@ -37,17 +43,23 @@ function fetchPage(filter: string, pageParam: number): Promise<Page> {
   });
 }
 
+// `fetch` reads the filter from its key, never from the signal: the key is the only input
+// captured when the question was asked (docs/query.md).
+const rows = queryGroup("rows", {
+  list: infiniteQuery({
+    key: (filter: string) => ({ filter }),
+    initialPageParam: 0,
+    fetch: (key, { pageParam }) => fetchPage(key.filter, pageParam),
+    getNextPageParam: () => undefined,
+  }),
+});
+
 function App() {
   const [filter, setFilter] = createSignal("a");
-  const query = createInfiniteQuery(() => ({
-    // `latest(filter)` deliberately: during a transition a bare `filter()` still reads the
-    // pre-transition value (issue S5), so the key would never change and the query would
-    // just refresh the old question. See docs/solid-2-beta-issues.md.
-    queryKey: ["rows", latest(filter)],
-    initialPageParam: 0,
-    queryFn: ({ pageParam }: { pageParam: number }) => fetchPage(latest(filter), pageParam),
-    getNextPageParam: () => undefined,
-  }));
+  // `latest(filter)` deliberately: during a transition a bare `filter()` still reads the
+  // pre-transition value (issue S5), so the key would never change and the query would
+  // just refresh the old question. See docs/solid-2-beta-issues.md.
+  const query = createInfiniteQuery(() => rows.list(latest(filter)));
 
   const fromData = createMemo(() => query.data().pages.flatMap((page) => page.data));
   const fromRetained = createMemo(() => {

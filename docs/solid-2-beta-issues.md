@@ -246,7 +246,7 @@ instance resolved for **any** key, without suspending. The table hooks read it f
 - [`packages/prefabs/src/data-display/use-table.ts`](../packages/prefabs/src/data-display/use-table.ts)
 - [`packages/prefabs/src/table-infinite/use-table-infinite.ts`](../packages/prefabs/src/table-infinite/use-table-infinite.ts)
 - [`packages/prefabs/src/forms/use-search-infinite.ts`](../packages/prefabs/src/forms/use-search-infinite.ts)
-- [`packages/ui/src/table-compat.tsx`](../packages/ui/src/table-compat.tsx)
+- [`packages/ui/src/table-compat.tsx`](../packages/ui/src/table-compat.tsx) does not read `retained` itself; its `TableInfinite` relies on the caller's `table.data()` not suspending once loaded (back it with `retained`, as the prefabs hooks do).
 
 A keyed remount also works where a table is already scoped to an identity — Onshyft uses
 `<Show keyed>` around the document-library table for the same root cause.
@@ -368,6 +368,11 @@ router, but any query keyed off a bare signal is.
 **Workaround.** Read `latest(keySignal)` wherever the in-flight value is what you mean —
 both for controls that must stay responsive and for query keys that must follow the change.
 Results read normally and lag behind. This is the job Solid's `latest` is actually for.
+
+**Fetchers are the other half.** A query `fetch` that reads a signal instead of its key sees
+the same held value when it runs during a transition. The library guarantees only what the
+key carries, so `fetch` must depend on its key and page param alone
+([query docs](./query.md); S10's Pagination note).
 
 **A second bite, worse than a frozen input.** The deferral also swallows the *write that
 started the update*. Selecting a form-builder field mounted an inspector that read a
@@ -522,12 +527,40 @@ transition-aware signal and reports `true` correctly throughout, so that is what
 reads during a mutation. `fetching()` remains correct for observer-driven and directly
 invalidated refetches, which are not inside an action.
 
-**Pagination.** Next-page reads use ordinary async fetches rather than mutation actions.
-An action also holds reactive filter reads made by a later fetch on its old snapshot;
-rejecting an earlier page can therefore leave a newly selected filter showing old rows.
-Page status and deduplication are tracked per exact key so an old request cannot hide a
-new key's active request. `packages/query/test/infinite-pagination-key-change.test.ts`
-reproduces the rejection and checks concurrent-key status and deduplication.
+**Pagination.** `fetchNextPage` is a plain async read, not an `action`, so no transition
+holds its writes. The request and its `fetchingNextPage` flag live on the cache entry, not
+the query instance.
+
+- *Library guarantees.* One next-page request per exact key, shared by every observer of
+  it; `fetchingNextPage()` reports only the current key's request. A response is appended
+  only while the entry still ends at the page param it was requested after. A superseded
+  request — the entry is refreshed, invalidated, cancelled, removed or garbage-collected,
+  or loses its last observer (key change or unmount) — is aborted through its `signal`,
+  never written, and its promise resolves; a genuine failure rejects. A request made during
+  a refresh waits for it and pages from the result. The flag has no `ownedWrite` opt-in:
+  calling `fetchNextPage` from a memo or component body reports
+  `[REACTIVE_WRITE_IN_OWNED_SCOPE]` in development.
+- *Defects this fixed.* The action version (before `37311847`) kept one instance-wide
+  `createOptimistic` flag, so after a key change `fetchingNextPage()` still reported the old
+  key's request. Its successor (`4fcb4087`) kept requests per instance and never aborted
+  them: two observers of one key each fetched the same page, and responses landing in
+  separate flushes left `pageParams` `[0, 1, 1]` — duplicated rows.
+- *Not a guarantee — consumers must keep `fetch` pure.* A fetcher that reads reactive state
+  instead of its key gets whatever that state holds when the request runs, and during a
+  transition a plain signal still holds its pre-transition value (S5). Under the action
+  version, a fetcher reading an ambient `scope()` signal returned the old filter after a
+  rejected page; with the same scenario keyed on `key.scope`, the action version passed.
+  A plain async read removes the action's hold, but it does not make ambient reads correct.
+  `fetch` must depend only on the key and page param ([query docs](./query.md)). Adapters
+  that call a captured `queryFn` closure — Auno's `infiniteQueryDescriptor` ignores the key
+  — must make that closure read only values the key carries.
+
+`packages/query/test/infinite-pagination-key-change.test.ts` uses keyed fetchers throughout.
+"page requests deduplicate per key…" fails on the action version; the sharing, append-guard,
+refresh-wait and supersession tests fail on `4fcb4087`. The rejection half of "a rejected or superseded
+previous-key page…" is a guard, not a reproduction: keyed, it passes on the action version
+too. The owned-write diagnostic needs `--conditions=development`; `query:test` runs the
+production build.
 
 **Re-check.** `packages/query/test/query.test.ts`, "mutation pending includes awaited query
 invalidation" asserts `pending() === true` and `fetching() === false` together. If a pin bump

@@ -197,6 +197,14 @@ type QueryCacheEntry = {
   hash: string;
   invalidationVersion: number;
   key: QueryKey;
+  /**
+   * The entry's in-flight next-page request. Held here rather than on a query instance, so
+   * every observer of the key shares one request instead of each appending its own copy.
+   */
+  nextPage?: NextPageRequest;
+  /** Whether `nextPage` is loading. Written from handlers and async continuations only. */
+  fetchingNextPage: Accessor<boolean>;
+  setFetchingNextPage: InternalSetter<boolean>;
   options?: PreparedQuery<unknown>;
   promise?: Promise<unknown>;
   refetchTimer?: ReturnType<typeof setTimeout>;
@@ -208,6 +216,11 @@ type QueryCacheEntry = {
   stale: boolean;
   staleTimer?: ReturnType<typeof setTimeout>;
   updatedAt: number;
+};
+
+type NextPageRequest = {
+  controller: AbortController;
+  promise: Promise<void>;
 };
 
 const DEFAULT_GC_TIME = 5 * 60_000;
@@ -264,6 +277,46 @@ export class QueryDisabledError extends Error {
 
 function abortReason(signal: AbortSignal): Error {
   return signal.reason instanceof Error ? signal.reason : new QueryCancelledError();
+}
+
+const superseded = Symbol("superseded");
+
+/** Settles with `superseded` when the signal aborts, so a fetcher that ignores it cannot hang. */
+function whenAborted(signal: AbortSignal): {
+  promise: Promise<typeof superseded>;
+  dispose(): void;
+} {
+  let dispose = () => {};
+  const promise = new Promise<typeof superseded>((settle) => {
+    if (signal.aborted) {
+      settle(superseded);
+      return;
+    }
+    const onAbort = () => settle(superseded);
+    signal.addEventListener("abort", onAbort, { once: true });
+    dispose = () => signal.removeEventListener("abort", onAbort);
+  });
+  return { promise, dispose };
+}
+
+function nextPageParam<TPage, TPageParam>(
+  descriptor: InfiniteDescriptor<TPage, TPageParam>,
+  value: InfiniteData<TPage, TPageParam> | undefined,
+): TPageParam | undefined {
+  if (!descriptor.getNextPageParam || !value || value.pages.length === 0) return undefined;
+  const lastPage = value.pages[value.pages.length - 1] as TPage;
+  const lastPageParam = value.pageParams[value.pageParams.length - 1] as TPageParam;
+  return descriptor.getNextPageParam(lastPage, value.pages, lastPageParam);
+}
+
+/** Page params are compared by identity, then by their key serialisation where they have one. */
+function samePageParam(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  try {
+    return stableQueryKey([left]) === stableQueryKey([right]);
+  } catch {
+    return false;
+  }
 }
 
 function waitForRetry(delay: number, signal: AbortSignal): Promise<void> {
@@ -400,11 +453,15 @@ export class QueryClient {
         const [data, setData] = createSignal<unknown>(undefined, internalWritableOptions);
         const [hasData, setHasData] = createSignal(false, internalWritableOptions);
         const [fetching, setFetching] = createSignal(false, internalWritableOptions);
+        // No `ownedWrite`: only `fetchNextPage` (a handler) and its async completion write
+        // this, so a call from a memo or component body still reports the misuse.
+        const [fetchingNextPage, setFetchingNextPage] = createSignal(false);
 
         return {
           data,
           dispose,
           fetching,
+          fetchingNextPage,
           gcTime: query.gcTime ?? this.#config.defaultOptions?.queries?.gcTime ?? DEFAULT_GC_TIME,
           hasData,
           hasValue: false,
@@ -415,6 +472,7 @@ export class QueryClient {
           requestId: 0,
           setData,
           setFetching,
+          setFetchingNextPage,
           setHasData,
           sources: new Map(),
           stale: true,
@@ -631,6 +689,97 @@ export class QueryClient {
     return this.fetchQuery(optionsFromDescriptor(descriptor));
   }
 
+  /**
+   * Loads the page after an infinite entry's last page and appends it.
+   *
+   * There is one request per cache entry: every observer of the key gets the same promise,
+   * so two tables over one list cannot each append the same page. A request made while the
+   * entry is refreshing waits for that refresh and pages from its result.
+   *
+   * A request is superseded — aborted through its `signal`, never written, and its promise
+   * resolved — when the entry is refreshed, invalidated, cancelled, removed or garbage
+   * collected, or loses its last observer (for example, the only table moved to a new
+   * filter). A genuine fetch failure rejects. A page is appended only while the entry still
+   * ends at the page it was requested after, so a late or duplicate response cannot land on
+   * pages something else has since replaced or extended.
+   */
+  fetchNextPage<TPage, TPageParam>(
+    descriptor: InfiniteDescriptor<TPage, TPageParam>,
+  ): Promise<void> {
+    const entry = this.#cache.get(stableQueryKey(descriptor.key));
+    if (!entry?.hasValue) return Promise.resolve();
+    if (entry.nextPage) return entry.nextPage.promise;
+    const held = entry.value as InfiniteData<TPage, TPageParam>;
+    if (!entry.promise && nextPageParam(descriptor, held) === undefined) return Promise.resolve();
+
+    const request: NextPageRequest = {
+      controller: new AbortController(),
+      promise: Promise.resolve(),
+    };
+    entry.nextPage = request;
+    entry.setFetchingNextPage(true);
+    request.promise = this.#loadNextPage(entry, descriptor, request.controller.signal).finally(
+      () => {
+        if (entry.nextPage === request) entry.nextPage = undefined;
+        // A superseded request must not clear the flag of the request that replaced it.
+        if (!entry.nextPage) entry.setFetchingNextPage(false);
+      },
+    );
+    return request.promise;
+  }
+
+  async #loadNextPage<TPage, TPageParam>(
+    entry: QueryCacheEntry,
+    descriptor: InfiniteDescriptor<TPage, TPageParam>,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const aborted = whenAborted(signal);
+    try {
+      // A refresh already in flight is about to replace the pages this request would extend.
+      // One that starts later aborts this request instead (see `#startFetch`).
+      let refreshing = entry.promise;
+      while (refreshing) {
+        const settled = refreshing.then(
+          () => undefined,
+          () => undefined,
+        );
+        if ((await Promise.race([settled, aborted.promise])) === superseded) return;
+        refreshing = entry.promise === refreshing ? undefined : entry.promise;
+      }
+
+      const held = entry.hasValue ? (entry.value as InfiniteData<TPage, TPageParam>) : undefined;
+      const pageParam = nextPageParam(descriptor, held);
+      if (!held || pageParam === undefined) return;
+      const after = held.pageParams[held.pageParams.length - 1];
+
+      const page = await Promise.race([
+        descriptor.fetch({ pageParam, queryKey: descriptor.key, signal }),
+        aborted.promise,
+      ]);
+      if (page === superseded || signal.aborted || this.#cache.get(entry.hash) !== entry) return;
+
+      const current = entry.hasValue ? (entry.value as InfiniteData<TPage, TPageParam>) : undefined;
+      if (
+        !current ||
+        current.pageParams.length === 0 ||
+        !samePageParam(current.pageParams[current.pageParams.length - 1], after)
+      ) {
+        return;
+      }
+
+      this.setQueryData<InfiniteData<TPage, TPageParam>>(entry.key, {
+        pageParams: [...current.pageParams, pageParam],
+        pages: [...current.pages, page],
+      });
+    } catch (error) {
+      // An aborted fetcher usually rejects with an AbortError: superseded, not failed.
+      if (signal.aborted) return;
+      throw error;
+    } finally {
+      aborted.dispose();
+    }
+  }
+
   removeQueries(input?: QueryKey | { queryKey?: QueryKey }): void {
     const prefix = normaliseQueryPrefix(input);
     for (const entry of this.#matchingEntries(prefix)) {
@@ -697,7 +846,17 @@ export class QueryClient {
 
     return () => {
       entry.sources.delete(source);
-      if (this.#activeSources(entry).length === 0) this.#clearRefetch(entry);
+      if (this.#activeSources(entry).length === 0) {
+        this.#clearRefetch(entry);
+        // A next page nobody observes is superseded: its only observer moved to another key
+        // or unmounted. Checked after this tick, because an observer re-subscribing to the
+        // same entry (new options, same key) runs this cleanup just before observing again.
+        if (entry.nextPage) {
+          queueMicrotask(() => {
+            if (this.#activeSources(entry).length === 0) this.#cancelNextPage(entry);
+          });
+        }
+      }
       this.#scheduleGc(entry);
     };
   }
@@ -724,6 +883,8 @@ export class QueryClient {
     entry.options = query as PreparedQuery<unknown>;
     entry.gcTime = query.gcTime ?? entry.gcTime;
     this.#clearRefetch(entry);
+    // Any refresh replaces the pages an in-flight next page would extend.
+    this.#cancelNextPage(entry);
     entry.setFetching(true);
 
     const promise = (async () => {
@@ -778,7 +939,19 @@ export class QueryClient {
     return sources;
   }
 
+  /**
+   * Aborts the entry's next-page request. Writes no signal, so it is safe from `#startFetch`
+   * when that runs inside the `data` memo; the request's own completion clears the flag.
+   */
+  #cancelNextPage(entry: QueryCacheEntry): void {
+    const request = entry.nextPage;
+    if (!request) return;
+    entry.nextPage = undefined;
+    request.controller.abort(new QueryCancelledError());
+  }
+
   #cancelEntry(entry: QueryCacheEntry): void {
+    this.#cancelNextPage(entry);
     if (!entry.controller) return;
     entry.requestId += 1;
     entry.promise = undefined;
@@ -800,6 +973,7 @@ export class QueryClient {
         clearTimeout(entry.staleTimer);
         entry.staleTimer = undefined;
       }
+      this.#cancelNextPage(entry);
       const activeSources = this.#activeSources(entry);
       if (fallbackSource && entries.size === 1 && !activeSources.includes(fallbackSource)) {
         activeSources.push(fallbackSource);
@@ -879,6 +1053,7 @@ export class QueryClient {
     this.#clearRefetch(entry);
     if (entry.staleTimer) clearTimeout(entry.staleTimer);
     entry.controller?.abort(new QueryCancelledError());
+    this.#cancelNextPage(entry);
     if (this.#cache.get(entry.hash) === entry) this.#cache.delete(entry.hash);
     entry.dispose();
   }
@@ -927,10 +1102,16 @@ export function useQueryCache(queryClient?: QueryClient): QueryClient {
   return queryClient ?? useContext(QueryClientContext);
 }
 
+type ObservedQuery<TData> = {
+  /** The cache entry for the current key. Internal: the infinite query reads page state off it. */
+  entry: Accessor<QueryCacheEntry>;
+  result: QueryResult<TData>;
+};
+
 function createQueryResult<TData>(
   options: () => QueryOptions<TData>,
   suppliedClient?: QueryClient,
-): QueryResult<TData> {
+): ObservedQuery<TData> {
   const client = useQueryCache(suppliedClient);
   const state = createMemo(() => {
     const query = client.prepareQuery(options());
@@ -998,12 +1179,15 @@ function createQueryResult<TData>(
   const fetching = () => state().enabled && state().entry.fetching();
 
   return {
-    data,
-    cached,
-    pending: () => state().enabled && isPending(() => data()),
-    fetching,
-    refresh: refreshQuery,
-    refetch,
+    entry: () => state().entry,
+    result: {
+      data,
+      cached,
+      pending: () => state().enabled && isPending(() => data()),
+      fetching,
+      refresh: refreshQuery,
+      refetch,
+    },
   };
 }
 
@@ -1046,7 +1230,7 @@ export function createQuery<TData>(
       };
     }
     return optionsFromDescriptor(descriptor);
-  }, queryClient);
+  }, queryClient).result;
 }
 
 /**
@@ -1116,7 +1300,8 @@ function createInfiniteDescriptorQuery<TPage, TPageParam>(
     };
   };
 
-  const query = createQueryResult<InfiniteData<TPage, TPageParam>>(options, client);
+  const observed = createQueryResult<InfiniteData<TPage, TPageParam>>(options, client);
+  const query = observed.result;
 
   // Instance-scoped, cross-key, non-suspending. Not cache state: this exists solely for
   // issue S1 (a keyed `<For>` under `<Loading>` keeps stale children after its source
@@ -1132,75 +1317,25 @@ function createInfiniteDescriptorQuery<TPage, TPageParam>(
     },
   );
 
-  const nextPageParam = (value: InfiniteData<TPage, TPageParam> | undefined) => {
-    const target = untrack(descriptor);
-    if (!target?.getNextPageParam || !value || value.pages.length === 0) return undefined;
-    const lastPage = value.pages[value.pages.length - 1] as TPage;
-    const lastPageParam = value.pageParams[value.pageParams.length - 1] as TPageParam;
-    return target.getNextPageParam(lastPage, value.pages, lastPageParam);
-  };
-
-  const [pendingPageKeys, setPendingPageKeys] = createSignal<ReadonlySet<string>>(
-    new Set(),
-    internalWritableOptions,
-  );
-  const activeNextPages = new Map<string, Promise<void>>();
-  const fetchingNextPage = () => {
-    const target = descriptor();
-    return target !== null && pendingPageKeys().has(stableQueryKey(target.key));
-  };
-
-  // Pagination is a read, not an optimistic mutation. A suspended action would
-  // hold later filter reads on its previous snapshot (S10 in the beta register).
-  const runNextPage = async (
-    target: InfiniteDescriptor<TPage, TPageParam>,
-    pageParam: TPageParam,
-  ): Promise<void> => {
-    const controller = new AbortController();
-    const page = await target.fetch({
-      pageParam,
-      queryKey: target.key,
-      signal: controller.signal,
-    });
-
-    const current = readEntry(target);
-    if (!current) return;
-    client.setQueryData<InfiniteData<TPage, TPageParam>>(target.key, {
-      pageParams: [...current.pageParams, pageParam],
-      pages: [...current.pages, page],
-    });
-  };
-
+  // Pagination is a plain async read, not an action: an action would hold every write made
+  // while it is suspended in its own transition (S10 in the beta register). The request and
+  // its status live on the cache entry, so they are scoped to the exact key and shared by
+  // every observer of it.
   const fetchNextPage = () => {
     const target = untrack(descriptor);
-    if (!target) return Promise.resolve();
-    const hash = stableQueryKey(target.key);
-    const active = activeNextPages.get(hash);
-    if (active) return active;
-
-    const pageParam = nextPageParam(readEntry(target));
-    if (pageParam === undefined) return Promise.resolve();
-
-    setPendingPageKeys((current) => new Set([...current, hash]));
-    const promise = runNextPage(target, pageParam).finally(() => {
-      activeNextPages.delete(hash);
-      setPendingPageKeys((current) => {
-        const next = new Set(current);
-        next.delete(hash);
-        return next;
-      });
-    });
-    activeNextPages.set(hash, promise);
-    return promise;
+    return target ? client.fetchNextPage(target) : Promise.resolve();
   };
 
   return {
     cached: query.cached,
     data: query.data,
     fetching: query.fetching,
-    fetchingNextPage,
+    fetchingNextPage: () => observed.entry().fetchingNextPage(),
     fetchNextPage,
-    hasNextPage: () => nextPageParam(query.cached()) !== undefined,
+    hasNextPage: () => {
+      const target = untrack(descriptor);
+      return target !== null && nextPageParam(target, query.cached()) !== undefined;
+    },
     pending: query.pending,
     refetch: query.refetch,
     refresh: query.refresh,
