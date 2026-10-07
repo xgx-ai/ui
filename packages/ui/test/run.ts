@@ -34,6 +34,7 @@ const entrypoints = [
   path.join(import.meta.dir, "schema-form.spec.ts"),
 ];
 const ssrEntrypoints = [
+  path.join(import.meta.dir, "form-label-ssr.spec.tsx"),
   path.join(import.meta.dir, "map-ssr.spec.ts"),
   path.join(import.meta.dir, "styling-hooks-ssr.spec.tsx"),
 ];

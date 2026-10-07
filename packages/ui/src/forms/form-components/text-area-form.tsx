@@ -53,7 +53,9 @@ export function TextAreaForm(props: TextAreaFormProps) {
     >
       <div class="flex flex-col gap-1">
         <Show when={props.label}>
-          <FieldLabel required={props.required}>{props.label}</FieldLabel>
+          <FieldLabel for={id} required={props.required}>
+            {props.label}
+          </FieldLabel>
         </Show>
         <Show when={props.description}>
           <p class="text-3xs text-muted-foreground">{props.description}</p>
