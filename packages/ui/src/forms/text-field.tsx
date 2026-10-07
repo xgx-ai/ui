@@ -13,7 +13,15 @@
  */
 import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
-import { createContext, createSignal, createUniqueId, omit, useContext } from "solid-js";
+import {
+  createContext,
+  createEffect,
+  createSignal,
+  createUniqueId,
+  omit,
+  untrack,
+  useContext,
+} from "solid-js";
 
 import { cn } from "../cn.ts";
 
@@ -51,6 +59,32 @@ function callEventHandler<TElement, TEvent>(
   }
 }
 
+/**
+ * Shows a controlled value again when a field commits (blurs). Input that a handler normalises
+ * back to the current value (trimming a leading space, say) leaves the value unchanged, so the
+ * value binding never rewrites the element. This runs after the commit's writes have flushed.
+ * It waits for the commit because a value can follow input asynchronously (router search
+ * state, for instance), and reconciling on every keystroke would discard input in flight.
+ */
+function createCommitReconciler(value: () => unknown) {
+  const [committed, setCommitted] = createSignal<
+    HTMLInputElement | HTMLTextAreaElement | undefined
+  >(undefined, { equals: false });
+  createEffect(
+    () => {
+      const element = committed();
+      // The value as of the commit; later changes reach the element through its binding.
+      return { element, value: untrack(value) };
+    },
+    ({ element, value }) => {
+      if (element && value != null && element.value !== String(value)) {
+        element.value = String(value);
+      }
+    },
+  );
+  return setCommitted;
+}
+
 type TextFieldRootProps<T extends ValidComponent = "div"> = Omit<
   ComponentProps<"div">,
   "children" | "onChange"
@@ -86,7 +120,7 @@ const TextField = <T extends ValidComponent = "div">(props: TextFieldRootProps<T
     "value",
     "id",
   );
-  const [internalValue, setInternalValue] = createSignal(local.defaultValue);
+  const [internalValue, setInternalValue] = createSignal(untrack(() => local.defaultValue));
   const fieldId = () => String(local.id ?? `textfield-${fallbackId}`);
   const inputId = () => `${fieldId()}-input`;
   const descriptionId = () => `${fieldId()}-description`;
@@ -145,12 +179,14 @@ const TextFieldInput = <T extends ValidComponent = "input">(props: TextFieldInpu
     "id",
     "maxLength",
     "name",
+    "onBlur",
     "onInput",
     "readOnly",
     "required",
     "type",
     "value",
   );
+  const commit = createCommitReconciler(() => local.value ?? context?.value());
   const invalid = () => context?.invalid() ?? false;
   const describedBy = () => {
     if (!context) return others["aria-describedby"];
@@ -174,6 +210,10 @@ const TextFieldInput = <T extends ValidComponent = "input">(props: TextFieldInpu
       onInput={(event: InputEvent & { currentTarget: HTMLInputElement }) => {
         callEventHandler(local.onInput, event);
         context?.setValue(event.currentTarget.value);
+      }}
+      onBlur={(event: FocusEvent & { currentTarget: HTMLInputElement }) => {
+        callEventHandler(local.onBlur, event);
+        commit(event.currentTarget);
       }}
       aria-invalid={invalid() ? "true" : undefined}
       aria-describedby={describedBy()}
@@ -206,11 +246,13 @@ const TextFieldTextArea = <T extends ValidComponent = "textarea">(
     "disabled",
     "id",
     "name",
+    "onBlur",
     "onInput",
     "readOnly",
     "required",
     "value",
   );
+  const commit = createCommitReconciler(() => local.value ?? context?.value());
   const invalid = () => context?.invalid() ?? false;
   const describedBy = () => {
     if (!context) return others["aria-describedby"];
@@ -232,6 +274,10 @@ const TextFieldTextArea = <T extends ValidComponent = "textarea">(
       onInput={(event: InputEvent & { currentTarget: HTMLTextAreaElement }) => {
         callEventHandler(local.onInput, event);
         context?.setValue(event.currentTarget.value);
+      }}
+      onBlur={(event: FocusEvent & { currentTarget: HTMLTextAreaElement }) => {
+        callEventHandler(local.onBlur, event);
+        commit(event.currentTarget);
       }}
       aria-invalid={invalid() ? "true" : undefined}
       aria-describedby={describedBy()}
