@@ -1,3 +1,4 @@
+import { Dynamic } from "@solidjs/web";
 import { cva } from "class-variance-authority";
 import { omit } from "solid-js";
 
@@ -21,15 +22,21 @@ const labelVariants = cva(
 type LabelProps<_T> = {
   class?: string | undefined;
   required?: boolean;
+  for?: string;
   children?: string;
 };
 
 export const FieldLabel = <T extends "label">(props: LabelProps<T>) => {
   const local = props;
-  const others = omit(props, "class", "required", "children");
+  const others = omit(props, "class", "required", "children", "for");
   return (
-    <div class={cn(labelVariants(), local.class)} {...others}>
+    <Dynamic
+      component={local.for !== undefined ? "label" : "div"}
+      class={cn(labelVariants(), local.class)}
+      for={local.for}
+      {...others}
+    >
       {local.children} {local.required && <span class="text-error-foreground">*</span>}
-    </div>
+    </Dynamic>
   );
 };
