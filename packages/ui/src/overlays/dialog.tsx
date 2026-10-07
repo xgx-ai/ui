@@ -23,6 +23,7 @@ import {
   createSignal,
   createUniqueId,
   omit,
+  onSettled,
   Show,
   untrack,
   useContext,
@@ -53,7 +54,14 @@ const missingDialogContext = Symbol("missing-dialog-context");
 const DialogContext = createContext<DialogContextValue | typeof missingDialogContext>(
   missingDialogContext,
 );
-const DialogTemplateContext = createContext({ stickyFooter: false });
+type DialogTemplateContextValue = {
+  /** Footers in the template body stick to the bottom of its scrolling area. */
+  stickyFooter: boolean;
+  /** Footers in the template body move here, below the scrolling area. */
+  footerSlot?: HTMLElement;
+};
+
+const DialogTemplateContext = createContext<DialogTemplateContextValue>({ stickyFooter: false });
 
 function useDialog() {
   const context = useContext(DialogContext);
@@ -328,7 +336,8 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
     );
   const contentChildren = () => (
     <DismissableLayerContext value={layer}>
-      {local.children}
+      {/* A dialog nested in a template body lays out its own footer. */}
+      <DialogTemplateContext value={{ stickyFooter: false }}>{local.children}</DialogTemplateContext>
       <Show when={!local.hideCloseButton}>
         <button
           type="button"
@@ -403,11 +412,19 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
   );
 };
 
+type DialogFooterPlacement = "sticky" | "outside";
+
 type DialogTemplateProps = Omit<DialogContentProps, "title"> & {
   bodyClass?: string;
   description?: JSX.Element;
   footer?: JSX.Element;
   footerClass?: string;
+  /**
+   * Where a `DialogFooter` written in the body goes. "sticky" (the default) keeps it at the
+   * bottom of the scrolling body. "outside" moves it below the body, so only the body scrolls
+   * and the footer, like the header, always stays in view.
+   */
+  footerPlacement?: DialogFooterPlacement;
   header?: JSX.Element;
   headerClass?: string;
   layoutClass?: string;
@@ -424,11 +441,17 @@ const DialogTemplate: Component<DialogTemplateProps> = (props) => {
     "description",
     "footer",
     "footerClass",
+    "footerPlacement",
     "header",
     "headerClass",
     "layoutClass",
     "title",
   );
+  // Created before the body renders, so its footers can move in as they mount.
+  const footerSlot =
+    typeof document !== "undefined" && untrack(() => local.footerPlacement) === "outside"
+      ? ((<div data-slot="dialog-footer-slot" class="shrink-0 empty:hidden" />) as HTMLDivElement)
+      : undefined;
 
   return (
     <DialogContent class={local.class} {...rest}>
@@ -450,9 +473,10 @@ const DialogTemplate: Component<DialogTemplateProps> = (props) => {
         >
           {local.header}
         </Show>
-        <DialogTemplateContext value={{ stickyFooter: true }}>
+        <DialogTemplateContext value={{ stickyFooter: !footerSlot, footerSlot }}>
           <div class={cn("min-h-0 overflow-y-auto", local.bodyClass)}>{local.children}</div>
         </DialogTemplateContext>
+        {footerSlot}
         <Show when={local.footer}>
           <DialogFooter class={cn("shrink-0", local.footerClass)}>{local.footer}</DialogFooter>
         </Show>
@@ -467,11 +491,32 @@ const DialogHeader: Component<ComponentProps<"div">> = (props) => {
   return <div class={cn("flex flex-col gap-4 text-center sm:!text-left", local.class)} {...rest} />;
 };
 
+/**
+ * Keeps the controls of a footer moved out of its form owned by that form, so its submit
+ * button and pressing Enter in a field still submit the form.
+ */
+function keepFormOwner(anchor: Node, footer: HTMLElement, fallbackId: string) {
+  onSettled(() => {
+    const form = anchor.parentElement?.closest("form");
+    if (!form) return;
+    if (!form.id) form.id = fallbackId;
+    const associate = () => {
+      for (const control of footer.querySelectorAll("button, input, select, textarea")) {
+        if (!control.hasAttribute("form")) control.setAttribute("form", form.id);
+      }
+    };
+    associate();
+    const observer = new MutationObserver(associate);
+    observer.observe(footer, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  });
+}
+
 const DialogFooter: Component<ComponentProps<"div">> = (props) => {
   const template = useContext(DialogTemplateContext);
   const local = props;
   const rest = omit(props, "class");
-  return (
+  const footer = (
     <div
       class={cn(
         "flex flex-col-reverse sm:!flex-row sm:!justify-end sm:!space-x-2",
@@ -480,6 +525,18 @@ const DialogFooter: Component<ComponentProps<"div">> = (props) => {
       )}
       {...rest}
     />
+  );
+  const slot = template?.footerSlot;
+  if (!slot) return footer;
+
+  // Rendered below the template's scrolling body; the anchor marks where it was written.
+  const anchor = document.createTextNode("");
+  keepFormOwner(anchor, footer as HTMLElement, `dialog-form-${createUniqueId()}`);
+  return (
+    <>
+      {anchor}
+      <PortalMount mount={slot}>{footer}</PortalMount>
+    </>
   );
 };
 
@@ -527,7 +584,7 @@ const DialogDescription = <T extends ValidComponent = "p">(props: DialogDescript
   );
 };
 
-export type { DialogTemplateProps };
+export type { DialogFooterPlacement, DialogTemplateProps };
 export {
   Dialog,
   DialogClose,

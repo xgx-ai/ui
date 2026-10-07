@@ -74,6 +74,7 @@ export function useResponseDialog() {
               <DialogTemplate
                 class={cn("max-w-lg w-full", dialogProps.class)}
                 description={dialogProps.description}
+                footerPlacement={dialogProps.footerPlacement}
                 mount={dialogProps.mount}
                 hideCloseButton={dialogProps.hideCloseButton}
                 title={dialogProps.title}
@@ -130,6 +131,7 @@ export function useResponseDialog() {
                       </div>
                     </div>
                   }
+                  footerPlacement={dialogProps.footerPlacement}
                   hideCloseButton={dialogProps.hideCloseButton}
                   mount={dialogProps.mount}
                   zIndex={dialogProps.zIndex ?? "z-[60]"}

@@ -1,5 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { createSignal, createStore, getOwner, onCleanup } from "solid-js";
+import type { DialogFooterPlacement } from "../dialog.tsx";
 import type { DialogContentProps } from "./dialog-response";
 
 export interface DialogProps<T> {
@@ -13,6 +14,8 @@ export interface DialogProps<T> {
   closeOnInteractOutside?: boolean;
   zIndex?: string;
   hideCloseButton?: boolean;
+  /** Where the content's `DialogFooter` goes; see `DialogTemplate`'s `footerPlacement`. */
+  footerPlacement?: DialogFooterPlacement;
   template?: "alert";
   templateProps?: { action: string };
 }

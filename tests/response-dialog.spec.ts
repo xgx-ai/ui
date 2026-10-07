@@ -75,3 +75,44 @@ test("unmounting the dialog host resolves the waiting caller", async ({ page }) 
   await expect(result).toHaveText("Pending decision: true");
   expect(errors).toEqual([]);
 });
+
+test("an outside footer stays in view below the scrolling body and still submits its form", async ({
+  page,
+}) => {
+  const errors = observeErrors(page);
+  await page.setViewportSize({ width: 900, height: 520 });
+  await page.goto("#overlays");
+  const result = page.getByTestId("response-result");
+  await page.getByRole("button", { name: "Long details", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Long details" });
+  await expect(dialog).toBeVisible();
+
+  const layout = await dialog.evaluate((element) => {
+    const body = element.querySelector<HTMLElement>(".overflow-y-auto");
+    const slot = element.querySelector<HTMLElement>("[data-slot='dialog-footer-slot']");
+    const save = [...element.querySelectorAll("button")].find(
+      (button) => button.textContent === "Save details",
+    );
+    return {
+      bodyScrolls: Boolean(body && body.scrollHeight > body.clientHeight),
+      footerInBody: Boolean(save && body?.contains(save)),
+      footerInSlot: Boolean(save && slot?.contains(save)),
+      dialogBottom: element.getBoundingClientRect().bottom,
+    };
+  });
+  expect(layout).toMatchObject({ bodyScrolls: true, footerInBody: false, footerInSlot: true });
+  expect(layout.dialogBottom).toBeLessThanOrEqual(520);
+  await expect(dialog.getByRole("button", { name: "Save details", exact: true })).toBeInViewport();
+
+  // Enter in a field submits the form even though its button has moved out of it.
+  await dialog.getByRole("textbox", { name: "Detail 1", exact: true }).fill("First pass");
+  await page.keyboard.press("Enter");
+  await expect(result).toHaveText("Long details: First pass");
+
+  await page.getByRole("button", { name: "Long details", exact: true }).click();
+  const again = page.getByRole("dialog", { name: "Long details" });
+  await again.getByRole("textbox", { name: "Detail 1", exact: true }).fill("Second pass");
+  await again.getByRole("button", { name: "Save details", exact: true }).click();
+  await expect(result).toHaveText("Long details: Second pass");
+  expect(errors).toEqual([]);
+});

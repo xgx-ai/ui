@@ -863,7 +863,7 @@ export {
   useResponseDialog,
 } from "./overlays/dialog/dialog-response.tsx";
 // Overlays
-export type { DialogTemplateProps } from "./overlays/dialog.tsx";
+export type { DialogFooterPlacement, DialogTemplateProps } from "./overlays/dialog.tsx";
 export {
   Dialog,
   DialogClose,

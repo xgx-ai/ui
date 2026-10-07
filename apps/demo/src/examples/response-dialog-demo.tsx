@@ -9,7 +9,7 @@ import {
   DialogFooter,
   useResponseDialog,
 } from "@xgx/ui";
-import { createSignal, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 
 /** Response dialogs opened back to back, and a host that can unmount while one is open. */
 export function ResponseDialogLifecycleDemo() {
@@ -77,6 +77,16 @@ function ResponseDialogHost(props: { onResult: (result: string) => void }) {
     props.onResult(`Review note: ${note ?? "dismissed"}`);
   };
 
+  const longDetails = async () => {
+    const details = await showResponseDialog<string>({
+      title: "Long details",
+      description: "Only the fields scroll; the title and buttons stay in view.",
+      footerPlacement: "outside",
+      content: (dialogProps) => <LongDetailsForm dialogProps={dialogProps} />,
+    });
+    props.onResult(`Long details: ${details ?? "dismissed"}`);
+  };
+
   const pendingDecision = async () => {
     const decision = await showResponseDialog<boolean>({ title: "Pending decision" });
     props.onResult(`Pending decision: ${String(decision)}`);
@@ -92,6 +102,9 @@ function ResponseDialogHost(props: { onResult: (result: string) => void }) {
       </Button>
       <Button variant="outline" onClick={pendingDecision}>
         Pending decision
+      </Button>
+      <Button variant="outline" onClick={longDetails}>
+        Long details
       </Button>
       <DialogResponse />
     </>
@@ -117,6 +130,42 @@ function NoteForm(props: { dialogProps: DialogContentProps<string>; label: strin
       <DialogFooter>
         <Button type="submit" size="sm">
           Save note
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+const longDetailFields = Array.from({ length: 14 }, (_, index) => `Detail ${index + 1}`);
+
+/** A form taller than the viewport whose footer sits below the scrolling body. */
+function LongDetailsForm(props: { dialogProps: DialogContentProps<string> }) {
+  const [first, setFirst] = createSignal("");
+  return (
+    <form
+      class="flex flex-col gap-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        props.dialogProps.resolve(first());
+      }}
+    >
+      <For each={longDetailFields}>
+        {(label, index) => (
+          <input
+            class="h-9 rounded-md border border-input bg-transparent px-3 text-xs"
+            aria-label={label}
+            onInput={(event) => {
+              if (index() === 0) setFirst(event.currentTarget.value);
+            }}
+          />
+        )}
+      </For>
+      <DialogFooter>
+        <Button variant="outline" size="sm" onClick={props.dialogProps.reject}>
+          Cancel
+        </Button>
+        <Button type="submit" size="sm">
+          Save details
         </Button>
       </DialogFooter>
     </form>

@@ -66,6 +66,8 @@ Typography role classes (`xgx-text-*`, `xgx-control-text-*`) sit in `@layer comp
 
 `Badge` exposes `data-badge-variant`. With nothing selected, `SelectValue` renders the `Select` placeholder unless its children render their own fallback, and marks the shown placeholder with `data-placeholder-shown`. `TableColumnHeader` shows a decorative arrow for the sort direction, exposed as `data-sort-direction`; the header cell carries `aria-sort`.
 
+`DialogTemplate` (and `showResponseDialog`) accept `footerPlacement`. `"sticky"` (default) keeps a `DialogFooter` written in the body stuck to the bottom of the scrolling body. `"outside"` moves it into a `data-slot="dialog-footer-slot"` element below the body, so only the body scrolls and the header and footer always stay in view. A moved footer's controls stay owned by the form it was written in, so its submit button and Enter in a field still submit that form.
+
 ## Icons
 
 - Use `@xgx/ui/icons` for shared UI and demo iconography.
