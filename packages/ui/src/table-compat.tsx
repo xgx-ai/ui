@@ -20,7 +20,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "./navigation/dropdown-menu.tsx";
-import { Settings } from "@xgx/ui/icons";
+import { ArrowDown, ArrowUp, Settings } from "./icons.index";
 import {
   TableRoot,
   TableBody,
@@ -555,7 +555,7 @@ export function TableInfinite<TData>(props: TableInfiniteProps<TData>) {
               </Show>
             </Loading>
           </TableBody>
-          <TableFooter class="bg-white/0">
+          <TableFooter class="bg-transparent">
             <TableRow class="border-none cursor-default hover:bg-transparent">
               <TableCell colspan={visibleColumnCount()} class="text-center">
                 <div
@@ -586,7 +586,7 @@ export function TableInfinite<TData>(props: TableInfiniteProps<TData>) {
               {props.statusBarLabel ?? "Total results"}: {totalCount()}
             </span>
             <Show when={props.enableRowSelection}>
-              <span class="ml-1 text-black/50">( Selected: {selectedCount()} )</span>
+              <span class="ml-1 text-muted-foreground">( Selected: {selectedCount()} )</span>
             </Show>
             <Show when={props.statusBarSummarySlot}>
               <div>{props.statusBarSummarySlot}</div>
@@ -621,8 +621,15 @@ export function TableColumnHeader(props: {
       }}
     >
       {props.title ?? props.children}
+      {/* Decorative: the header cell carries aria-sort. */}
       <Show when={props.sorted}>
-        {(direction) => <span data-sort-direction={direction()}>{direction()}</span>}
+        {(direction) => (
+          <span data-sort-direction={direction()} aria-hidden="true" class="inline-flex">
+            <Show when={direction() === "asc"} fallback={<ArrowDown class="size-3" />}>
+              <ArrowUp class="size-3" />
+            </Show>
+          </span>
+        )}
       </Show>
     </button>
   );

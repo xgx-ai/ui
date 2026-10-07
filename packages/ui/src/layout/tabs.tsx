@@ -23,7 +23,7 @@ type TabsProps = Omit<ComponentProps<"div">, "onChange"> & {
   value?: string;
   defaultValue?: string;
   onChange?: (value: string) => void;
-  /** Exposes the variant for app styling; shared default styles stay unchanged. */
+  /** "underline" (default) or "segmented": a muted track with a raised selected tab. */
   variant?: TabsVariant;
 };
 
@@ -66,6 +66,13 @@ const Tabs = (props: TabsProps) => {
 
 type TabsListProps = ComponentProps<"div">;
 
+const listVariants: Record<TabsVariant, string> = {
+  underline:
+    "inline-flex min-h-9 items-center gap-5 border-b border-border-subtle text-muted-foreground",
+  segmented:
+    "inline-flex h-8 items-center justify-center rounded-md bg-surface-muted p-1 text-muted-foreground",
+};
+
 const TabsList = (props: TabsListProps) => {
   const context = useContext(TabsContext);
   const local = props;
@@ -75,13 +82,17 @@ const TabsList = (props: TabsListProps) => {
       role="tablist"
       data-slot="tabs-list"
       data-tabs-variant={context.variant()}
-      class={cn(
-        "inline-flex min-h-9 items-center gap-5 border-b border-border-subtle text-muted-foreground",
-        local.class,
-      )}
+      class={cn(listVariants[context.variant()], local.class)}
       {...others}
     />
   );
+};
+
+const triggerVariants: Record<TabsVariant, string> = {
+  underline:
+    "relative inline-flex h-9 items-center justify-center whitespace-nowrap px-0 text-sm font-medium transition-colors after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-transparent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[selected]:text-foreground data-[selected]:after:bg-selected",
+  segmented:
+    "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[selected]:bg-surface-raised data-[selected]:text-surface-raised-foreground data-[selected]:shadow-elevation-low",
 };
 
 type TabsTriggerProps = Omit<ComponentProps<"button">, "value"> & {
@@ -143,10 +154,7 @@ const TabsTrigger = (props: TabsTriggerProps) => {
       disabled={local.disabled}
       tabindex={selected() ? 0 : -1}
       data-selected={selected() ? "" : undefined}
-      class={cn(
-        "relative inline-flex h-9 items-center justify-center whitespace-nowrap px-0 text-sm font-medium transition-colors after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-transparent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[selected]:text-foreground data-[selected]:after:bg-selected",
-        local.class,
-      )}
+      class={cn(triggerVariants[context.variant()], local.class)}
       onClick={onClick}
       onKeyDown={onKeyDown}
       {...others}
@@ -173,7 +181,8 @@ const TabsContent = (props: TabsContentProps) => {
         data-tabs-variant={context.variant()}
         aria-labelledby={`${context.baseId}-trigger-${safeValue()}`}
         class={cn(
-          "mt-3 ring-offset-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          context.variant() === "segmented" ? "mt-2" : "mt-3",
+          "ring-offset-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           local.class,
         )}
         {...others}

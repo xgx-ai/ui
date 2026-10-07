@@ -62,9 +62,9 @@ Typography role classes (`xgx-text-*`, `xgx-control-text-*`) sit in `@layer comp
 
 ## App styling hooks
 
-`Tabs` accepts `variant="underline"` (default) or `variant="segmented"`. The variant is exposed as `data-tabs-variant` on each part; `data-slot` identifies `tabs`, `tabs-list`, `tabs-trigger`, `tabs-content` and `tabs-indicator`. Shared classes do not change with the variant, so apps provide their own variant styling.
+`Tabs` accepts `variant="underline"` (default) or `variant="segmented"`: a muted track (`surface-muted`) with a raised selected tab (`surface-raised`, `elevation-low`). The variant is exposed as `data-tabs-variant` on each part; `data-slot` identifies `tabs`, `tabs-list`, `tabs-trigger`, `tabs-content` and `tabs-indicator`.
 
-`Badge` exposes `data-badge-variant`. An empty `SelectValue` exposes `data-placeholder-shown` and `data-placeholder` without adding placeholder content; custom child fallback rendering stays intact. `TableColumnHeader` exposes `data-sort-direction` on its direction span and retains its default `asc`/`desc` text.
+`Badge` exposes `data-badge-variant`. With nothing selected, `SelectValue` renders the `Select` placeholder unless its children render their own fallback, and marks the shown placeholder with `data-placeholder-shown`. `TableColumnHeader` shows a decorative arrow for the sort direction, exposed as `data-sort-direction`; the header cell carries `aria-sort`.
 
 ## Icons
 

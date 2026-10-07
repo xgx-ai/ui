@@ -26,10 +26,8 @@ export default function runStylingHooksSsrSpec() {
     );
   }
   assert(tabs.includes('aria-selected="true"'), "Variant changes must preserve selected semantics");
-  assert(
-    tabs.includes("border-b border-border-subtle"),
-    "The shared tab styles must stay unchanged",
-  );
+  assert(tabs.includes("bg-surface-muted"), "Segmented tabs must render their muted track");
+  assert(!tabs.includes("border-b border-border-subtle"), "Segmented tabs must drop the underline");
   const defaultTabs = renderToString(() => (
     <Tabs>
       <TabsList />
@@ -39,33 +37,32 @@ export default function runStylingHooksSsrSpec() {
     defaultTabs.includes('data-tabs-variant="underline"'),
     "Tabs must expose its default variant",
   );
+  assert(
+    defaultTabs.includes("border-b border-border-subtle"),
+    "The default underline tab styles must stay unchanged",
+  );
 
   const empty = renderToString(() => (
     <Select options={["One"]} value={null} placeholder="Choose an option">
       <SelectValue />
     </Select>
   ));
-  assert(
-    empty.includes("data-placeholder-shown"),
-    "Empty selections must expose placeholder state",
-  );
-  assert(
-    empty.includes('data-placeholder="Choose an option"'),
-    "Placeholder text must be available to app CSS",
-  );
-  assert(!empty.includes(">Choose an option<"), "Shared SelectValue must not add fallback content");
+  assert(empty.includes("data-placeholder-shown"), "Empty selections must mark the placeholder");
+  assert(empty.includes(">Choose an option<"), "Empty selections must render the placeholder");
   const custom = renderToString(() => (
     <Select options={["One"]} value={null} placeholder="Choose an option">
       <SelectValue>{(state) => state.selectedOption()?.toString() ?? "Own fallback"}</SelectValue>
     </Select>
   ));
   assert(custom.includes("Own fallback"), "Custom empty-selection rendering must stay intact");
+  assert(!custom.includes("Choose an option"), "A custom fallback replaces the placeholder");
   const selected = renderToString(() => (
     <Select options={[0]} value={0} placeholder="Choose an option">
       <SelectValue />
     </Select>
   ));
   assert(!selected.includes("data-placeholder-shown"), "A selected zero must not appear empty");
+  assert(selected.includes(">0<"), "A selected zero must render its value");
 
   const badge = renderToString(() => <Badge variant="primary">Status</Badge>);
   assert(badge.includes('data-badge-variant="primary"'), "Badges must expose their variant");
@@ -78,6 +75,7 @@ export default function runStylingHooksSsrSpec() {
     heading.includes('data-sort-direction="asc"'),
     "Column headings must expose sort direction",
   );
-  assert(heading.includes(">asc<"), "The shared sort label must retain its original text");
+  assert(heading.includes("<svg"), "Sorted headings must show a direction arrow");
+  assert(!heading.includes(">asc<"), "Sorted headings must not print the raw direction");
   console.log("ok - app styling hooks: tabs, select, badges and table headings");
 }

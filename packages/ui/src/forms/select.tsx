@@ -14,7 +14,7 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { omit, Show } from "solid-js";
+import { createMemo, omit, Show } from "solid-js";
 import { cn } from "../cn";
 import { Check, ChevronsUpDown } from "../icons.index";
 import { assignRef } from "../overlays/floating";
@@ -63,15 +63,19 @@ const SelectValue = <T,>(props: SelectValueProps<T>) => {
     const selected = context.selectedOption();
     return Array.isArray(selected) ? selected.length === 0 : selected == null;
   };
+  const content = createMemo(() =>
+    typeof local.children === "function" ? local.children(state) : selectedOption()?.toString?.(),
+  );
+  // With nothing selected, show the placeholder unless the caller renders its own fallback.
+  const placeholderShown = () => empty() && (content() == null || content() === "");
   return (
-    <span
-      {...others}
-      data-placeholder-shown={empty() ? "" : undefined}
-      data-placeholder={empty() ? context.placeholder() : undefined}
-    >
-      {typeof local.children === "function"
-        ? local.children(state)
-        : selectedOption()?.toString?.()}
+    <span {...others} data-placeholder-shown={placeholderShown() ? "" : undefined}>
+      <Show
+        when={!placeholderShown()}
+        fallback={<span class="text-muted-foreground">{context.placeholder()}</span>}
+      >
+        {content()}
+      </Show>
     </span>
   );
 };
