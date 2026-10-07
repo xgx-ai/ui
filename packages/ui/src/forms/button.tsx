@@ -20,11 +20,11 @@ import { Spinner } from "../feedback/spinner.tsx";
 import type { PolymorphicProps } from "../utils/polymorphic";
 
 const buttonVariants = cva(
-  "cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--button-radius,calc(var(--radius)_-_2px))] font-medium ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "bg-button text-button-foreground hover:bg-button/90",
         destructive: "bg-danger text-danger-foreground hover:bg-danger/90",
         outline:
           "border border-input bg-transparent text-foreground hover:bg-hover hover:text-hover-foreground",
@@ -41,7 +41,8 @@ const buttonVariants = cva(
         card: "flex-col border-2 border-border-subtle bg-card text-card-foreground hover:border-border-strong hover:bg-hover hover:text-hover-foreground data-[selected]:border-selected data-[selected]:bg-selected data-[selected]:text-selected-foreground",
       },
       size: {
-        default: "xgx-control-text-md h-10 px-4 py-2",
+        default:
+          "xgx-control-text-md h-[var(--button-height,2.5rem)] px-[var(--button-padding-x,1rem)] py-2",
         sm: "xgx-control-text-sm h-8 px-3",
         lg: "xgx-control-text-md h-11 px-8",
         icon: "size-10",

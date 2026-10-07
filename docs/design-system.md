@@ -23,6 +23,7 @@ Required pairing rules:
 
 - `bg-primary` with `text-primary-foreground`
 - `bg-secondary` with `text-secondary-foreground`
+- `bg-button` with `text-button-foreground`
 - `bg-surface` with `text-surface-foreground`
 - `bg-surface-raised` with `text-surface-raised-foreground`
 - `bg-control` with `text-control-foreground`
@@ -43,6 +44,19 @@ Control tokens are independent from brand tokens:
 --control-active-foreground: var(--primary-foreground);
 --control-border: var(--border-subtle);
 ```
+
+Button and control shape tokens are optional; each falls back to the library default:
+
+```css
+--button: var(--primary); /* default Button fill */
+--button-foreground: var(--primary-foreground);
+--button-radius: calc(var(--radius) - 2px);
+--button-height: 2.5rem; /* default Button size */
+--button-padding-x: 1rem;
+--control-font-size: 0.8125rem; /* xgx-control-text-sm and -md */
+```
+
+Typography role classes (`xgx-text-*`, `xgx-control-text-*`) sit in `@layer components`, so a size utility passed through `class` overrides the role's size.
 
 ## Icons
 

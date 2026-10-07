@@ -22,6 +22,11 @@
   --color-primary-foreground: var(--primary-foreground, var(--background, Canvas));
   --color-secondary: var(--secondary, var(--muted, var(--background, Canvas)));
   --color-secondary-foreground: var(--secondary-foreground, var(--foreground, CanvasText));
+  --color-button: var(--button, var(--primary, var(--foreground, CanvasText)));
+  --color-button-foreground: var(
+    --button-foreground,
+    var(--primary-foreground, var(--background, Canvas))
+  );
   --color-muted: var(--muted, var(--background, Canvas));
   --color-muted-foreground: var(--muted-foreground, var(--foreground, CanvasText));
   --color-accent: var(--accent, var(--muted, var(--background, Canvas)));
@@ -187,6 +192,11 @@
   --color-primary-foreground: var(--primary-foreground, var(--background, Canvas));
   --color-secondary: var(--secondary, var(--muted, var(--background, Canvas)));
   --color-secondary-foreground: var(--secondary-foreground, var(--foreground, CanvasText));
+  --color-button: var(--button, var(--primary, var(--foreground, CanvasText)));
+  --color-button-foreground: var(
+    --button-foreground,
+    var(--primary-foreground, var(--background, Canvas))
+  );
   --color-muted: var(--muted, var(--background, Canvas));
   --color-muted-foreground: var(--muted-foreground, var(--foreground, CanvasText));
   --color-accent: var(--accent, var(--muted, var(--background, Canvas)));
@@ -292,35 +302,40 @@ body {
   @apply text-xs;
 }
 
-.xgx-text-caption {
-  font-size: 0.6875rem;
-  line-height: 1rem;
-}
+/* Typography roles.
+ * Layered below utilities so a size class passed by the caller (text-2xl,
+ * text-xs, ...) wins over the role's default size. */
+@layer components {
+  .xgx-text-caption {
+    font-size: 0.6875rem;
+    line-height: 1rem;
+  }
 
-.xgx-text-body {
-  font-size: 0.8125rem;
-  line-height: 1.25rem;
-}
+  .xgx-text-body {
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+  }
 
-.xgx-text-body-tight {
-  font-size: 0.8125rem;
-  line-height: 1rem;
-}
+  .xgx-text-body-tight {
+    font-size: 0.8125rem;
+    line-height: 1rem;
+  }
 
-.xgx-text-title {
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-}
+  .xgx-text-title {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
 
-.xgx-text-page-title {
-  font-size: 1.125rem;
-  line-height: 1.5rem;
-}
+  .xgx-text-page-title {
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+  }
 
-.xgx-control-text-sm,
-.xgx-control-text-md {
-  font-size: 0.8125rem;
-  line-height: 1;
+  .xgx-control-text-sm,
+  .xgx-control-text-md {
+    font-size: var(--control-font-size, 0.8125rem);
+    line-height: 1;
+  }
 }
 
 [data-xgx-dropdown-open="false"] [data-xgx-dropdown-content] {
