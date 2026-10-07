@@ -24,7 +24,7 @@ type PanelOptions = {
   collapsible?: boolean;
 };
 
-const ResizableContext = createContext<ResizableContextValue>();
+const ResizableContext = createContext<ResizableContextValue | null>(null);
 
 function useResizableContext() {
   const context = useContext(ResizableContext);

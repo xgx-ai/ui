@@ -27,7 +27,8 @@ import {
   useContext,
 } from "solid-js";
 import { cn } from "../cn";
-import { assignRef, containsNode } from "../overlays/floating";
+import { createDismissableLayer, DismissableLayerContext } from "../overlays/dismissable-layer";
+import { assignRef } from "../overlays/floating";
 import { PopperPositioner, PopperRoot } from "../overlays/popper";
 import { PortalMount } from "../overlays/portal";
 
@@ -99,8 +100,8 @@ type SearchContextValue = {
   triggerMode: () => "focus" | "input";
 };
 
-const SearchContext = createContext<SearchContextValue>();
-const SearchItemContext = createContext<SearchOption>();
+const SearchContext = createContext<SearchContextValue | null>(null);
+const SearchItemContext = createContext<SearchOption | null>(null);
 
 export function useSearchContext() {
   const context = useContext(SearchContext);
@@ -109,7 +110,7 @@ export function useSearchContext() {
 }
 
 export function useSearchItemContext() {
-  return useContext(SearchItemContext);
+  return useContext(SearchItemContext) ?? undefined;
 }
 
 const getOptionValue = <T,>(option: T, getter: OptionGetter<T, unknown> | undefined) => {
@@ -304,6 +305,8 @@ const Search = <T,>(props: SearchRootProps<T>) => {
     if (event.defaultPrevented || disabled()) return;
 
     if (event.key === "Escape") {
+      // A closed listbox leaves Escape to the surface around it, such as a popover or dialog.
+      if (!open()) return;
       event.preventDefault();
       setOpen(false);
       return;
@@ -369,40 +372,23 @@ const Search = <T,>(props: SearchRootProps<T>) => {
     },
   );
 
-  createEffect(
-    () => ({
-      content: contentRef(),
-      isOpen: open(),
-      root: rootRef(),
-    }),
-    (state) => {
-      if (!state.isOpen) return;
+  // The listbox joins any enclosing popover or dialog, so choosing from a portalled listbox
+  // does not dismiss it, and Escape closes the listbox before its container.
+  const layer = createDismissableLayer({
+    open,
+    elements: () => [rootRef(), contentRef()],
+    onPointerDownOutside: () => setOpen(false),
+    onEscapeKeyDown: () => setOpen(false),
+  });
 
-      const onPointerDown = (event: PointerEvent) => {
-        const target = event.target as Node;
-        if (!containsNode(state.root, target) && !containsNode(state.content, target)) {
-          setOpen(false);
-        }
-      };
-      const onFocusIn = (event: FocusEvent) => {
-        const target = event.target as Node;
-        if (!containsNode(state.root, target) && !containsNode(state.content, target)) {
-          setOpen(false);
-        }
-      };
-      const onKeyDown = (event: KeyboardEvent) => {
-        if (event.key === "Escape") setOpen(false);
-      };
-      document.addEventListener("focusin", onFocusIn);
-      document.addEventListener("pointerdown", onPointerDown);
-      document.addEventListener("keydown", onKeyDown);
-      return () => {
-        document.removeEventListener("focusin", onFocusIn);
-        document.removeEventListener("pointerdown", onPointerDown);
-        document.removeEventListener("keydown", onKeyDown);
-      };
-    },
-  );
+  createEffect(open, (isOpen) => {
+    if (!isOpen) return;
+    const onFocusIn = (event: FocusEvent) => {
+      if (!layer.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("focusin", onFocusIn);
+    return () => document.removeEventListener("focusin", onFocusIn);
+  });
 
   createEffect(
     () => {
@@ -433,48 +419,50 @@ const Search = <T,>(props: SearchRootProps<T>) => {
   );
 
   return (
-    <SearchContext
-      value={{
-        anchorRef: floatingAnchor,
-        close: () => setOpen(false),
-        contentRef,
-        disabled,
-        filteredOptions,
-        highlightedOptionId,
-        inputValue,
-        isSelected,
-        itemComponent: () =>
-          local.itemComponent as ((props: { item: SearchOption }) => JSX.Element) | undefined,
-        listboxId,
-        multiple: () => Boolean(local.multiple),
-        onSearchKeyDown,
-        open,
-        placeholder: () => local.placeholder,
-        clear,
-        remove,
-        select,
-        setAnchorRef,
-        setContentRef,
-        setInputValue,
-        setOpen,
-        selectedOption: selectedValue,
-        triggerMode: () => local.triggerMode ?? "focus",
-      }}
-    >
-      <PopperRoot
-        anchorRef={floatingAnchor}
-        contentRef={contentRef}
-        fitViewport
-        gutter={4}
-        open={open}
-        placement="bottom-start"
-        sameWidth
+    <DismissableLayerContext value={layer}>
+      <SearchContext
+        value={{
+          anchorRef: floatingAnchor,
+          close: () => setOpen(false),
+          contentRef,
+          disabled,
+          filteredOptions,
+          highlightedOptionId,
+          inputValue,
+          isSelected,
+          itemComponent: () =>
+            local.itemComponent as ((props: { item: SearchOption }) => JSX.Element) | undefined,
+          listboxId,
+          multiple: () => Boolean(local.multiple),
+          onSearchKeyDown,
+          open,
+          placeholder: () => local.placeholder,
+          clear,
+          remove,
+          select,
+          setAnchorRef,
+          setContentRef,
+          setInputValue,
+          setOpen,
+          selectedOption: selectedValue,
+          triggerMode: () => local.triggerMode ?? "focus",
+        }}
       >
-        <div ref={setRootRef} class={cn("relative", local.class)} {...others}>
-          {local.children}
-        </div>
-      </PopperRoot>
-    </SearchContext>
+        <PopperRoot
+          anchorRef={floatingAnchor}
+          contentRef={contentRef}
+          fitViewport
+          gutter={4}
+          open={open}
+          placement="bottom-start"
+          sameWidth
+        >
+          <div ref={setRootRef} class={cn("relative", local.class)} {...others}>
+            {local.children}
+          </div>
+        </PopperRoot>
+      </SearchContext>
+    </DismissableLayerContext>
   );
 };
 

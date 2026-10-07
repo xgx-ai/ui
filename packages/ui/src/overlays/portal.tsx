@@ -17,29 +17,34 @@ const PortalMount = (props: PortalMountProps) => {
   const startMarker = document.createTextNode("");
   const endMarker = document.createTextNode("");
   const mount = () => props.mount ?? defaultMount();
+  const activeTarget = () => (props.disabled ? undefined : mount());
+
+  // Claim this portal's place in the target before its children render. A portal nested in
+  // this one (a menu inside a popover) renders first, so without the claim its region would
+  // come earlier in the target and its floating content would stack beneath this one's.
+  createRenderEffect(activeTarget, (target) => {
+    if (target && !endMarker.parentNode) target.appendChild(endMarker);
+  });
+
   const content = createMemo(() => [startMarker, props.children]);
 
-  createEffect(
-    () => (props.disabled ? undefined : mount()),
-    (target) => {
-      if (!target) return;
+  createEffect(activeTarget, (target) => {
+    if (!target) return;
 
-      registerDelegatedContainer(target);
-      return () => unregisterDelegatedContainer(target);
-    },
-  );
+    registerDelegatedContainer(target);
+    return () => unregisterDelegatedContainer(target);
+  });
 
   createRenderEffect(
     () => ({
       content: content(),
-      disabled: props.disabled,
-      target: mount(),
+      target: activeTarget(),
     }),
     (state) => {
-      if (state.disabled || !state.target) return;
+      if (!state.target) return;
 
       const target = state.target;
-      target.appendChild(endMarker);
+      if (endMarker.parentNode !== target) target.appendChild(endMarker);
       insert(target, state.content, endMarker);
 
       return () => {
@@ -50,6 +55,7 @@ const PortalMount = (props: PortalMountProps) => {
           if (node === endMarker) break;
           node = next;
         }
+        if (endMarker.parentNode === target) target.removeChild(endMarker);
       };
     },
   );

@@ -15,9 +15,10 @@ import type { ComponentProps, JSX, ValidComponent } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import { createContext, createSignal, omit, Show, useContext } from "solid-js";
 import { cn } from "../cn";
+import { callEventHandler } from "../utils/event-handler";
+import { createDismissableLayer, DismissableLayerContext } from "./dismissable-layer";
 import { assignRef } from "./floating";
 import { type PopperAnchorRect, PopperPositioner, PopperRoot } from "./popper";
-import { createPopoverDismissal, type PopoverDismissal } from "./popover-dismissal";
 import { PortalMount } from "./portal";
 
 const DynamicAny = Dynamic as any;
@@ -57,7 +58,6 @@ type PopoverContextValue = {
   anchorRef: () => HTMLElement | undefined;
   close: () => void;
   contentRef: () => HTMLElement | undefined;
-  dismissal: PopoverDismissal;
   gutter: () => number;
   open: () => boolean;
   placement: () => Placement;
@@ -75,7 +75,6 @@ function usePopover() {
 }
 
 const Popover = (props: PopoverProps) => {
-  const parent = useContext(PopoverContext);
   const [rootRef, setRootRef] = createSignal<HTMLDivElement>();
   const [triggerRef, setTriggerRef] = createSignal<HTMLElement>();
   const [contentRef, setContentRef] = createSignal<HTMLElement>();
@@ -105,47 +104,48 @@ const Popover = (props: PopoverProps) => {
     local.onOpenChange?.(next);
   };
 
-  const dismissal = createPopoverDismissal({
-    close: () => setOpen(false),
-    contentRef,
+  // Nested popovers, menus and listboxes join this layer through context, even when portalled.
+  const layer = createDismissableLayer({
     open,
-    parent: parent?.dismissal,
-    rootRef,
+    elements: () => [rootRef(), contentRef()],
+    onPointerDownOutside: () => setOpen(false),
+    onEscapeKeyDown: () => setOpen(false),
   });
 
   return (
-    <PopoverContext
-      value={{
-        anchorRef,
-        close: () => setOpen(false),
-        contentRef,
-        dismissal,
-        gutter,
-        open,
-        placement,
-        setContentRef,
-        setOpen,
-        setTriggerRef,
-      }}
-    >
-      <PopperRoot
-        anchorRef={anchorRef}
-        contentRef={contentRef}
-        gutter={gutter()}
-        getAnchorRect={local.getAnchorRect}
-        open={open}
-        placement={placement()}
+    <DismissableLayerContext value={layer}>
+      <PopoverContext
+        value={{
+          anchorRef,
+          close: () => setOpen(false),
+          contentRef,
+          gutter,
+          open,
+          placement,
+          setContentRef,
+          setOpen,
+          setTriggerRef,
+        }}
       >
-        <div
-          ref={setRootRef}
-          data-open={open() ? "" : undefined}
-          class={cn("relative inline-block", local.class)}
-          {...others}
+        <PopperRoot
+          anchorRef={anchorRef}
+          contentRef={contentRef}
+          gutter={gutter()}
+          getAnchorRect={local.getAnchorRect}
+          open={open}
+          placement={placement()}
         >
-          {local.children}
-        </div>
-      </PopperRoot>
-    </PopoverContext>
+          <div
+            ref={setRootRef}
+            data-open={open() ? "" : undefined}
+            class={cn("relative inline-block", local.class)}
+            {...others}
+          >
+            {local.children}
+          </div>
+        </PopperRoot>
+      </PopoverContext>
+    </DismissableLayerContext>
   );
 };
 
@@ -197,8 +197,7 @@ const PopoverTrigger = <T extends ValidComponent = "button">(props: PopoverTrigg
   const local = props;
   const others = omit(props, "as", "children", "onClick", "ref", "type");
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
-    const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
-    handler?.(event);
+    callEventHandler(local.onClick, event);
     if (!event.defaultPrevented) popover.setOpen(!popover.open());
   };
 
@@ -283,8 +282,7 @@ const PopoverClose = (props: PopoverCloseProps) => {
   const local = props;
   const others = omit(props, "onClick", "type");
   const onClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
-    const handler = local.onClick as JSX.EventHandler<HTMLButtonElement, MouseEvent> | undefined;
-    handler?.(event);
+    callEventHandler(local.onClick, event);
     if (!event.defaultPrevented) popover.close();
   };
 

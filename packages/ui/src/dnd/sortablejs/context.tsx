@@ -10,7 +10,7 @@ export interface SortableItemState {
 
 export interface SortableItemContextValue extends SortableItemState {}
 
-export const SortableItemContext = createContext<SortableItemContextValue>();
+export const SortableItemContext = createContext<SortableItemContextValue | null>(null);
 
 export function SortableItemProvider(props: {
   value: SortableItemContextValue;

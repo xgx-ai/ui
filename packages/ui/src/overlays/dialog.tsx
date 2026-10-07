@@ -30,6 +30,8 @@ import {
 
 import { cn } from "../cn";
 import { X } from "../icons.index";
+import { callEventHandler } from "../utils/event-handler";
+import { DismissableLayerContext } from "./dismissable-layer";
 import { assignRef } from "./floating";
 import { createModalBehavior } from "./modal-behavior";
 import { PortalMount } from "./portal";
@@ -299,9 +301,11 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
     "ref",
   );
   const [contentRef, setContentRef] = createSignal<HTMLElement>();
+  const [overlayRef, setOverlayRef] = createSignal<HTMLElement>();
   const presence = createDialogPresence(dialog.open);
-  createModalBehavior({
+  const layer = createModalBehavior({
     content: contentRef,
+    elements: () => [overlayRef()],
     modal: dialog.modal,
     onClose: dialog.close,
     open: dialog.open,
@@ -323,7 +327,7 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
       local.class,
     );
   const contentChildren = () => (
-    <>
+    <DismissableLayerContext value={layer}>
       {local.children}
       <Show when={!local.hideCloseButton}>
         <button
@@ -335,12 +339,13 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
           <span class="sr-only">Close</span>
         </button>
       </Show>
-    </>
+    </DismissableLayerContext>
   );
   return (
     <Show when={presence.present()}>
       <DialogPortal mount={local.mount} zIndex={local.zIndex}>
         <DialogOverlay
+          ref={setOverlayRef}
           data-xgx-dialog-overlay=""
           data-state={presence.state()}
           zIndex={local.zIndex}
@@ -521,19 +526,6 @@ const DialogDescription = <T extends ValidComponent = "p">(props: DialogDescript
     </Dynamic>
   );
 };
-
-function callEventHandler<TElement, TEvent>(
-  handler: unknown,
-  event: TEvent & { currentTarget: TElement },
-) {
-  if (typeof handler === "function") {
-    handler(event);
-    return;
-  }
-  if (Array.isArray(handler) && typeof handler[0] === "function") {
-    handler[0](handler[1], event);
-  }
-}
 
 export type { DialogTemplateProps };
 export {

@@ -93,13 +93,15 @@ export default async function runDialogResponseLifecycleSpec() {
         </>
       );
     }
-    // Keep the provider tree stable while its owned content opens and closes.
+    // Keep the provider tree stable while its owned content opens and closes. This mirrors
+    // DialogResponse's keyed mount; the real component needs a DOM and is exercised in the
+    // browser by tests/response-dialog.spec.ts.
     const tree = (
       <QueryClientProvider client={cache}>
         <Loading fallback="Loading total">
           <Total />
         </Loading>
-        <Show when={dialog.isOpen()}>
+        <Show when={dialog.activeDialog()} keyed>
           <DialogBody />
         </Show>
       </QueryClientProvider>
@@ -119,6 +121,8 @@ export default async function runDialogResponseLifecycleSpec() {
     const first = state.dialog.showResponseDialog<boolean>({
       title: "Create invoice",
       content: state.content,
+      class: "invoice-dialog",
+      template: "alert",
     });
     equal(
       state.dialog.showResponseDialog<boolean>({ title: "Duplicate open" }),
@@ -127,6 +131,7 @@ export default async function runDialogResponseLifecycleSpec() {
     );
     await settle();
     equal(state.dialog.isOpen(), true, "the first dialog opens");
+    const firstDialog = state.dialog.activeDialog();
     const firstOwnerId = mountedChildren;
 
     let parentResult: boolean | null | undefined;
@@ -153,6 +158,18 @@ export default async function runDialogResponseLifecycleSpec() {
     equal(second === first, false, "the next dialog receives a fresh promise");
     await settle();
     equal(state.dialog.isOpen(), true, "a second dialog opens after mutation success");
+    equal(state.dialog.activeDialog() === firstDialog, false, "the second dialog has its own id");
+    equal(
+      state.dialog.dialogProps.template,
+      undefined,
+      "the next dialog does not inherit a template",
+    );
+    equal(state.dialog.dialogProps.class, undefined, "the next dialog does not inherit a class");
+    equal(
+      state.dialog.dialogProps.title,
+      "Create another invoice",
+      "the next dialog sets its title",
+    );
     const disposedBeforeFailure = disposedChildren;
     const secondOwnerId = mountedChildren;
     const failedMutation = mutation?.mutateAsync().catch(() => null);
@@ -168,6 +185,31 @@ export default async function runDialogResponseLifecycleSpec() {
     equal(disposedOwners.has(secondOwnerId), true, "dismissal also disposes the owned content");
     state.dialog.settleDialog(true);
     equal(await second, null, "late settlement cannot change a dismissed response");
+
+    // Back-to-back: settling and reopening in one tick still swaps the mounted dialog.
+    const third = state.dialog.showResponseDialog<boolean>({
+      title: "Third",
+      content: state.content,
+    });
+    await settle();
+    const thirdDialog = state.dialog.activeDialog();
+    const thirdOwnerId = mountedChildren;
+    let fourth: Promise<boolean | null> | undefined;
+    void third.then(() => {
+      fourth = state.dialog.showResponseDialog<boolean>({
+        title: "Fourth",
+        content: state.content,
+      });
+    });
+    state.dialog.settleDialog(true);
+    await settle();
+    equal(state.dialog.activeDialog() === thirdDialog, false, "an immediate reopen gets a new id");
+    equal(disposedOwners.has(thirdOwnerId), true, "an immediate reopen disposes the old content");
+    equal(mountedChildren, thirdOwnerId + 1, "an immediate reopen mounts fresh content");
+
+    // Disposing the owner while a dialog is open resolves its caller.
+    dispose();
+    equal(await fourth, null, "owner disposal resolves the waiting caller with null");
     equal(warnings.length, 0, "the lifecycle emits no native warnings");
     equal(errors.length, 0, "the lifecycle emits no native errors");
     console.log("PASS response dialog settles across native mutation disposal and reopen");

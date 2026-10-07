@@ -29,7 +29,7 @@ interface DndContextValue {
   setOverTarget: (target: DragData | null) => void;
 }
 
-const DndContext = createContext<DndContextValue>();
+const DndContext = createContext<DndContextValue | null>(null);
 
 /**
  * Props for the DndProvider component

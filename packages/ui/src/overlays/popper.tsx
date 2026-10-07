@@ -18,7 +18,8 @@ type PopperContextValue = {
   setPositionerRef: (element: HTMLElement) => void;
 };
 
-const PopperContext = createContext<PopperContextValue>();
+// Positioners outside a PopperRoot render unpositioned; they do not need a provider.
+const PopperContext = createContext<PopperContextValue | null>(null);
 
 export type PopperAnchorRect = { x: number; y: number; width: number; height: number };
 

@@ -26,7 +26,7 @@ export type FileUploadRootProps = ComponentProps<"div"> & {
   onFilesChange?: (files: File[]) => void;
 };
 
-const FileUploadContextValue = createContext<UseFileUploadReturn>();
+const FileUploadContextValue = createContext<UseFileUploadReturn | null>(null);
 
 function useFileUploadContext() {
   const context = useContext(FileUploadContextValue);
@@ -212,7 +212,7 @@ export function FileUploadItemGroup(props: FileUploadItemGroupProps) {
   return <div class={cn("flex flex-col gap-2", local.class)} {...rest} />;
 }
 
-const FileUploadItemContext = createContext<File | undefined>();
+const FileUploadItemContext = createContext<File | null>(null);
 
 export type FileUploadItemProps = ComponentProps<"div"> & { file?: File };
 
@@ -220,7 +220,7 @@ export function FileUploadItem(props: FileUploadItemProps) {
   const local = props;
   const rest = omit(props, "file", "class", "children");
   return (
-    <FileUploadItemContext value={local.file}>
+    <FileUploadItemContext value={local.file ?? null}>
       <div
         class={cn(
           "flex items-center gap-3 rounded-md border border-border-subtle bg-surface p-3 text-sm text-surface-foreground",

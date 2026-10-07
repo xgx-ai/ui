@@ -52,19 +52,20 @@ export type DialogContentProps<T> = {
  */
 
 export function useResponseDialog() {
-  const { isOpen, dialogProps, showResponseDialog, settleDialog, setDialogProps } =
+  const { activeDialog, dialogProps, showResponseDialog, settleDialog, setDialogProps } =
     createResponseDialogState(DialogContentPlaceholder);
 
   const DialogResponse = () => {
     function handleClose() {
       settleDialog?.(null);
     }
+    // Keyed by dialog, so a dialog opened straight after another mounts fresh.
     return (
-      <Show when={isOpen()}>
+      <Show when={activeDialog()} keyed>
         <Dialog
           defaultOpen
           onOpenChange={(open) => !open && handleClose()}
-          open={isOpen()}
+          open
           modal={dialogProps.modal ?? false}
           preventScroll={dialogProps.preventScroll ?? true}
         >

@@ -93,7 +93,7 @@ interface TreeDndContextValue {
   disabled: Accessor<boolean>;
 }
 
-const TreeDndContext = createContext<TreeDndContextValue>();
+const TreeDndContext = createContext<TreeDndContextValue | null>(null);
 
 /**
  * Props for TreeDndProvider

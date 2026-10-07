@@ -83,7 +83,7 @@ interface KanbanContextValue {
   allowColumnReorder: boolean;
 }
 
-const KanbanContext = createContext<KanbanContextValue>();
+const KanbanContext = createContext<KanbanContextValue | null>(null);
 
 /**
  * Props for KanbanProvider

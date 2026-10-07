@@ -14,10 +14,13 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createEffect, createSignal, omit, Show, useContext } from "solid-js";
+import { createContext, createSignal, omit, onSettled, Show, useContext } from "solid-js";
 import { cn } from "../cn";
 import { Check, ChevronRight, Circle } from "../icons.index";
+import { createDismissableLayer, DismissableLayerContext } from "../overlays/dismissable-layer";
+import { assignRef } from "../overlays/floating";
 import { PortalMount } from "../overlays/portal";
+import { callEventHandler } from "../utils/event-handler";
 import { createMenuKeyboard, focusFirstMenuItem } from "./menu-behavior";
 
 type ContextMenuContextValue = {
@@ -29,7 +32,7 @@ type ContextMenuContextValue = {
   showAt: (x: number, y: number) => void;
 };
 
-const ContextMenuContext = createContext<ContextMenuContextValue>();
+const ContextMenuContext = createContext<ContextMenuContextValue | null>(null);
 
 function useContextMenu() {
   const context = useContext(ContextMenuContext);
@@ -61,33 +64,30 @@ const ContextMenu = (props: ContextMenuRootProps) => {
     setOpen(true);
   };
 
-  createEffect(open, (isOpen) => {
-    if (!isOpen) return;
-    const onPointerDown = () => setOpen(false);
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
+  // Any press outside the menu closes it, including a press on the trigger area, which then
+  // reopens the menu at the new position.
+  const layer = createDismissableLayer({
+    open,
+    elements: () => [contentRef()],
+    onPointerDownOutside: () => setOpen(false),
+    onEscapeKeyDown: () => setOpen(false),
   });
 
   return (
-    <ContextMenuContext
-      value={{
-        close: () => setOpen(false),
-        contentRef,
-        open,
-        position,
-        setContentRef,
-        showAt,
-      }}
-    >
-      <div {...others}>{local.children}</div>
-    </ContextMenuContext>
+    <DismissableLayerContext value={layer}>
+      <ContextMenuContext
+        value={{
+          close: () => setOpen(false),
+          contentRef,
+          open,
+          position,
+          setContentRef,
+          showAt,
+        }}
+      >
+        <div {...others}>{local.children}</div>
+      </ContextMenuContext>
+    </DismissableLayerContext>
   );
 };
 
@@ -96,8 +96,7 @@ const ContextMenuTrigger = (props: ComponentProps<"div">) => {
   const local = props;
   const others = omit(props, "onContextMenu");
   const onContextMenu: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
-    const handler = local.onContextMenu as JSX.EventHandler<HTMLDivElement, MouseEvent> | undefined;
-    handler?.(event);
+    callEventHandler(local.onContextMenu, event);
     if (!event.defaultPrevented) {
       event.preventDefault();
       menu.showAt(event.clientX, event.clientY);
@@ -118,53 +117,50 @@ type ContextMenuContentProps = ComponentProps<"div">;
 
 const ContextMenuContent = (props: ContextMenuContentProps) => {
   const menu = useContextMenu();
+  return (
+    <Show when={menu.open()}>
+      <ContextMenuPanel {...props} />
+    </Show>
+  );
+};
+
+/** The mounted menu. Each opening mounts a fresh panel, which focuses its first item once. */
+const ContextMenuPanel = (props: ContextMenuContentProps) => {
+  const menu = useContextMenu();
   const local = props;
-  const others = omit(props, "class", "onKeyDown", "onPointerDown", "ref");
+  const others = omit(props, "class", "onKeyDown", "ref");
+  let element: HTMLDivElement | undefined;
   const menuKeyboard = createMenuKeyboard({
     close: menu.close,
     root: menu.contentRef,
   });
-  const onPointerDown: JSX.EventHandler<HTMLDivElement, PointerEvent> = (event) => {
-    event.stopPropagation();
-    const handler = local.onPointerDown as
-      | JSX.EventHandler<HTMLDivElement, PointerEvent>
-      | undefined;
-    handler?.(event);
-  };
   const onKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (event) => {
-    const handler = local.onKeyDown as JSX.EventHandler<HTMLDivElement, KeyboardEvent> | undefined;
-    handler?.(event);
+    callEventHandler(local.onKeyDown, event);
     menuKeyboard(event);
   };
 
-  createEffect(menu.open, (open) => {
-    if (open) requestAnimationFrame(() => focusFirstMenuItem(menu.contentRef()));
-  });
+  onSettled(() => focusFirstMenuItem(element));
 
   return (
-    <Show when={menu.open()}>
-      <div
-        role="menu"
-        tabindex={-1}
-        ref={(element) => {
-          menu.setContentRef(element);
-          const ref = local.ref;
-          if (typeof ref === "function") ref(element);
-          requestAnimationFrame(() => focusFirstMenuItem(element));
-        }}
-        class={cn(
-          "fixed z-50 min-w-32 overflow-hidden rounded-md border border-border-subtle bg-popover p-1 text-popover-foreground shadow-elevation-medium",
-          local.class,
-        )}
-        style={{
-          left: `${menu.position().x}px`,
-          top: `${menu.position().y}px`,
-        }}
-        onKeyDown={onKeyDown}
-        onPointerDown={onPointerDown}
-        {...others}
-      />
-    </Show>
+    <div
+      role="menu"
+      tabindex={-1}
+      ref={(node) => {
+        element = node;
+        menu.setContentRef(node);
+        assignRef(local.ref, node);
+      }}
+      class={cn(
+        "fixed z-50 min-w-32 overflow-hidden rounded-md border border-border-subtle bg-popover p-1 text-popover-foreground shadow-elevation-medium",
+        local.class,
+      )}
+      style={{
+        left: `${menu.position().x}px`,
+        top: `${menu.position().y}px`,
+      }}
+      onKeyDown={onKeyDown}
+      {...others}
+    />
   );
 };
 
@@ -178,8 +174,7 @@ const ContextMenuItem = (props: ContextMenuItemProps) => {
   const local = props;
   const others = omit(props, "class", "closeOnSelect", "disabled", "onClick");
   const onClick: JSX.EventHandler<HTMLDivElement, MouseEvent> = (event) => {
-    const handler = local.onClick as JSX.EventHandler<HTMLDivElement, MouseEvent> | undefined;
-    handler?.(event);
+    callEventHandler(local.onClick, event);
     if (!event.defaultPrevented && !local.disabled && local.closeOnSelect !== false) {
       menu.close();
     }

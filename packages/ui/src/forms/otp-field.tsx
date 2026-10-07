@@ -20,7 +20,7 @@ type OTPContextValue = {
   setInputRef: (el: HTMLInputElement) => void;
 };
 
-const OTPContext = createContext<OTPContextValue>();
+const OTPContext = createContext<OTPContextValue | null>(null);
 
 function useOTPContext() {
   const context = useContext(OTPContext);

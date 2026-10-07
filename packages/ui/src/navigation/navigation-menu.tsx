@@ -25,7 +25,7 @@ type NavigationMenuItemContextValue = {
   setOpen: (open: boolean) => void;
 };
 
-const NavigationMenuItemContext = createContext<NavigationMenuItemContextValue>();
+const NavigationMenuItemContext = createContext<NavigationMenuItemContextValue | null>(null);
 
 function useNavigationMenuItem() {
   const context = useContext(NavigationMenuItemContext);

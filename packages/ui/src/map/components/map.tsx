@@ -65,7 +65,7 @@ export interface MapContext {
   zoom: Accessor<number | undefined>;
 }
 
-const MapContextInstance = createContext<MapContext>();
+const MapContextInstance = createContext<MapContext | null>(null);
 
 export function MapProvider(props: { children: JSX.Element; value: MapContext }) {
   return <MapContextInstance value={props.value}>{props.children}</MapContextInstance>;

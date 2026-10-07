@@ -26,6 +26,7 @@ import {
 
 import { cn } from "../cn";
 import { ChevronDown, ChevronUp } from "../icons.index";
+import { callEventHandler } from "../utils/event-handler";
 
 type ValidationState = "valid" | "invalid";
 
@@ -55,7 +56,7 @@ type NumberFieldContextValue = {
   varyValue: (direction: 1 | -1) => void;
 };
 
-const NumberFieldContext = createContext<NumberFieldContextValue>();
+const NumberFieldContext = createContext<NumberFieldContextValue | null>(null);
 
 function useNumberFieldContext() {
   const context = useContext(NumberFieldContext);
@@ -88,19 +89,6 @@ function composeDescriptionIds(context: NumberFieldContextValue) {
   const ids = [context.descriptionId()];
   if (context.invalid()) ids.push(context.errorId());
   return ids.join(" ");
-}
-
-function callEventHandler<TElement, TEvent>(
-  handler: unknown,
-  event: TEvent & { currentTarget: TElement; target: Element },
-) {
-  if (typeof handler === "function") {
-    handler(event);
-    return;
-  }
-  if (Array.isArray(handler) && typeof handler[0] === "function") {
-    handler[0](handler[1], event);
-  }
 }
 
 export type NumberFieldProps<T extends ValidComponent = "div"> = Omit<

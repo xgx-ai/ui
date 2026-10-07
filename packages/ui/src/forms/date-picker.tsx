@@ -13,7 +13,7 @@ type DatePickerContextValue = {
   disabled?: boolean;
 };
 
-const NativeDatePickerContext = createContext<DatePickerContextValue>();
+const NativeDatePickerContext = createContext<DatePickerContextValue | null>(null);
 
 function useDatePickerContext() {
   return useContext(NativeDatePickerContext);
