@@ -531,3 +531,29 @@ test("inactive query data is garbage collected", async () => {
 
   expect(client.getQueryData<string>(["temporary"])).toBeUndefined();
 });
+
+test("cancel clears fetching for an observed request", async () => {
+  const client = new QueryClient();
+  const group = queryGroup("cancel-fetching", {
+    value: query({
+      key: () => ({}),
+      fetch: (_key, context) =>
+        new Promise<number>((_, reject) => {
+          context.signal.addEventListener("abort", () => reject(context.signal.reason), {
+            once: true,
+          });
+        }),
+    }),
+  });
+
+  await inRoot(async () => {
+    const observed = createQuery(() => group.value(), client);
+    void client.prefetch(group.value()).catch(() => undefined);
+    await Promise.resolve();
+    expect(observed.fetching()).toBe(true);
+
+    client.cancel(group.all);
+    flush();
+    expect(observed.fetching()).toBe(false);
+  });
+});

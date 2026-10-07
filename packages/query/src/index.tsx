@@ -648,7 +648,12 @@ export class QueryClient {
   cancel(...targets: InvalidationTarget[]): void {
     for (const target of targets) {
       const prefix = targetPrefix(target);
-      for (const entry of this.#matchingEntries(prefix)) this.#cancelEntry(entry);
+      for (const entry of this.#matchingEntries(prefix)) {
+        const wasFetching = entry.controller !== undefined;
+        this.#cancelEntry(entry);
+        // The aborted request no longer owns the entry, so its own completion won't clear this.
+        if (wasFetching) entry.setFetching(false);
+      }
     }
   }
 
