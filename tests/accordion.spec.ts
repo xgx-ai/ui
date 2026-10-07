@@ -1,19 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { watchNativeDiagnostics } from "./native-diagnostics";
 
 test("reactive accordion defaults seed once and controlled values keep updating", async ({
   page,
 }) => {
-  const diagnostics: string[] = [];
-  page.on("pageerror", (error) => diagnostics.push(error.message));
-  page.on("console", (message) => {
-    if (
-      /STRICT_READ_UNTRACKED|WRITE_UNDER|PRIMITIVE_IN_FORBIDDEN_SCOPE|REACTIVITY_HALTED|invalid cleanup/i.test(
-        message.text(),
-      )
-    ) {
-      diagnostics.push(message.text());
-    }
-  });
+  const diagnostics = watchNativeDiagnostics(page);
   await page.goto("#overlays");
   const defaults = page.getByTestId("default-accordion");
   const defaultFirst = defaults.getByRole("button", { name: "First section", exact: true });

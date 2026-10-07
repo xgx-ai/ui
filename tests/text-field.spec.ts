@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { watchNativeDiagnostics } from "./native-diagnostics";
 
 test("standalone and grouped text fields retain controlled values and accessibility", async ({
   page,
@@ -23,8 +24,7 @@ test("standalone and grouped text fields retain controlled values and accessibil
 });
 
 test("controlled text fields show input that normalises to the current value", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  const diagnostics = watchNativeDiagnostics(page);
   await page.goto("#forms");
 
   // Both fields trim leading whitespace, so a leading space leaves the controlled value empty.
@@ -41,5 +41,5 @@ test("controlled text fields show input that normalises to the current value", a
   await expect(grouped).toHaveValue("");
   await grouped.pressSequentially(" Agreed");
   await expect(grouped).toHaveValue("Agreed");
-  expect(errors).toEqual([]);
+  expect(diagnostics).toEqual([]);
 });
