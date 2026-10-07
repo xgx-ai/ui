@@ -12,16 +12,21 @@
  *   </AccordionItem>
  * </Accordion>
  * ```
+ *
+ * The accordion is controlled once `value` has been defined; from then on `undefined` (or
+ * `null`) means no section is open rather than falling back to `defaultValue`. Pass `null` to
+ * start a controlled accordion with every section closed.
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createSignal, omit, Show, untrack, useContext } from "solid-js";
+import { createContext, createMemo, createSignal, omit, Show, untrack, useContext } from "solid-js";
 import { cn } from "../cn";
 import { ChevronDown } from "../icons.index";
 
 type AccordionValue = string | string[] | undefined;
 
 type AccordionProps = Omit<ComponentProps<"div">, "onChange"> & {
-  value?: AccordionValue;
+  /** Controlled open section(s). `null` means none; see the component notes for `undefined`. */
+  value?: AccordionValue | null;
   defaultValue?: AccordionValue;
   multiple?: boolean;
   collapsible?: boolean;
@@ -53,13 +58,19 @@ const Accordion = (props: AccordionProps) => {
   const [uncontrolledValue, setUncontrolledValue] = createSignal<AccordionValue>(
     untrack(() => local.defaultValue),
   );
-  const selected = () => local.value ?? uncontrolledValue();
+  // `undefined` doubles as "uncontrolled", so a controlled accordion stays controlled once a
+  // value has been supplied: clearing it then closes every section.
+  const controlled = createMemo(
+    (wasControlled: boolean | undefined) => Boolean(wasControlled) || local.value !== undefined,
+  );
+  const selected = (): AccordionValue =>
+    controlled() ? (local.value ?? undefined) : uncontrolledValue();
   const isExpanded = (value: string) => {
     const current = selected();
     return Array.isArray(current) ? current.includes(value) : current === value;
   };
   const setSelected = (next: AccordionValue) => {
-    if (local.value === undefined) setUncontrolledValue(next);
+    if (!controlled()) setUncontrolledValue(next);
     local.onChange?.(next);
   };
   const toggle = (value: string) => {

@@ -35,3 +35,29 @@ test("reactive accordion defaults seed once and controlled values keep updating"
   await expect(controlledSecond).toHaveAttribute("aria-expanded", "false");
   expect(diagnostics).toEqual([]);
 });
+
+test("a controlled single accordion closes when its value is cleared", async ({ page }) => {
+  const diagnostics = watchNativeDiagnostics(page);
+  await page.goto("#overlays");
+  const single = page.getByTestId("single-accordion");
+  const first = single.getByRole("button", { name: "First section", exact: true });
+  const second = single.getByRole("button", { name: "Second section", exact: true });
+  await expect(first).toHaveAttribute("aria-expanded", "true");
+  await expect(second).toHaveAttribute("aria-expanded", "false");
+
+  // Collapsing reports undefined; the echoed value must close it, not fall back to the default.
+  await first.click();
+  await expect(first).toHaveAttribute("aria-expanded", "false");
+  await expect(second).toHaveAttribute("aria-expanded", "false");
+  await second.click();
+  await expect(second).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("button", { name: "Clear single section", exact: true }).click();
+  await expect(first).toHaveAttribute("aria-expanded", "false");
+  await expect(second).toHaveAttribute("aria-expanded", "false");
+  await first.click();
+  await expect(first).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("button", { name: "Close single section", exact: true }).click();
+  await expect(first).toHaveAttribute("aria-expanded", "false");
+  await expect(second).toHaveAttribute("aria-expanded", "false");
+  expect(diagnostics).toEqual([]);
+});
