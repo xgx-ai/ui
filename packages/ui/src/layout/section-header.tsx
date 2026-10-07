@@ -38,7 +38,8 @@ export function SectionHeader(props: SectionHeaderProps): JSX.Element {
   return (
     <div
       class={cn(
-        "flex items-center justify-between border-b shrink-0",
+        // Wraps the action below the title when a narrow card cannot fit both.
+        "flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b shrink-0",
         local.compact ? "py-2.5 px-4" : "py-3 px-4",
         local.class,
       )}

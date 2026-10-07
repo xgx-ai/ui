@@ -32,7 +32,7 @@ export function ActionLink(props: ActionLinkProps): JSX.Element {
       disabled={local.disabled}
       title={local.title}
       class={cn(
-        "text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors disabled:opacity-50 [&>svg]:size-3.5",
+        "text-xs text-muted-foreground hover:text-primary flex items-center gap-1 whitespace-nowrap transition-colors disabled:opacity-50 [&>svg]:size-3.5",
         local.class,
       )}
       {...rest}
