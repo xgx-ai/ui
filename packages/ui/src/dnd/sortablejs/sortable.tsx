@@ -556,11 +556,11 @@ export function Sortable<T>(props: SortableProps<T>) {
 
   return (
     <Dynamic component={local.as ?? "div"} ref={setContainerRef} {...others}>
-      <For each={local.items}>
+      <For each={local.items} keyed={getId}>
         {(item, index) => (
           <SortableRenderedItem
-            item={item}
-            id={getId(item)}
+            item={item()}
+            id={getId(item())}
             index={index()}
             itemAs={local.itemAs}
             itemClass={local.itemClass}

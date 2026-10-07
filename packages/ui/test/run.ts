@@ -39,6 +39,7 @@ const ssrEntrypoints = [
   path.join(import.meta.dir, "styling-hooks-ssr.spec.tsx"),
 ];
 const ownershipEntrypoints = [
+  path.join(import.meta.dir, "sortable-identity.spec.tsx"),
   path.join(import.meta.dir, "dialog-response-lifecycle.spec.tsx"),
   path.join(import.meta.dir, "calendar-context.spec.tsx"),
   path.join(import.meta.dir, "popover-dismissal.spec.ts"),
@@ -91,6 +92,17 @@ if (!ssrResult.success) {
 
 // Keep ownership diagnostics enabled for native lifecycle regressions and execute
 // them in isolated runtimes, away from the production and DOM suites.
+// The sortable ownership regression keeps the actual component and controls
+// only its external DOM renderer/engine; no production import is changed.
+const sortableTestBoundaryPlugin: Bun.BunPlugin = {
+  name: "xgx-sortable-test-boundaries",
+  setup(build) {
+    build.onResolve({ filter: /^(?:@solidjs\/web|sortablejs)$/ }, (args) => {
+      if (args.importer !== path.join(rootDir, "src/dnd/sortablejs/sortable.tsx")) return;
+      return { path: path.join(import.meta.dir, "sortable-test-boundaries.ts") };
+    });
+  },
+};
 const ownershipResult = await Bun.build({
   define: { "process.env.NODE_ENV": JSON.stringify("development") },
   entrypoints: ownershipEntrypoints,
@@ -98,7 +110,7 @@ const ownershipResult = await Bun.build({
   minify: false,
   outdir: path.join(tmpDir, "ownership"),
   conditions: ["browser", "development"],
-  plugins: [SolidPlugin({ hmr: true })],
+  plugins: [sortableTestBoundaryPlugin, SolidPlugin({ hmr: true })],
   target: "bun",
 });
 if (!ownershipResult.success) {
