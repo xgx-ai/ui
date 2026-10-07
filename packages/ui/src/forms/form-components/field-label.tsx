@@ -8,9 +8,9 @@ const labelVariants = cva(
   {
     variants: {
       variant: {
-        label: "data-invalid:text-error-foreground text-xs",
-        description: "font-normal text-muted-foreground text-xs",
-        error: "text-xs text-error-foreground text-xs",
+        label: "data-invalid:text-error-foreground",
+        description: "font-normal text-muted-foreground",
+        error: "text-error-foreground",
       },
     },
     defaultVariants: {
