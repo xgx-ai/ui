@@ -66,7 +66,7 @@ type PopoverContextValue = {
   setTriggerRef: (element: HTMLElement) => void;
 };
 
-const PopoverContext = createContext<PopoverContextValue>();
+const PopoverContext = createContext<PopoverContextValue | null>(null);
 
 function usePopover() {
   const context = useContext(PopoverContext);

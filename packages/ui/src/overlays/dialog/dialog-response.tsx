@@ -1,4 +1,3 @@
-import type { JSX } from "@solidjs/web";
 import { Match, Show, Switch } from "solid-js";
 import { cn } from "../../cn.ts";
 import { Button } from "../../forms/button.tsx";
