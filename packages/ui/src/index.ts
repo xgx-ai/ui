@@ -982,7 +982,7 @@ export type {
   TreePreviewSection,
 } from "./specialized/tree-preview.tsx";
 export { TreePreview } from "./specialized/tree-preview.tsx";
-export type { UseTableReturn, TableInfiniteProps } from "./table-compat.tsx";
+export type { UseTableReturn } from "./table-compat.tsx";
 export { Table, TableColumnHeader, TableInfinite } from "./table-compat.tsx";
 export type {
   CellContext,
