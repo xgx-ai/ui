@@ -14,7 +14,7 @@
  * ```
  */
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createContext, createSignal, omit, Show, useContext } from "solid-js";
+import { createContext, createSignal, omit, Show, untrack, useContext } from "solid-js";
 import { cn } from "../cn";
 import { ChevronDown } from "../icons.index";
 
@@ -51,7 +51,7 @@ const Accordion = (props: AccordionProps) => {
     "onChange",
   );
   const [uncontrolledValue, setUncontrolledValue] = createSignal<AccordionValue>(
-    local.defaultValue,
+    untrack(() => local.defaultValue),
   );
   const selected = () => local.value ?? uncontrolledValue();
   const isExpanded = (value: string) => {

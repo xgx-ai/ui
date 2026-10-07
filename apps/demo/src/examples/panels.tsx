@@ -191,6 +191,7 @@ import {
   untrack,
 } from "solid-js";
 import { z } from "zod";
+import { AccordionDemo } from "./accordion-demo";
 
 import {
   type AsyncQueueItem,
@@ -2716,6 +2717,7 @@ export function OverlaysPanel() {
 
   return (
     <div class="grid gap-4 lg:grid-cols-2">
+      <AccordionDemo />
       <Card>
         <CardHeader>
           <CardTitle>Dialogs And Menus</CardTitle>
