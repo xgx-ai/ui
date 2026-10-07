@@ -53,7 +53,7 @@ export function RichTextEditorForm(props: RichTextEditorFormProps) {
 
       <div
         class={cn(
-          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-error",
+          "transition-all opacity-0 h-0 duration-300 ease-in-out text-xs text-error-foreground",
           props.error && "opacity-100 h-4",
         )}
       >

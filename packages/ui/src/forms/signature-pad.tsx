@@ -646,7 +646,7 @@ export function SignaturePad(props: SignatureFieldProps) {
 
       {/* Error message */}
       <Show when={props.error}>
-        <div class="text-sm text-error">{props.error}</div>
+        <div class="text-sm text-error-foreground">{props.error}</div>
       </Show>
     </div>
   );

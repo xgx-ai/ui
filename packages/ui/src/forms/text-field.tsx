@@ -24,6 +24,7 @@ import {
 } from "solid-js";
 
 import { cn } from "../cn.ts";
+import { callEventHandler } from "../utils/event-handler";
 
 type ValidationState = "valid" | "invalid";
 
@@ -44,19 +45,6 @@ const TextFieldContext = createContext<TextFieldContextValue | null>(null);
 
 function useTextFieldContext() {
   return useContext(TextFieldContext);
-}
-
-function callEventHandler<TElement, TEvent>(
-  handler: unknown,
-  event: TEvent & { currentTarget: TElement },
-) {
-  if (typeof handler === "function") {
-    handler(event);
-    return;
-  }
-  if (Array.isArray(handler) && typeof handler[0] === "function") {
-    handler[0](handler[1], event);
-  }
 }
 
 /**

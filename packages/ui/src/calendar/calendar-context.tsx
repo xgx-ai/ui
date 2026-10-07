@@ -43,7 +43,8 @@ export interface CalendarContextValue {
   onSlotClick?: (data: SlotClickData) => void;
 }
 
-const CalendarContext = createContext<CalendarContextValue>();
+// A null default: rc.11 throws on a missing provider; the hook gives the clearer error.
+const CalendarContext = createContext<CalendarContextValue | null>(null);
 
 export const useCalendarContext = () => {
   const context = useContext(CalendarContext);
