@@ -215,3 +215,42 @@ test("a null descriptor never fetches", async () => {
     expect(query.hasNextPage()).toBe(false);
   });
 });
+
+test("prefetching an infinite descriptor caches its first page for the observer", async () => {
+  await inRoot(async () => {
+    const client = new QueryClient();
+    const source = server(6);
+    const group = rowsGroup(source);
+
+    const warmed = await client.prefetch(group.list("all"));
+    expect({ pageParams: [...warmed.pageParams], rows: rowIds(warmed.pages) }).toEqual({
+      pageParams: [0],
+      rows: [0, 1, 2],
+    });
+
+    // A route preloads before the page mounts; the table must read that entry, not re-ask.
+    const query = createInfiniteQuery(() => group.list("all"), client);
+    expect(rowIds((await resolve(() => query.data())).pages)).toEqual([0, 1, 2]);
+    expect(source.requested).toEqual([0]);
+
+    flush();
+    await query.fetchNextPage();
+    flush();
+    expect(rowIds(query.data().pages)).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+});
+
+test("an observer joins an infinite prefetch that is still in flight", async () => {
+  await inRoot(async () => {
+    const client = new QueryClient();
+    const source = server(6);
+    const group = rowsGroup(source);
+
+    const warming = client.prefetch(group.list("all"));
+    const query = createInfiniteQuery(() => group.list("all"), client);
+    await warming;
+
+    expect(rowIds((await resolve(() => query.data())).pages)).toEqual([0, 1, 2]);
+    expect(source.requested).toEqual([0]);
+  });
+});

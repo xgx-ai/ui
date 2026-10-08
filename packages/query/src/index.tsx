@@ -689,9 +689,24 @@ export class QueryClient {
     return count;
   }
 
-  /** The only warming operation. Resolves the cached value if it is already fresh. */
-  prefetch<TData>(descriptor: QueryDescriptor<TData>): Promise<TData> {
-    return this.fetchQuery(optionsFromDescriptor(descriptor));
+  /**
+   * The only warming operation. Resolves the cached value if it is already fresh, and joins a
+   * request that is already in flight.
+   *
+   * An infinite descriptor warms the same single entry `createInfiniteQuery` observes, in the
+   * same `{ pages, pageParams }` shape: its first page when nothing is held yet, or every held
+   * page when the entry is stale. A route can therefore preload a table before it mounts.
+   */
+  prefetch<TData>(descriptor: QueryDescriptor<TData>): Promise<TData>;
+  prefetch<TPage, TPageParam>(
+    descriptor: InfiniteDescriptor<TPage, TPageParam>,
+  ): Promise<InfiniteData<TPage, TPageParam>>;
+  prefetch(
+    descriptor: QueryDescriptor<unknown> | InfiniteDescriptor<unknown, unknown>,
+  ): Promise<unknown> {
+    return "initialPageParam" in descriptor
+      ? this.fetchQuery(infiniteQueryOptions(this, descriptor))
+      : this.fetchQuery(optionsFromDescriptor(descriptor));
   }
 
   /**
@@ -1207,6 +1222,47 @@ function optionsFromDescriptor<TData>(descriptor: QueryDescriptor<TData>): Query
   };
 }
 
+/** Re-asks for every page the entry currently holds, dropping any the server has lost. */
+async function reloadPages<TPage, TPageParam>(
+  client: QueryClient,
+  target: InfiniteDescriptor<TPage, TPageParam>,
+  context: QueryContext,
+): Promise<InfiniteData<TPage, TPageParam>> {
+  const held = client.getQueryData<InfiniteData<TPage, TPageParam>>(target.key);
+  const wanted =
+    held && held.pageParams.length > 0 ? [...held.pageParams] : [target.initialPageParam];
+
+  const pages: TPage[] = [];
+  const pageParams: TPageParam[] = [];
+  for (const pageParam of wanted) {
+    const page = await target.fetch({
+      pageParam,
+      queryKey: context.queryKey,
+      signal: context.signal,
+    });
+    pages.push(page);
+    pageParams.push(pageParam);
+    if (!target.getNextPageParam) break;
+    if (target.getNextPageParam(page, pages, pageParam) === undefined) break;
+  }
+  return { pageParams, pages };
+}
+
+/**
+ * The entry options an infinite descriptor runs under. Shared by the observer and `prefetch`,
+ * so a warmed entry holds exactly what the observer would have fetched.
+ */
+function infiniteQueryOptions<TPage, TPageParam>(
+  client: QueryClient,
+  target: InfiniteDescriptor<TPage, TPageParam>,
+): QueryOptions<InfiniteData<TPage, TPageParam>> {
+  return {
+    queryFn: (context) => reloadPages(client, target, context),
+    queryKey: target.key,
+    ...target.options,
+  };
+}
+
 /**
  * Observes one exact descriptor.
  *
@@ -1261,34 +1317,6 @@ function createInfiniteDescriptorQuery<TPage, TPageParam>(
   const client = useQueryCache(suppliedClient);
   const descriptor = createMemo(source);
 
-  const readEntry = (target: InfiniteDescriptor<TPage, TPageParam>) =>
-    client.getQueryData<InfiniteData<TPage, TPageParam>>(target.key);
-
-  /** Re-asks for every page the entry currently holds, dropping any the server has lost. */
-  const reloadPages = async (
-    target: InfiniteDescriptor<TPage, TPageParam>,
-    context: QueryContext,
-  ): Promise<InfiniteData<TPage, TPageParam>> => {
-    const held = readEntry(target);
-    const wanted =
-      held && held.pageParams.length > 0 ? [...held.pageParams] : [target.initialPageParam];
-
-    const pages: TPage[] = [];
-    const pageParams: TPageParam[] = [];
-    for (const pageParam of wanted) {
-      const page = await target.fetch({
-        pageParam,
-        queryKey: context.queryKey,
-        signal: context.signal,
-      });
-      pages.push(page);
-      pageParams.push(pageParam);
-      if (!target.getNextPageParam) break;
-      if (target.getNextPageParam(page, pages, pageParam) === undefined) break;
-    }
-    return { pageParams, pages };
-  };
-
   const options = (): QueryOptions<InfiniteData<TPage, TPageParam>> => {
     const target = descriptor();
     if (!target) {
@@ -1298,11 +1326,7 @@ function createInfiniteDescriptorQuery<TPage, TPageParam>(
         queryKey: absentQueryKey,
       };
     }
-    return {
-      queryFn: (context) => reloadPages(target, context),
-      queryKey: target.key,
-      ...target.options,
-    };
+    return infiniteQueryOptions(client, target);
   };
 
   const observed = createQueryResult<InfiniteData<TPage, TPageParam>>(options, client);
