@@ -24,22 +24,56 @@ const SidebarSection: Component<SidebarSectionProps> = (props) => {
   );
 };
 
+type SidebarRowOverflow = "truncate" | "wrap";
+
 type SidebarRowProps = ComponentProps<"div"> & {
   label: string;
+  /**
+   * How a value too long for the row is shown. `truncate` (the default) clips
+   * it to one line. `wrap` keeps short values beside the label, moves a value
+   * that doesn't fit onto its own line under the label, and wraps it there.
+   */
+  overflow?: SidebarRowOverflow;
 };
 
 const SidebarRow: Component<SidebarRowProps> = (props) => {
   const local = props;
-  const others = omit(props, "label", "children", "class");
+  const others = omit(props, "label", "overflow", "children", "class");
   return (
-    <div class={cn("flex items-center justify-between py-1 text-xs", local.class)} {...others}>
-      <span class="text-muted-foreground shrink-0">{local.label}</span>
-      <span class="text-foreground text-right truncate ml-3">{local.children}</span>
-    </div>
+    <Show
+      when={local.overflow === "wrap"}
+      fallback={
+        <div class={cn("flex items-center justify-between py-1 text-xs", local.class)} {...others}>
+          <span class="text-muted-foreground shrink-0">{local.label}</span>
+          <span class="text-foreground text-right truncate ml-3">{local.children}</span>
+        </div>
+      }
+    >
+      {/* A flex line breaks on the value's unwrapped width, so a value only
+          wraps once it has a line of its own. */}
+      <div
+        class={cn("flex flex-wrap items-center justify-between gap-x-3 py-1 text-xs", local.class)}
+        data-overflow="wrap"
+        {...others}
+      >
+        <Show when={local.label}>
+          <span class="text-muted-foreground shrink-0">{local.label}</span>
+        </Show>
+        {/* Without a label the value has the whole row, so it aligns itself. */}
+        <span
+          class={cn(
+            "text-foreground text-right ml-auto min-w-0 max-w-full wrap-break-word",
+            !local.label && "w-full",
+          )}
+        >
+          {local.children}
+        </span>
+      </div>
+    </Show>
   );
 };
 
-export type { SidebarRowProps, SidebarSectionProps };
+export type { SidebarRowOverflow, SidebarRowProps, SidebarSectionProps };
 /**
  * # SidebarSection / SidebarRow
  *
@@ -50,6 +84,7 @@ export type { SidebarRowProps, SidebarSectionProps };
  * <SidebarSection title="Contact">
  *   <SidebarRow label="Email">john@example.com</SidebarRow>
  *   <SidebarRow label="Phone">+44 7700 900000</SidebarRow>
+ *   <SidebarRow label="Notes" overflow="wrap">Prefers email after 6pm</SidebarRow>
  * </SidebarSection>
  * ```
  */

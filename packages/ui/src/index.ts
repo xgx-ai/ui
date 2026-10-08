@@ -118,6 +118,7 @@ export {
   TrendIndicator,
 } from "./data-display/reporting.tsx";
 export type {
+  SidebarRowOverflow,
   SidebarRowProps,
   SidebarSectionProps,
 } from "./data-display/sidebar-section.tsx";

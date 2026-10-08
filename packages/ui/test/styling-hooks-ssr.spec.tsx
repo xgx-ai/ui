@@ -1,5 +1,7 @@
 import { renderToString } from "@solidjs/web";
 import { NotificationActionButton, NotificationItem } from "../src/data-display/notification-item";
+import { SidebarRow } from "../src/data-display/sidebar-section";
+import { DetailSidebar } from "../src/detail-sidebar/detail-sidebar";
 import { Badge } from "../src/feedback/badge";
 import { Select, SelectValue } from "../src/forms/select";
 import { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger } from "../src/layout/tabs";
@@ -110,5 +112,66 @@ export default function runStylingHooksSsrSpec() {
     separateNotification.includes('data-slot="notification-indicator"'),
     "Notification items must expose their unread indicator",
   );
-  console.log("ok - app styling hooks: tabs, select, badges, table headings and notifications");
+
+  const truncatedRow = renderToString(() => <SidebarRow label="Email">a@example.com</SidebarRow>);
+  assert(
+    truncatedRow.includes('class="text-foreground text-right truncate ml-3"'),
+    "Sidebar rows must keep truncating their value by default",
+  );
+  assert(!truncatedRow.includes("data-overflow"), "Default sidebar rows must not opt in to wrap");
+  const wrappedRow = renderToString(() => (
+    <SidebarRow label="Email" overflow="wrap">
+      a@example.com
+    </SidebarRow>
+  ));
+  assert(wrappedRow.includes('data-overflow="wrap"'), "Wrapping sidebar rows must say so");
+  assert(
+    wrappedRow.includes("flex-wrap"),
+    "A wrapping row must let its value move under the label",
+  );
+  assert(!wrappedRow.includes("truncate"), "A wrapping row must not clip its value");
+  const unlabelledRow = renderToString(() => (
+    <SidebarRow label="" overflow="wrap">
+      Full-width note
+    </SidebarRow>
+  ));
+  assert(
+    !unlabelledRow.includes("text-muted-foreground"),
+    "A wrapping row without a label must not render an empty label",
+  );
+  assert(
+    unlabelledRow.includes("w-full"),
+    "A wrapping row without a label must give its value the whole row",
+  );
+
+  const sidebar = (displayNameLines?: 1 | 2 | 3) =>
+    renderToString(() => (
+      <DetailSidebar
+        isSlim={false}
+        onToggle={() => {}}
+        header={{ initials: "PR", displayName: "Petra Rowden", displayNameLines }}
+        sections={[{ title: "Contact", rows: [{ label: "Email", value: "a@example.com" }] }]}
+        rowOverflow={displayNameLines ? "wrap" : undefined}
+      />
+    ));
+  const defaultSidebar = sidebar();
+  assert(
+    defaultSidebar.includes(
+      'class="min-w-0 max-w-full truncate text-sm font-medium leading-tight"',
+    ),
+    "Detail sidebar names must stay on one line by default",
+  );
+  assert(!defaultSidebar.includes("data-overflow"), "Detail sidebar rows must truncate by default");
+  const wrappedSidebar = sidebar(3);
+  assert(
+    wrappedSidebar.includes("line-clamp-3"),
+    "Detail sidebar names must wrap to the lines asked for",
+  );
+  assert(
+    wrappedSidebar.includes('data-overflow="wrap"'),
+    "Detail sidebars must pass row overflow on",
+  );
+  console.log(
+    "ok - app styling hooks: tabs, select, badges, table headings, notifications and sidebars",
+  );
 }

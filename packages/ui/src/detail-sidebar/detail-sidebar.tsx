@@ -1,9 +1,24 @@
+import type { JSX } from "@solidjs/web";
 import type { Component } from "solid-js";
 import { For, omit, Show } from "solid-js";
 import { cn } from "../cn";
 import { SidebarRow, SidebarSection } from "../data-display/sidebar-section";
 import { Badge } from "../feedback/badge";
 import type { DetailSidebarProps, DetailSidebarSlimIcon } from "./types";
+
+const displayNameClampClasses = {
+  2: "line-clamp-2",
+  3: "line-clamp-3",
+} as const;
+
+/** Gives a clipped heading its full text as a native tooltip, and a heading that fits none. */
+const titleWhenClipped: JSX.EventHandler<HTMLHeadingElement, MouseEvent> = (event) => {
+  const heading = event.currentTarget;
+  const clipped =
+    heading.scrollWidth > heading.clientWidth || heading.scrollHeight > heading.clientHeight;
+  if (clipped) heading.title = heading.textContent ?? "";
+  else heading.removeAttribute("title");
+};
 
 function SlimIconButton(props: DetailSidebarSlimIcon & { onToggle: () => void }) {
   const content = (
@@ -43,8 +58,19 @@ const DetailSidebar: Component<DetailSidebarProps> = (props) => {
     "footer",
     "extraContent",
     "loading",
+    "rowOverflow",
     "class",
   );
+
+  const displayNameClass = () => {
+    const lines = local.header.displayNameLines ?? 1;
+    return lines === 1
+      ? "min-w-0 max-w-full truncate text-sm font-medium leading-tight"
+      : cn(
+          "min-w-0 max-w-full wrap-break-word text-sm font-medium leading-tight",
+          displayNameClampClasses[lines],
+        );
+  };
 
   const LoadingState = () => (
     <div class="flex items-center justify-center h-full w-full p-4">
@@ -89,7 +115,7 @@ const DetailSidebar: Component<DetailSidebarProps> = (props) => {
         <div class="min-w-0 flex-1">
           {/* Badges wrap below a long name rather than squeezing it to a letter. */}
           <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <h3 class="min-w-0 max-w-full truncate text-sm font-medium leading-tight">
+            <h3 class={displayNameClass()} onMouseEnter={titleWhenClipped}>
               {local.header.displayName}
             </h3>
             <Show when={local.header.badges && local.header.badges.length > 0}>
@@ -116,7 +142,7 @@ const DetailSidebar: Component<DetailSidebarProps> = (props) => {
             <SidebarSection title={section.title} action={section.action}>
               <For each={section.rows}>
                 {(row) => (
-                  <SidebarRow label={row.label}>
+                  <SidebarRow label={row.label} overflow={local.rowOverflow}>
                     {typeof row.value === "string" ? <span>{row.value}</span> : row.value}
                   </SidebarRow>
                 )}
