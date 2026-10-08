@@ -80,8 +80,21 @@ export function useResponseDialog() {
   const showResponseDialog = <T,>(props: DialogProps<T>): Promise<T | null> => {
     if (activePromise) return activePromise as Promise<T | null>;
 
+    // Each call describes a whole dialog. Merged onto the last one, anything it set and this
+    // call leaves out survived — an alert template, its action label, a hidden close button —
+    // so a form opened straight after a confirmation rendered as that confirmation.
+    const next: DialogProps<unknown> = {
+      title: "",
+      description: "",
+      content: DialogContentPlaceholder,
+      ...(props as DialogProps<unknown>),
+    };
     setDialogProps((state) => {
-      Object.assign(state, props);
+      const draft = state as Record<string, unknown>;
+      for (const key of Object.keys(draft)) {
+        if (!(key in next)) draft[key] = undefined;
+      }
+      Object.assign(state, next);
     });
     setIsOpen(true);
 
