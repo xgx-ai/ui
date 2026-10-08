@@ -1,4 +1,5 @@
 import { renderToString } from "@solidjs/web";
+import { NotificationActionButton, NotificationItem } from "../src/data-display/notification-item";
 import { Badge } from "../src/feedback/badge";
 import { Select, SelectValue } from "../src/forms/select";
 import { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger } from "../src/layout/tabs";
@@ -77,5 +78,37 @@ export default function runStylingHooksSsrSpec() {
   );
   assert(heading.includes("<svg"), "Sorted headings must show a direction arrow");
   assert(!heading.includes(">asc<"), "Sorted headings must not print the raw direction");
-  console.log("ok - app styling hooks: tabs, select, badges and table headings");
+
+  const nestedNotification = renderToString(() => (
+    <NotificationItem
+      title="Leave request"
+      unread
+      action={<NotificationActionButton title="Mark as read" />}
+    />
+  ));
+  assert(
+    /^<button[^>]*>(?:(?!<\/button>).)*<button/.test(nestedNotification),
+    "Notification items must keep their action inside the row button by default",
+  );
+  const separateNotification = renderToString(() => (
+    <NotificationItem
+      title="Leave request"
+      unread
+      separateAction
+      action={<NotificationActionButton title="Mark as read" />}
+    />
+  ));
+  assert(
+    separateNotification.startsWith("<div"),
+    "A separate action must turn the row into a container",
+  );
+  assert(
+    !/<button[^>]*>(?:(?!<\/button>).)*<button/.test(separateNotification),
+    "A separate action must not nest a button inside the row button",
+  );
+  assert(
+    separateNotification.includes('data-slot="notification-indicator"'),
+    "Notification items must expose their unread indicator",
+  );
+  console.log("ok - app styling hooks: tabs, select, badges, table headings and notifications");
 }
