@@ -6,7 +6,7 @@ import { cn } from "../cn.ts";
 import { Search } from "../icons.index";
 
 const searchBarVariants = cva(
-  "xgx-control-text-md flex items-center rounded-full border border-border-subtle bg-surface-muted ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+  "xgx-control-text-md flex items-center rounded-full border border-border-subtle bg-[var(--search-bar,var(--color-surface-muted))] ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
   {
     variants: {
       size: {

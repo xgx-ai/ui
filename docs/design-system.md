@@ -45,7 +45,7 @@ Control tokens are independent from brand tokens:
 --control-border: var(--border-subtle);
 ```
 
-Button, card and control shape tokens are optional. Each falls back to the exact value the component used before (`rounded-md`, `h-10`, `px-4`, `p-4`, `pt-0`), so apps that set nothing are unchanged:
+Button, card and control shape tokens and the search bar fill are optional. Each falls back to the exact value the component used before (`rounded-md`, `h-10`, `px-4`, `p-4`, `pt-0`, `bg-surface-muted`), so apps that set nothing are unchanged:
 
 ```css
 --button: var(--primary); /* default Button fill */
@@ -56,6 +56,7 @@ Button, card and control shape tokens are optional. Each falls back to the exact
 --control-font-size: 0.8125rem; /* xgx-control-text-sm and -md */
 --card-padding: calc(var(--spacing) * 4); /* CardHeader, CardContent and CardFooter */
 --card-section-gap: 0px; /* top padding of CardContent and CardFooter */
+--search-bar: var(--surface-muted); /* SearchBar fill */
 ```
 
 Typography role classes (`xgx-text-*`, `xgx-control-text-*`) sit in `@layer components`, so a size utility passed through `class` overrides the role's size.
