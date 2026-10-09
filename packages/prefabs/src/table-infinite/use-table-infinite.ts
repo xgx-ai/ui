@@ -1,4 +1,4 @@
-import { type InfiniteQueryResult } from "@xgx/query";
+import { type InfiniteQueryResult } from "../../../query/src/index.tsx";
 import { type Accessor, createMemo, createSignal } from "solid-js";
 
 export interface TableInfinitePage<TData> {

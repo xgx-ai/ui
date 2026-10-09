@@ -1,4 +1,4 @@
-import { createInfiniteQuery, type InfiniteDescriptor, type InfiniteQueryResult } from "@xgx/query";
+import { createInfiniteQuery, type InfiniteDescriptor, type InfiniteQueryResult } from "../../../query/src/index.tsx";
 import { type Accessor, createMemo, createSignal, onCleanup } from "solid-js";
 
 export interface SearchInfinitePage<T> {

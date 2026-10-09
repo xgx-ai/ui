@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { createIntersectionLoader } from "@xgx/query";
+import { createIntersectionLoader } from "../../../query/src/index.tsx";
 import type {
   CellContext,
   ColumnDef,

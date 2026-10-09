@@ -1,0 +1,8 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
+  "extends": ["./rules.json"],
+  "plugins": [
+    "./node_modules/@xgx/ui/packages/solid/biome/rules/no-destructured-props.grit",
+    "./node_modules/@xgx/ui/packages/solid/biome/rules/no-single-callback-effect.grit"
+  ]
+}

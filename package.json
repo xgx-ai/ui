@@ -19,7 +19,14 @@
     "./schema-form": "./packages/ui/src/forms/schema-form/index.ts",
     "./sortablejs": "./packages/ui/src/dnd/sortablejs/index.ts",
     "./bun-plugin-solid": "./packages/ui/src/bun-plugins/solid.ts",
-    "./bun-plugin-tanstack-router": "./packages/ui/src/bun-plugins/tanstack-router.ts"
+    "./bun-plugin-tanstack-router": "./packages/ui/src/bun-plugins/tanstack-router.ts",
+    "./solid": "./packages/solid/src/index.ts",
+    "./prefabs": "./packages/prefabs/src/index.ts",
+    "./prefabs/data-table": "./packages/prefabs/src/data-display/table.tsx",
+    "./prefabs/search-infinite": "./packages/prefabs/src/forms/search-infinite.tsx",
+    "./prefabs/table-infinite": "./packages/prefabs/src/table-infinite/index.ts",
+    "./biome": "./packages/solid/biome/ui.json",
+    "./biome-app": "./packages/solid/biome/ui-app.json"
   },
   "workspaces": [
     "packages/*",
@@ -92,7 +99,9 @@
     "vega-embed": "^7.2.0",
     "vega-lite": "^6.4.3",
     "y-websocket": "^3.1.0",
-    "yjs": "^13.6.33"
+    "yjs": "^13.6.33",
+    "@types/sortablejs": "^1.15.9",
+    "@types/markdown-it": "^14.2.0"
   },
   "overrides": {
     "@tiptap/core": "3.31.4",
@@ -142,8 +151,6 @@
     "@playwright/test": "^1.63.0",
     "@solidjs/web": "2.0.0-rc.11",
     "@types/bun": "latest",
-    "@types/markdown-it": "^14.2.0",
-    "@types/sortablejs": "^1.15.9",
     "@xgx/solid": "workspace:*",
     "better-auth": "1.7.7",
     "bun-plugin-tailwind": "^0.1.2",
@@ -153,7 +160,10 @@
     "zod": "^4.6.5"
   },
   "peerDependencies": {
-    "better-auth": "^1.5.5"
+    "better-auth": "^1.5.5",
+    "@solidjs/web": "^2.0.0-rc.11",
+    "solid-js": "^2.0.0-rc.11",
+    "zod": "^4.6.5"
   },
   "peerDependenciesMeta": {
     "better-auth": {

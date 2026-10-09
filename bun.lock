@@ -31,6 +31,8 @@
         "@tiptap/pm": "3.31.4",
         "@tiptap/starter-kit": "3.31.4",
         "@turf/turf": "^7.4.0",
+        "@types/markdown-it": "^14.2.0",
+        "@types/sortablejs": "^1.15.9",
         "chart.js": "^4.5.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -51,8 +53,6 @@
         "@playwright/test": "^1.63.0",
         "@solidjs/web": "2.0.0-rc.11",
         "@types/bun": "latest",
-        "@types/markdown-it": "^14.2.0",
-        "@types/sortablejs": "^1.15.9",
         "@xgx/solid": "workspace:*",
         "better-auth": "1.7.7",
         "bun-plugin-tailwind": "^0.1.2",
@@ -63,7 +63,10 @@
         "zod": "^4.6.5",
       },
       "peerDependencies": {
+        "@solidjs/web": "^2.0.0-rc.11",
         "better-auth": "^1.5.5",
+        "solid-js": "^2.0.0-rc.11",
+        "zod": "^4.6.5",
       },
       "optionalPeers": [
         "better-auth",
