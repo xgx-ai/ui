@@ -524,7 +524,10 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
           );
         },
         cell: (context) => (
-          <div class="flex items-center justify-center h-full">
+          <div
+            class="flex items-center justify-center h-full"
+            onClick={(event) => event.stopPropagation()}
+          >
             <Checkbox
               checked={props.table.isRowSelected(context.row.original)}
               onChange={(value) => props.table.toggleRowSelection(context.row.original, value)}
