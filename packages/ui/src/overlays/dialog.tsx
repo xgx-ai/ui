@@ -337,7 +337,9 @@ const DialogContent = <T extends ValidComponent = "div">(props: DialogContentPro
   const contentChildren = () => (
     <DismissableLayerContext value={layer}>
       {/* A dialog nested in a template body lays out its own footer. */}
-      <DialogTemplateContext value={{ stickyFooter: false }}>{local.children}</DialogTemplateContext>
+      <DialogTemplateContext value={{ stickyFooter: false }}>
+        {local.children}
+      </DialogTemplateContext>
       <Show when={!local.hideCloseButton}>
         <button
           type="button"
