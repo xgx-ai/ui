@@ -116,6 +116,27 @@ function createRowKey<TData>(getRowId: (row: TData) => string | number | undefin
   return { key, register };
 }
 
+/**
+ * Rows that keep their objects across refetches. Each new answer is reconciled into the last by
+ * `getRowId` (default `row.id`), so a surviving row is the same object and only the fields that
+ * changed notify; the array itself is new whenever membership or order changes. Pass plain rows,
+ * as a transport returns them.
+ *
+ * `useTableInfiniteFromQuery` does this already. Use it for rows a table gets from elsewhere, so
+ * a refetch does not remount every row, and everything a row owns, such as an open dialog.
+ */
+export function createReconciledRows<TData>(
+  rows: Accessor<TData[]>,
+  options: { getRowId?: (row: TData) => string | number | undefined; name?: string } = {},
+): Accessor<TData[]> {
+  const rowKey = createRowKey<TData>(options.getRowId ?? getDefaultRowId);
+  const reconciled = createProjection<TData[]>(() => rowKey.register(rows()), [], {
+    key: rowKey.key,
+    name: options.name ?? "tableRows",
+  });
+  return createMemo(() => [...reconciled]);
+}
+
 export function useTableInfiniteFromQuery<TData, TPageParam = unknown>(
   params: UseTableInfiniteFromDefaultQueryParams<TData, TPageParam>,
 ): UseTableInfiniteReturn<TData, TableInfinitePage<TData>, TPageParam>;
@@ -143,7 +164,6 @@ export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
       : (page: TPage) => getDefaultTotalCount(page as TableInfinitePage<TData>);
 
   const getRowId = params.getRowId ?? getDefaultRowId;
-  const rowKey = createRowKey<TData>(getRowId);
 
   const flattenPages = (pages: readonly TPage[] | undefined): TData[] =>
     pages?.flatMap((page) => [...getRows(page)]) ?? [];
@@ -158,17 +178,13 @@ export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
    * new value in Solid 2 beta.25, so a filtered table would stay stuck on old rows. The
    * first read still suspends, because `retained` is undefined until something resolves.
    */
-  const reconciledRows = createProjection<TData[]>(
+  const data = createReconciledRows(
     () => {
       const retained = query.retained();
-      return rowKey.register(flattenPages(retained ? retained.pages : query.data().pages));
+      return flattenPages(retained ? retained.pages : query.data().pages);
     },
-    [],
-    { key: rowKey.key, name: params.tableId ? `${params.tableId}.rows` : "tableRows" },
+    { getRowId, name: params.tableId ? `${params.tableId}.rows` : undefined },
   );
-  // A new array when membership or order changes, as before, now holding the reconciled
-  // rows. A change to one row's fields reaches only the readers of those fields.
-  const data = createMemo(() => [...reconciledRows]);
 
   const count = createMemo(() => {
     const pages = query.cached()?.pages;

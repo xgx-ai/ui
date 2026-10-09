@@ -3,10 +3,10 @@ import type {
   CellContext,
   ColumnDef,
   HeaderContext,
-  SortDirection,
   TableColumn,
-  TableController,
   TableRowContext,
+  TableSortingState,
+  TableUpdater,
 } from "@xgx/ui";
 import {
   Checkbox,
@@ -36,7 +36,15 @@ import {
   Show,
 } from "solid-js";
 import { createIntersectionLoader } from "../../../query/src/index.tsx";
-import type { UseTableInfiniteReturn } from "./use-table-infinite";
+import {
+  canSortTableColumn,
+  compareTableValues,
+  getTableCellValue,
+  nextTableSorting,
+  resolveTableUpdater,
+  shouldHandleRowClick,
+  sortsDescendingFirst,
+} from "./table-state";
 
 export interface TableColumnLayout {
   version: 1;
@@ -158,11 +166,34 @@ const TABLE_LOADING_BAR_STYLES = `
 }
 `;
 
-type PendingQuerySource = {
-  query?: {
-    readonly pending?: () => boolean;
-  };
-};
+/**
+ * What the table reads from its rows' source. `useTableInfiniteFromQuery` and `TableController`
+ * both fit, and a list loaded in full needs only the first four members. A source with
+ * `setSorting` owns sorting: the table asks it to sort, and shows rows in the order it returns
+ * them — for sorting on the server.
+ */
+export interface TableInfiniteSource<TData> {
+  data: Accessor<TData[]>;
+  hasMore: Accessor<boolean>;
+  isFetchingMore: Accessor<boolean>;
+  loadMore: () => void;
+  isLoading?: Accessor<boolean>;
+  totalCount?: Accessor<number | undefined>;
+  query?: { readonly pending?: () => boolean };
+  singleSelect?: boolean;
+  allSelected?: Accessor<boolean>;
+  excludedIds?: Accessor<string[]>;
+  selectedCount?: Accessor<number>;
+  /** How many rows can be selected across every page, when the source knows. */
+  selectableCount?: Accessor<number | undefined>;
+  isRowSelected?: (row: TData) => boolean;
+  isRowSelectable?: (row: TData) => boolean;
+  toggleRowSelection?: (row: TData, checked: boolean) => void;
+  toggleSelectAll?: (checked: boolean) => void;
+  sorting?: Accessor<TableSortingState>;
+  setSorting?: (updater: TableUpdater<TableSortingState>) => void;
+  tableId?: string;
+}
 
 const Table = (props: ComponentProps<"table">) => (
   <table {...props} class={cn("w-full caption-bottom !bg-none", props.class)} />
@@ -274,7 +305,7 @@ const ColumnVisibilitySettings = <TData,>(props: ColumnVisibilitySettingsProps<T
 };
 
 export interface TableInfiniteProps<TData> {
-  table: UseTableInfiniteReturn<TData, any, any> | TableController<TData>;
+  table: TableInfiniteSource<TData>;
   columns: ColumnDef<TData, unknown>[];
   getRowId?: (row: TData) => string;
   groupBy?: (row: TData) => string;
@@ -293,10 +324,13 @@ export interface TableInfiniteProps<TData> {
   class?: string;
   showStatusBar?: boolean;
   statusBarLabel?: string;
+  /** Shown in the table body when there are no rows. */
   statusBarEmptyMessage?: string;
   statusBarEndMessage?: string;
   tableId?: string;
   statusBarSlot?: JSX.Element;
+  /** Beside the counts on the left of the status bar, for totals and the like. */
+  statusBarSummarySlot?: JSX.Element;
   skeletonRowCount?: number;
 }
 
@@ -378,31 +412,6 @@ function getColumnDisplayName<TData>(column: ColumnDef<TData, unknown>, index: n
     .trim();
 }
 
-function getColumnValue<TData, TValue>(
-  row: TData,
-  rowIndex: number,
-  column: ColumnDef<TData, TValue>,
-): TValue {
-  if (column.accessorFn) return column.accessorFn(row, rowIndex);
-  if (column.accessorKey) {
-    return (row as Record<string, TValue>)[column.accessorKey];
-  }
-  return undefined as TValue;
-}
-
-function compareValues(left: unknown, right: unknown): number {
-  if (left == null && right == null) return 0;
-  if (left == null) return -1;
-  if (right == null) return 1;
-  if (typeof left === "number" && typeof right === "number") {
-    return left - right;
-  }
-  return String(left).localeCompare(String(right), undefined, {
-    numeric: true,
-    sensitivity: "base",
-  });
-}
-
 function renderHeader<TData, TValue>(
   column: TableColumn<TData, TValue>,
   fallback: string,
@@ -458,20 +467,21 @@ function getColumnStyles<TData>(
   };
 }
 
-function getRenderableTableData<TData>(
-  table: UseTableInfiniteReturn<TData, any, any> | TableController<TData>,
-): TData[] {
+function getRenderableTableData<TData>(table: TableInfiniteSource<TData>): TData[] {
   return table.data();
 }
 
-function getQueryIsPending(table: object): boolean {
-  return (table as PendingQuerySource).query?.pending?.() ?? false;
-}
-
 export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
-  const [sorting, setSorting] = createSignal<
-    { columnId: string; direction: Exclude<SortDirection, false> } | undefined
-  >();
+  const [localSorting, setLocalSorting] = createSignal<TableSortingState>([]);
+  const sortsInSource = () => props.table.setSorting !== undefined;
+  const sorting = () => (sortsInSource() ? (props.table.sorting?.() ?? []) : localSorting());
+  const changeSorting = (updater: TableUpdater<TableSortingState>) => {
+    if (props.table.setSorting) props.table.setSorting(updater);
+    else setLocalSorting((previous) => resolveTableUpdater(updater, previous));
+  };
+  const isLoading = () => props.table.isLoading?.() ?? false;
+  const isRowSelected = (row: TData) => props.table.isRowSelected?.(row) ?? false;
+  const isRowSelectable = (row: TData) => props.table.isRowSelectable?.(row) ?? true;
 
   const enableRowSelection = () => props.enableRowSelection ?? false;
   const enableSorting = () => props.enableSorting ?? false;
@@ -491,8 +501,7 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
     props.getRowId?.(row) ?? (row as { id?: unknown } | null)?.id ?? row;
 
   const loader = createIntersectionLoader({
-    canLoad: () =>
-      props.table.hasMore() && !props.table.isFetchingMore() && !props.table.isLoading(),
+    canLoad: () => props.table.hasMore() && !props.table.isFetchingMore() && !isLoading(),
     load: () => props.table.loadMore(),
     loadDelay: 80,
     rootMargin: "0px 0px 240px 0px",
@@ -537,37 +546,45 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
         enableHiding: false,
         meta: { displayName: "Select", pinned: "left" },
         header: () => {
-          const currentData = () => getRenderableTableData(props.table);
-          const allSelected = () =>
-            currentData().length > 0 &&
-            currentData().every((row) => props.table.isRowSelected(row));
-          const someSelected = () => currentData().some((row) => props.table.isRowSelected(row));
+          // Everything selectable is selected: by "select all" with nothing excluded, or one
+          // by one up to the source's selectable (or total) count.
+          const allSelected = () => {
+            const count = selectedCount();
+            if (count === 0) return false;
+            if (props.table.allSelected?.())
+              return (props.table.excludedIds?.() ?? []).length === 0;
+            const selectable =
+              props.table.selectableCount?.() ??
+              props.table.totalCount?.() ??
+              getRenderableTableData(props.table).filter(isRowSelectable).length;
+            return count >= selectable;
+          };
 
           return (
-            <div class="flex items-center justify-center h-full">
-              {/* Reads the rows, which suspend until the first page lands. See TableChromeLoading. */}
-              <Loading
-                fallback={<Checkbox aria-label="Select all" size="md" checked={false} disabled />}
-              >
-                <Checkbox
-                  aria-label="Select all"
-                  size="md"
-                  checked={allSelected()}
-                  onChange={(value) => props.table.toggleSelectAll(value)}
-                  indeterminate={someSelected() && !allSelected()}
-                />
-              </Loading>
-            </div>
+            <Show when={!props.table.singleSelect}>
+              <div class="flex items-center justify-center h-full">
+                {/* Reads the rows, which suspend until the first page lands. See TableChromeLoading. */}
+                <Loading
+                  fallback={<Checkbox aria-label="Select all" size="md" checked={false} disabled />}
+                >
+                  <Checkbox
+                    aria-label="Select all"
+                    size="md"
+                    checked={allSelected()}
+                    onChange={(value) => props.table.toggleSelectAll?.(value)}
+                    indeterminate={selectedCount() > 0 && !allSelected()}
+                  />
+                </Loading>
+              </div>
+            </Show>
           );
         },
         cell: (context) => (
-          <div
-            class="flex items-center justify-center h-full"
-            onClick={(event) => event.stopPropagation()}
-          >
+          <div class="flex items-center justify-center h-full" data-row-click-ignore>
             <Checkbox
-              checked={props.table.isRowSelected(context.row.original)}
-              onChange={(value) => props.table.toggleRowSelection(context.row.original, value)}
+              checked={isRowSelected(context.row.original)}
+              disabled={!isRowSelectable(context.row.original)}
+              onChange={(value) => props.table.toggleRowSelection?.(context.row.original, value)}
               aria-label="Select row"
               size="md"
             />
@@ -610,22 +627,20 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
         id,
         index,
         columnDef,
-        getCanSort: () => enableSorting() && columnDef.enableSorting !== false,
+        getCanSort: () => enableSorting() && canSortTableColumn(columnDef),
         getIsSorted: () => {
-          const current = sorting();
-          return current?.columnId === id ? current.direction : false;
+          const sort = sorting().find((item) => item.id === id);
+          return sort ? (sort.desc ? "desc" : "asc") : false;
         },
-        getToggleSortingHandler: () => () => {
+        // Shift adds the column to the existing sort instead of replacing it.
+        getToggleSortingHandler: () => (event) => {
           if (!column.getCanSort()) return;
-          setSorting((current) => {
-            if (current?.columnId !== id) {
-              return { columnId: id, direction: "asc" };
-            }
-            if (current.direction === "asc") {
-              return { columnId: id, direction: "desc" };
-            }
-            return undefined;
-          });
+          const multiple = Boolean((event as { shiftKey?: boolean } | undefined)?.shiftKey);
+          const descendingFirst = sortsDescendingFirst(
+            columnDef,
+            getRenderableTableData(props.table)[0],
+          );
+          changeSorting((previous) => nextTableSorting(previous, id, descendingFirst, multiple));
         },
       };
       return column;
@@ -650,28 +665,30 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
   });
 
   const rows = createMemo<TData[]>(() => {
-    const sort = sorting();
+    // A source that sorts returns its rows in order already.
+    const sorts = sortsInSource() ? [] : sorting();
     // `<Loading>` retains already-rendered rows across a key change, so the authoritative
     // read is all that is needed: no mirror, no non-suspending fallback.
     const sourceData = getRenderableTableData(props.table);
     const indexes = sourceIndexes();
     const indexOf = (row: TData) => indexes.get(row) ?? 0;
+    const definitions = new Map(tableColumns().map((column) => [column.id, column.columnDef]));
 
     return [...sourceData].sort((left, right) => {
       const groupResult = props.groupBy
-        ? compareValues(props.groupBy(left), props.groupBy(right))
+        ? compareTableValues(props.groupBy(left), props.groupBy(right))
         : 0;
       if (groupResult !== 0) return groupResult;
-      if (!sort) return indexOf(left) - indexOf(right);
-
-      const column = tableColumns().find((item) => item.id === sort.columnId);
-      if (!column) return indexOf(left) - indexOf(right);
-
-      const sortResult = compareValues(
-        getColumnValue(left, indexOf(left), column.columnDef),
-        getColumnValue(right, indexOf(right), column.columnDef),
-      );
-      return sort.direction === "asc" ? sortResult : -sortResult;
+      for (const sort of sorts) {
+        const definition = definitions.get(sort.id);
+        if (!definition) continue;
+        const result = compareTableValues(
+          getTableCellValue(left, indexOf(left), definition),
+          getTableCellValue(right, indexOf(right), definition),
+        );
+        if (result !== 0) return sort.desc ? -result : result;
+      }
+      return indexOf(left) - indexOf(right);
     });
   });
 
@@ -692,7 +709,7 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
       get original() {
         return row();
       },
-      getIsSelected: () => props.table.isRowSelected(row()),
+      getIsSelected: () => isRowSelected(row()),
     };
   };
 
@@ -711,16 +728,16 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
   });
 
   const totalCount = () => props.table.totalCount?.() ?? getRenderableTableData(props.table).length;
+  // The source's count when it has one: in "select all" mode it covers rows not loaded yet.
   const selectedCount = () =>
     enableRowSelection()
-      ? getRenderableTableData(props.table).filter((row) => props.table.isRowSelected(row)).length
+      ? (props.table.selectedCount?.() ??
+        getRenderableTableData(props.table).filter(isRowSelected).length)
       : 0;
   const showEndOfResults = () =>
-    !props.table.hasMore() &&
-    getRenderableTableData(props.table).length > 0 &&
-    !props.table.isLoading();
+    !props.table.hasMore() && getRenderableTableData(props.table).length > 0 && !isLoading();
   const showLoadingBar = () =>
-    props.table.isLoading() || props.table.isFetchingMore() || getQueryIsPending(props.table);
+    isLoading() || props.table.isFetchingMore() || (props.table.query?.pending?.() ?? false);
   const loadingBarRow = () => (
     <TableRow class="border-none cursor-default hover:bg-transparent">
       <th
@@ -733,20 +750,17 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
     </TableRow>
   );
 
+  // Hiding a sorted column stops sorting by it.
   createEffect(
     () => ({
-      columnId: sorting()?.columnId,
+      sortedIds: sorting().map((sort) => sort.id),
       hiddenColumnIds: columnLayout().hiddenColumnIds,
     }),
-    ({ columnId, hiddenColumnIds }) => {
-      if (
-        shouldClearTableSort(columnId, {
-          version: 1,
-          columnOrder: [],
-          hiddenColumnIds,
-        })
-      ) {
-        setSorting();
+    ({ sortedIds, hiddenColumnIds }) => {
+      const layout = { version: 1 as const, columnOrder: [], hiddenColumnIds };
+      const hidden = sortedIds.filter((id) => shouldClearTableSort(id, layout));
+      if (hidden.length > 0) {
+        changeSorting((previous) => previous.filter((sort) => !hidden.includes(sort.id)));
       }
     },
   );
@@ -785,6 +799,13 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
                 "data-column-fixed": column.columnDef.meta?.pinned ? "true" : undefined,
                 "data-table-layout-control": enableColumnVisibility() ? "" : undefined,
                 "data-table-pinned": column.columnDef.meta?.pinned || undefined,
+                "aria-sort": column.getCanSort()
+                  ? column.getIsSorted() === "asc"
+                    ? "ascending"
+                    : column.getIsSorted() === "desc"
+                      ? "descending"
+                      : "none"
+                  : undefined,
                 onClick: column.getToggleSortingHandler(),
                 style: getColumnStyles(column, visibleColumns()),
               })}
@@ -822,10 +843,22 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
                       <GripVertical aria-hidden="true" class="size-3 text-muted-foreground/60" />
                     </span>
                   </Show>
-                  {renderHeader(column, getDisplayName(column.columnDef))}
-                  <Show when={column.getIsSorted()}>
-                    {(sorted) => <span class="ml-2 text-xs">{sorted() === "asc" ? "↑" : "↓"}</span>}
-                  </Show>
+                  {(() => {
+                    const content = renderHeader(column, getDisplayName(column.columnDef));
+                    // A header that renders its own element (a sort button, say) shows its own
+                    // sort state; plain text gets the table's arrow.
+                    if (typeof content !== "string" && typeof content !== "number") return content;
+                    return (
+                      <>
+                        {content}
+                        <Show when={column.getIsSorted()}>
+                          {(sorted) => (
+                            <span class="ml-2 text-xs">{sorted() === "asc" ? "↑" : "↓"}</span>
+                          )}
+                        </Show>
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </Sortable>
@@ -852,7 +885,7 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
                       colspan={Math.max(visibleColumns().length, 1)}
                       class="h-24 text-center text-xs text-muted-foreground"
                     >
-                      No results.
+                      {props.statusBarEmptyMessage ?? "No results."}
                     </TableCell>
                   </TableRow>
                 }
@@ -882,7 +915,11 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
                             <TableRow
                               data-state={rowContext.getIsSelected() ? "selected" : undefined}
                               interactive={Boolean(props.onRowClick)}
-                              onClick={() => props.onRowClick?.(row())}
+                              onClick={(event) => {
+                                if (props.onRowClick && shouldHandleRowClick(event)) {
+                                  props.onRowClick(row());
+                                }
+                              }}
                               onMouseEnter={
                                 props.onRowHover ? () => props.onRowHover?.(row()) : undefined
                               }
@@ -893,7 +930,7 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
                                     row: rowContext,
                                     column,
                                     getValue: () =>
-                                      getColumnValue(row(), rowContext.index, column.columnDef),
+                                      getTableCellValue(row(), rowContext.index, column.columnDef),
                                   };
 
                                   return (
@@ -920,7 +957,7 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
           <TableFooter class="bg-transparent">
             <TableRow class="border-none cursor-default hover:bg-transparent">
               <TableCell colspan={Math.max(visibleColumns().length, 1)} class="text-center">
-                <Show when={props.table.hasMore() && !props.table.isLoading()}>
+                <Show when={props.table.hasMore() && !isLoading()}>
                   <div ref={loader.ref} class="flex justify-center py-4">
                     <div class="text-xs text-muted-foreground">Loading more...</div>
                   </div>
@@ -942,15 +979,18 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
       </div>
       <Show when={props.showStatusBar ?? false}>
         <div class="flex items-center justify-between border-t border-border-subtle px-4 py-3 text-xs text-muted-foreground">
-          <div>
+          <div class="flex min-w-0 items-center gap-3">
             <span>
               {props.statusBarLabel ?? "Total results"}:{" "}
               <Loading fallback={<StatusCountSkeleton />}>{totalCount()}</Loading>
+              <Show when={enableRowSelection()}>
+                <Loading fallback={null}>
+                  <span class="ml-1 text-muted-foreground/70">( Selected: {selectedCount()} )</span>
+                </Loading>
+              </Show>
             </span>
-            <Show when={enableRowSelection()}>
-              <Loading fallback={null}>
-                <span class="ml-1 text-muted-foreground/70">( Selected: {selectedCount()} )</span>
-              </Loading>
+            <Show when={props.statusBarSummarySlot}>
+              <div>{props.statusBarSummarySlot}</div>
             </Show>
           </div>
           <Show when={props.statusBarSlot}>

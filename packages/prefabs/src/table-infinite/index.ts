@@ -48,13 +48,22 @@ export {
   type TableInfiniteProps,
   TableInfiniteSkeletonRows,
   type TableInfiniteSkeletonRowsProps,
+  type TableInfiniteSource,
 } from "./table-infinite.tsx";
+export {
+  canSortTableColumn,
+  compareTableValues,
+  getTableCellValue,
+  nextTableSorting,
+  shouldHandleRowClick,
+} from "./table-state.ts";
 export {
   type UseTableFiltersOptions,
   type UseTableFiltersReturn,
   useTableFilters,
 } from "./use-table-filters.ts";
 export {
+  createReconciledRows,
   type TableInfinitePage,
   type UseTableInfiniteFromDefaultQueryParams,
   type UseTableInfiniteFromQueryParams,
