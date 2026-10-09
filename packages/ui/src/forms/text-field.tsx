@@ -55,9 +55,12 @@ function useTextFieldContext() {
  * state, for instance), and reconciling on every keystroke would discard input in flight.
  */
 function createCommitReconciler(value: () => unknown) {
+  // `ownedWrite`, as in NumberField: removing a focused field blurs it, and Chrome dispatches
+  // that blur synchronously while its owner is being disposed — a dialog hosted in a table
+  // row that the dialog's own save remounts, for instance. Writing here then is harmless.
   const [committed, setCommitted] = createSignal<
     HTMLInputElement | HTMLTextAreaElement | undefined
-  >(undefined, { equals: false });
+  >(undefined, { equals: false, ownedWrite: true });
   createEffect(
     () => {
       const element = committed();
