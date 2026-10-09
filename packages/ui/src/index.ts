@@ -134,8 +134,6 @@ export type {
 } from "./data-display/table.tsx";
 export {
   SimpleTable,
-  tableHeadClass,
-  tableRowClass,
   TableBody,
   TableCaption,
   TableCell,
@@ -145,7 +143,10 @@ export {
   TableRoot,
   TableRow,
   TableStatusBar,
+  tableHeadClass,
+  tableRowClass,
 } from "./data-display/table.tsx";
+export { TableColumnHeader } from "./data-display/table-column-header.tsx";
 // Data Display - Timeline
 export type {
   TimelineItemProps as TimelineFullItemProps,
@@ -983,8 +984,6 @@ export type {
   TreePreviewSection,
 } from "./specialized/tree-preview.tsx";
 export { TreePreview } from "./specialized/tree-preview.tsx";
-export type { UseTableReturn } from "./table-compat.tsx";
-export { Table, TableColumnHeader, TableInfinite } from "./table-compat.tsx";
 export type {
   CellContext,
   ColumnDef,
@@ -999,14 +998,6 @@ export type {
   TableSortingState,
   TableUpdater,
 } from "./table-types.ts";
-export {
-  getGridCanvasPhase,
-  getGridCanvasPixelRatio,
-  interpolateWorkspaceCamera,
-  screenToWorldPoint,
-  worldToScreenPoint,
-  zoomCameraAtPoint,
-} from "./workspace/workspace-canvas.ts";
 export type {
   WorkspaceApi,
   WorkspaceBounds,
@@ -1018,3 +1009,11 @@ export type {
   WorkspaceViewport,
 } from "./workspace/workspace.tsx";
 export { Workspace } from "./workspace/workspace.tsx";
+export {
+  getGridCanvasPhase,
+  getGridCanvasPixelRatio,
+  interpolateWorkspaceCamera,
+  screenToWorldPoint,
+  worldToScreenPoint,
+  zoomCameraAtPoint,
+} from "./workspace/workspace-canvas.ts";

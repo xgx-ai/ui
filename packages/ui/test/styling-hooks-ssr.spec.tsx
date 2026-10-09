@@ -1,11 +1,11 @@
 import { renderToString } from "@solidjs/web";
 import { NotificationActionButton, NotificationItem } from "../src/data-display/notification-item";
 import { SidebarRow } from "../src/data-display/sidebar-section";
+import { TableColumnHeader } from "../src/data-display/table-column-header";
 import { DetailSidebar } from "../src/detail-sidebar/detail-sidebar";
 import { Badge } from "../src/feedback/badge";
 import { Select, SelectValue } from "../src/forms/select";
 import { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger } from "../src/layout/tabs";
-import { TableColumnHeader } from "../src/table-compat";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);

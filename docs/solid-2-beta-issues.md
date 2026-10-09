@@ -246,7 +246,6 @@ instance resolved for **any** key, without suspending. The table hooks read it f
 - [`packages/prefabs/src/data-display/use-table.ts`](../packages/prefabs/src/data-display/use-table.ts)
 - [`packages/prefabs/src/table-infinite/use-table-infinite.ts`](../packages/prefabs/src/table-infinite/use-table-infinite.ts)
 - [`packages/prefabs/src/forms/use-search-infinite.ts`](../packages/prefabs/src/forms/use-search-infinite.ts)
-- [`packages/ui/src/table-compat.tsx`](../packages/ui/src/table-compat.tsx) does not read `retained` itself; its `TableInfinite` relies on the caller's `table.data()` not suspending once loaded (back it with `retained`, as the prefabs hooks do).
 
 A keyed remount also works where a table is already scoped to an identity — Onshyft uses
 `<Show keyed>` around the document-library table for the same root cause.
