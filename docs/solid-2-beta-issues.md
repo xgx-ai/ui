@@ -242,6 +242,13 @@ shape a data table has and exactly the shape a minimal reproduction does not.
 `@xgx/query` exposes `retained` on the infinite query result: the last value that query
 instance resolved for **any** key, without suspending. The table hooks read it for rows.
 
+`retained` is a memo over `cached`. It used to be a signal that an effect copied `cached`
+into. That copy landed a flush late, so a reader of both ran twice for one answer, and the
+first run saw the new `cached` with the old `retained`. Solid reported this as
+`EFFECT_RELAY_TEAR` on Ama's tables (`clients.rows`, and a project list's `totalCount` memo
+that reads `retained() ?? cached()`). `query.test.ts`, "retained never lags cached by a
+frame", covers it.
+
 - [`packages/query/src/index.tsx`](../packages/query/src/index.tsx) — `retained` on `InfiniteQueryResult`
 - [`packages/prefabs/src/data-display/use-table.ts`](../packages/prefabs/src/data-display/use-table.ts)
 - [`packages/prefabs/src/table-infinite/use-table-infinite.ts`](../packages/prefabs/src/table-infinite/use-table-infinite.ts)
@@ -782,6 +789,42 @@ portal's own effect has placed its region, so the inner region came first in the
 render. `tests/nested-layers.spec.ts` covers it.
 
 - [`packages/ui/src/overlays/portal.tsx`](../packages/ui/src/overlays/portal.tsx)
+---
+
+## S18 — A `<Loading on>` boundary waits on a source its content stopped reading
+
+**Bug.** Found on rc.11, 9 October 2026, in Auno's Compliance & Work report.
+
+**Symptom.** A filter change shows the boundary's fallback, and the fallback never goes. The
+new data arrives and nothing is in the console. In Auno, switching the report's Type filter to
+Service left its table on a spinner for good. The page had one `<Loading on={request()}>`
+around a table whose rows read `statutoryDescriptor() ? statutory.data() : []`, and Service
+turns the statutory query off (its descriptor becomes `null`). Remounting the table per
+request, with `<Show keyed>`, hid it.
+
+**Mechanism.** In one update, a source that the content was reading goes pending, and the
+content stops reading it. The `on` re-arm (`CollectionQueue._rearm` in `@solidjs/signals`)
+collects the pending sources of the readers under it. A reader that has not re-run yet still
+lists the source it is about to drop. `_checkSources` then releases a collected source only
+when it settles or is disposed. It does not release one when nothing under the boundary reads
+it any more. A slow dropped source only delays the reveal. A source that never settles keeps
+the fallback up for good. A disabled query's `data()` never settles. The same structure
+without `on` updates correctly.
+
+**Workaround.** `createQueryResult` reads the disabled state from a child node of the `data`
+memo. Each run of `data` disposes the previous node, and a boundary releases a disposed source.
+`data`'s `unobserved` hook forces that run when the last reader drops a disabled read. A
+disabled query stays not-ready for any reader that still reads it. Apps keep the single
+`<Loading on>` boundary and need no remount.
+
+- [`packages/query/src/index.tsx`](../packages/query/src/index.tsx) — `createQueryResult`
+
+**Re-check.** `packages/query/test/loading-on-disabled.test.tsx`. Replace the disabled branch's
+child node with `return disabledQueryPromise;`. If the first test passes, Solid has fixed the
+bug and the workaround can go. A plain-Solid form of the bug: a memo read under
+`<Loading on={key()}>` returns a never-settling promise for the new key, and the reader stops
+reading it in the same change. The boundary stays on its fallback until that promise settles.
+
 ---
 
 ## Related

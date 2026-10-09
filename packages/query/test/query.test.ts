@@ -519,6 +519,43 @@ test("an infinite query's retained pages follow an invalidation refetch", async 
   });
 });
 
+test("retained never lags cached by a frame", async () => {
+  await inRoot(async () => {
+    const client = new QueryClient();
+    const [scope, setScope] = createSignal("a");
+    const group = queryGroup("retained-frame", {
+      list: infiniteQuery({
+        key: (current: string) => ({ scope: current }),
+        initialPageParam: 0,
+        fetch: async (key) => ({ data: [key.scope] }),
+        getNextPageParam: () => undefined,
+      }),
+    });
+    const observed = createInfiniteQuery(() => group.list(scope()), client);
+    // Every frame a reader of both sees. An effect relaying `cached` into `retained` showed
+    // one with the new `cached` beside the old `retained` (EFFECT_RELAY_TEAR), so a reader of
+    // both, such as a table's rows beside its total, ran twice for one answer.
+    const frames: string[] = [];
+    createEffect(
+      () => [observed.cached()?.pages[0].data[0], observed.retained()?.pages[0].data[0]],
+      ([cached, retained]) => {
+        frames.push(`${cached ?? "-"}/${retained ?? "-"}`);
+      },
+    );
+
+    await resolve(() => observed.data());
+    flush();
+    setScope("b");
+    flush();
+    await resolve(() => observed.data());
+    await nextTask();
+    flush();
+
+    // While "b" loads, `retained` keeps "a"; it never trails a value `cached` already has.
+    expect(frames).toEqual(["-/-", "a/a", "-/a", "b/b"]);
+  });
+});
+
 test("inactive query data is garbage collected", async () => {
   const client = new QueryClient();
   await client.fetchQuery({

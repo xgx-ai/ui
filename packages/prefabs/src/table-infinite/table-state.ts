@@ -65,14 +65,34 @@ export function canSortTableColumn<TData>(column: ColumnDef<TData, unknown>): bo
   return column.enableSorting === true || Boolean(column.accessorKey || column.accessorFn);
 }
 
-/** Numbers and dates read largest first; anything else A to Z, unless the column says. */
+/**
+ * An ISO 8601 calendar date (`2026-10-09`) or date-time (`2026-10-09T14:30:00.000Z`), as plain
+ * dates and instants travel as strings.
+ */
+const ISO_DATE_PATTERN =
+  /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])(?:[T ](?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)?)?$/;
+
+function isIsoDateString(value: unknown): value is string {
+  return typeof value === "string" && ISO_DATE_PATTERN.test(value);
+}
+
+/**
+ * Whether a column's first click sorts descending. `sortDescFirst` on the column decides;
+ * otherwise numbers, dates and ISO date strings read largest (latest) first and anything else
+ * A to Z, judged by the first row with a value in the column. A source that sorts on the
+ * server receives the same first direction.
+ */
 export function sortsDescendingFirst<TData>(
   column: ColumnDef<TData, unknown>,
-  firstRow: TData | undefined,
+  rows: readonly TData[],
 ): boolean {
   if (column.sortDescFirst !== undefined) return column.sortDescFirst;
-  const value = firstRow === undefined ? undefined : getTableCellValue(firstRow, 0, column);
-  return typeof value === "number" || value instanceof Date;
+  for (let index = 0; index < rows.length; index++) {
+    const value = getTableCellValue(rows[index] as TData, index, column);
+    if (value == null || value === "") continue;
+    return typeof value === "number" || value instanceof Date || isIsoDateString(value);
+  }
+  return false;
 }
 
 export function resolveTableUpdater<T>(updater: TableUpdater<T>, previous: T): T {

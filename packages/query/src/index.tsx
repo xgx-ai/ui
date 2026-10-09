@@ -1142,14 +1142,38 @@ function createQueryResult<TData>(
     };
   });
 
-  const data = createMemo<TData>(() => {
-    const current = state();
-    if (!current.enabled) {
-      if (current.entry.hasData()) return current.entry.data() as TData;
-      return disabledQueryPromise;
-    }
-    return client.readQuery(current.query);
-  });
+  /*
+   * S18 (docs/solid-2-beta-issues.md): a `<Loading on>` boundary re-armed in the same update
+   * that disables this query can collect the disabled read even when its reader stops reading
+   * it, and releases a collected read only once it settles. A disabled read never settles, so
+   * the boundary stayed on its fallback for good. The not-ready read therefore lives in a node
+   * of its own, which this memo's next run disposes, and losing the last reader forces that
+   * run; a boundary holding a disposed node lets it go. Remove when Solid's boundary drops
+   * sources nothing under it reads.
+   */
+  const [disabledRead, renewDisabledRead] = createSignal(0, internalWritableOptions);
+  let readsDisabled = false;
+  const data = createMemo<TData>(
+    () => {
+      const current = state();
+      readsDisabled = false;
+      if (!current.enabled) {
+        if (current.entry.hasData()) return current.entry.data() as TData;
+        disabledRead();
+        readsDisabled = true;
+        const notReady = createMemo<TData>(() => disabledQueryPromise, {
+          name: "disabledQuery",
+        });
+        return notReady();
+      }
+      return client.readQuery(current.query);
+    },
+    {
+      unobserved: () => {
+        if (readsDisabled) renewDisabledRead((run) => run + 1);
+      },
+    },
+  );
 
   createEffect(
     () => {
@@ -1335,15 +1359,12 @@ function createInfiniteDescriptorQuery<TPage, TPageParam>(
   // Instance-scoped, cross-key, non-suspending. Not cache state: this exists solely for
   // issue S1 (a keyed `<For>` under `<Loading>` keeps stale children after its source
   // resolves). See docs/solid-2-beta-issues.md.
-  const [retained, setRetained] = createSignal<InfiniteData<TPage, TPageParam> | undefined>(
-    undefined,
-    internalWritableOptions,
-  );
-  createEffect(
-    () => query.cached(),
-    (value) => {
-      if (value !== undefined) setRetained(() => value);
-    },
+  //
+  // Derived from `cached`, folding over the last value. An effect relaying `cached` into a
+  // signal committed a flush late, so a reader of both saw the new `cached` beside the old
+  // `retained` and ran twice for one answer (EFFECT_RELAY_TEAR).
+  const retained = createMemo<InfiniteData<TPage, TPageParam> | undefined>(
+    (previous) => query.cached() ?? previous,
   );
 
   // Pagination is a plain async read, not an action: an action would hold every write made

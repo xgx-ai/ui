@@ -49,7 +49,7 @@ const user = createQuery(() => (props.userId ? userQueries.detail(props.userId) 
 </Loading>;
 ```
 
-`createQuery` takes an accessor returning a descriptor, or `null` for "no question yet". A `null` query never fetches and its `data()` stays not-ready.
+`createQuery` takes an accessor returning a descriptor, or `null` for "no question yet". A `null` query never fetches and its `data()` stays not-ready. Content that stops reading it (`descriptor() ? query.data() : []`) does not hold a `<Loading on>` boundary (S18 in the beta register).
 
 - `data()` is the suspending read. Put it under `Loading` and `Errored` boundaries; `Loading` keeps already-rendered content across a revalidation.
 - `cached()` peeks at the current key's cached value without suspending, or `undefined`. Use it in handlers, effect compute phases and fallbacks, not to dodge a boundary in render.

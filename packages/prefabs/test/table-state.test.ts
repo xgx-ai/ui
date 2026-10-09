@@ -59,11 +59,67 @@ describe("table sorting", () => {
     expect(canSortTableColumn({ id: "actions", enableSorting: true })).toBe(true);
     expect(canSortTableColumn({ accessorKey: "name", enableSorting: false })).toBe(false);
 
-    expect(sortsDescendingFirst({ accessorKey: "name" }, row)).toBe(false);
-    expect(sortsDescendingFirst({ accessorKey: "amount" }, row)).toBe(true);
-    expect(sortsDescendingFirst({ accessorKey: "date" }, row)).toBe(true);
-    expect(sortsDescendingFirst({ accessorKey: "amount", sortDescFirst: false }, row)).toBe(false);
-    expect(sortsDescendingFirst({ accessorKey: "amount" }, undefined)).toBe(false);
+    expect(sortsDescendingFirst({ accessorKey: "name" }, [row])).toBe(false);
+    expect(sortsDescendingFirst({ accessorKey: "amount" }, [row])).toBe(true);
+    expect(sortsDescendingFirst({ accessorKey: "date" }, [row])).toBe(true);
+    expect(sortsDescendingFirst({ accessorKey: "amount", sortDescFirst: false }, [row])).toBe(
+      false,
+    );
+    expect(sortsDescendingFirst({ accessorKey: "amount" }, [])).toBe(false);
+  });
+
+  test("ISO date and date-time strings start descending", () => {
+    const rows = [
+      {
+        startsOn: "2026-10-09",
+        submittedAt: "2026-10-09T14:30:00.000Z",
+        localAt: "2026-10-24T22:00:00+01:00",
+        minuteAt: "2026-10-09T14:30",
+        reference: "2026-10",
+        code: "INV-2026-10-09",
+      },
+    ];
+    expect(sortsDescendingFirst({ accessorKey: "startsOn" }, rows)).toBe(true);
+    expect(sortsDescendingFirst({ accessorKey: "submittedAt" }, rows)).toBe(true);
+    expect(sortsDescendingFirst({ accessorKey: "localAt" }, rows)).toBe(true);
+    expect(sortsDescendingFirst({ accessorKey: "minuteAt" }, rows)).toBe(true);
+    expect(sortsDescendingFirst({ accessorKey: "reference" }, rows)).toBe(false);
+    expect(sortsDescendingFirst({ accessorKey: "code" }, rows)).toBe(false);
+    expect(sortsDescendingFirst({ accessorKey: "startsOn" }, [{ startsOn: "2026-13-01" }])).toBe(
+      false,
+    );
+  });
+
+  test("the column's sortDescFirst overrides what its values suggest", () => {
+    const rows = [{ startsOn: "2026-10-09", name: "Charlie" }];
+    expect(sortsDescendingFirst({ accessorKey: "startsOn", sortDescFirst: false }, rows)).toBe(
+      false,
+    );
+    expect(sortsDescendingFirst({ accessorKey: "name", sortDescFirst: true }, rows)).toBe(true);
+    expect(sortsDescendingFirst({ accessorKey: "name", sortDescFirst: true }, [])).toBe(true);
+  });
+
+  test("the first row with a value decides, so an empty first cell does not", () => {
+    const rows = [
+      { submittedAt: null, name: "" },
+      { submittedAt: "", name: "" },
+      { submittedAt: "2026-10-09T14:30:00.000Z", name: "Bravo" },
+    ];
+    expect(sortsDescendingFirst({ accessorKey: "submittedAt" }, rows)).toBe(true);
+    expect(sortsDescendingFirst({ accessorKey: "name" }, rows)).toBe(false);
+  });
+
+  test("a source that sorts on the server is asked for the newest dates first", () => {
+    const column: ColumnDef<{ dueOn: string }> = { id: "due", accessorKey: "dueOn" };
+    const rows = [{ dueOn: "2026-10-09" }, { dueOn: "2026-11-01" }];
+    const first = nextTableSorting([], "due", sortsDescendingFirst(column, rows));
+    expect(first).toEqual([{ id: "due", desc: true }]);
+    expect(nextTableSorting(first, "due", sortsDescendingFirst(column, rows))).toEqual([
+      { id: "due", desc: false },
+    ]);
+    expect(
+      nextTableSorting([], "due", sortsDescendingFirst({ ...column, sortDescFirst: false }, rows)),
+    ).toEqual([{ id: "due", desc: false }]);
   });
 });
 

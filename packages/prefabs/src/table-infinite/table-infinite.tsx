@@ -638,7 +638,7 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
           const multiple = Boolean((event as { shiftKey?: boolean } | undefined)?.shiftKey);
           const descendingFirst = sortsDescendingFirst(
             columnDef,
-            getRenderableTableData(props.table)[0],
+            getRenderableTableData(props.table),
           );
           changeSorting((previous) => nextTableSorting(previous, id, descendingFirst, multiple));
         },

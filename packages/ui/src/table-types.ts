@@ -53,6 +53,10 @@ export interface ColumnDef<TData, TValue = unknown> {
   cell?: TableCellRenderer<TData, TValue>;
   size?: number;
   enableSorting?: boolean;
+  /**
+   * Whether the header's first press sorts descending. Without it, a column of numbers, dates
+   * or ISO date strings sorts newest or largest first and anything else A to Z.
+   */
   sortDescFirst?: boolean;
   enableHiding?: boolean;
   meta?: TableColumnMeta;
