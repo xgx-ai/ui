@@ -2,10 +2,14 @@ export {
   type DatePresetOption,
   defaultDatePresets,
   FilterDatePreset,
+  type FilterDatePresetControlledProps,
+  type FilterDatePresetHookProps,
   type FilterDatePresetProps,
 } from "./filter-date-preset.tsx";
 export {
   FilterDateRange,
+  type FilterDateRangeControlledProps,
+  type FilterDateRangeHookProps,
   type FilterDateRangeProps,
 } from "./filter-date-range.tsx";
 export {
@@ -19,6 +23,8 @@ export {
 } from "./filter-number-range.tsx";
 export {
   FilterSelect,
+  type FilterSelectControlledProps,
+  type FilterSelectHookProps,
   type FilterSelectOption,
   type FilterSelectProps,
 } from "./filter-select.tsx";

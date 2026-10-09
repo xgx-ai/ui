@@ -1,4 +1,5 @@
-import { Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@xgx/ui";
+import { cn, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@xgx/ui";
+import { createUniqueId } from "solid-js";
 import type { UseTableFiltersReturn } from "../use-table-filters";
 
 export interface FilterSelectOption {
@@ -6,19 +7,11 @@ export interface FilterSelectOption {
   label: string;
 }
 
-export interface FilterSelectProps<TFilters extends Record<string, unknown>> {
+interface FilterSelectBaseProps {
   /**
    * The label to display for the select
    */
   label: string;
-  /**
-   * The key in the filters object for this select
-   */
-  filterKey: keyof TFilters & string;
-  /**
-   * The filter hook instance from useTableFilters
-   */
-  filterHook: UseTableFiltersReturn<TFilters>;
   /**
    * The options to display in the select
    */
@@ -28,10 +21,42 @@ export interface FilterSelectProps<TFilters extends Record<string, unknown>> {
    * @default "All"
    */
   placeholder?: string;
+  /**
+   * Additional classes for the field wrapper, for example a width when the field sits in a
+   * toolbar rather than a filter popover.
+   */
+  class?: string;
 }
+
+export interface FilterSelectHookProps<TFilters extends Record<string, unknown>>
+  extends FilterSelectBaseProps {
+  /**
+   * The key in the filters object for this select
+   */
+  filterKey: keyof TFilters & string;
+  /**
+   * The filter hook instance from useTableFilters
+   */
+  filterHook: UseTableFiltersReturn<TFilters>;
+}
+
+/** A select held outside `useTableFilters`, such as local state or another search param. */
+export interface FilterSelectControlledProps extends FilterSelectBaseProps {
+  /** The selected option's value. Nullish shows the placeholder. */
+  value: string | null | undefined;
+  /** Called with the chosen option's value, or `undefined` when the selection is cleared. */
+  onChange: (value: string | undefined) => void;
+}
+
+export type FilterSelectProps<TFilters extends Record<string, unknown>> =
+  | FilterSelectHookProps<TFilters>
+  | FilterSelectControlledProps;
 
 /**
  * A select filter field for choosing from predefined options.
+ *
+ * Bind it to `useTableFilters` with `filterHook` and `filterKey`, or control it with `value`
+ * and `onChange`.
  *
  * @example
  * ```tsx
@@ -50,9 +75,20 @@ export interface FilterSelectProps<TFilters extends Record<string, unknown>> {
 export function FilterSelect<TFilters extends Record<string, unknown>>(
   props: FilterSelectProps<TFilters>,
 ) {
-  const value = () => (props.filterHook.filters()[props.filterKey] as string) ?? null;
+  const value = () =>
+    "filterHook" in props
+      ? ((props.filterHook.filters()[props.filterKey] as string) ?? null)
+      : (props.value ?? null);
+
+  // Name the trigger "<label> <selected value>", as a native labelled select reads.
+  const labelId = createUniqueId();
+  const triggerId = createUniqueId();
 
   const handleChange = (selectedValue: string | null) => {
+    if (!("filterHook" in props)) {
+      props.onChange(selectedValue || undefined);
+      return;
+    }
     props.filterHook.setFilter(
       props.filterKey,
       (selectedValue || undefined) as TFilters[typeof props.filterKey],
@@ -60,8 +96,10 @@ export function FilterSelect<TFilters extends Record<string, unknown>>(
   };
 
   return (
-    <div class="space-y-1.5 py-1">
-      <Label class="text-xs text-muted-foreground">{props.label}</Label>
+    <div class={cn("space-y-1.5 py-1", props.class)}>
+      <Label id={labelId} class="text-xs text-muted-foreground">
+        {props.label}
+      </Label>
       <Select
         value={value()}
         onChange={handleChange}
@@ -74,7 +112,11 @@ export function FilterSelect<TFilters extends Record<string, unknown>>(
           </SelectItem>
         )}
       >
-        <SelectTrigger class="h-8 text-xs">
+        <SelectTrigger
+          id={triggerId}
+          class="h-8 text-xs"
+          aria-labelledby={`${labelId} ${triggerId}`}
+        >
           <SelectValue<string> class={value() ? undefined : "text-border-strong"}>
             {(state) => {
               const selectedOption = state.selectedOption();

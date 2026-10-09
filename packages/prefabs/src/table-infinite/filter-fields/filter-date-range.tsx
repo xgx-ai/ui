@@ -1,11 +1,20 @@
 import { TextField, TextFieldInput, TextFieldLabel } from "@xgx/ui";
 import type { UseTableFiltersReturn } from "../use-table-filters";
 
-export interface FilterDateRangeProps<TFilters extends Record<string, unknown>> {
+interface FilterDateRangeBaseProps {
   /**
-   * The label to display for the date range
+   * The label to display for the date range. It sits above the "from" input.
    */
   label: string;
+  /**
+   * A label for the "to" input, shown above it. Without one the "to" input sits under a blank
+   * spacer.
+   */
+  toLabel?: string;
+}
+
+export interface FilterDateRangeHookProps<TFilters extends Record<string, unknown>>
+  extends FilterDateRangeBaseProps {
   /**
    * The key in the filters object for the "from" date
    */
@@ -20,8 +29,27 @@ export interface FilterDateRangeProps<TFilters extends Record<string, unknown>> 
   filterHook: UseTableFiltersReturn<TFilters>;
 }
 
+/** A date range held outside `useTableFilters`, such as local state or another search param. */
+export interface FilterDateRangeControlledProps extends FilterDateRangeBaseProps {
+  /** The "from" date as `YYYY-MM-DD`, or empty. */
+  fromValue?: string;
+  /** The "to" date as `YYYY-MM-DD`, or empty. */
+  toValue?: string;
+  /** Called with the new "from" date, or an empty string when it is cleared. */
+  onFromChange: (value: string) => void;
+  /** Called with the new "to" date, or an empty string when it is cleared. */
+  onToChange: (value: string) => void;
+}
+
+export type FilterDateRangeProps<TFilters extends Record<string, unknown>> =
+  | FilterDateRangeHookProps<TFilters>
+  | FilterDateRangeControlledProps;
+
 /**
  * A date range filter field with from/to date inputs.
+ *
+ * Bind it to `useTableFilters` with `filterHook`, `fromKey` and `toKey`, or control it with
+ * `fromValue`, `toValue`, `onFromChange` and `onToChange`.
  *
  * @example
  * ```tsx
@@ -36,10 +64,20 @@ export interface FilterDateRangeProps<TFilters extends Record<string, unknown>> 
 export function FilterDateRange<TFilters extends Record<string, unknown>>(
   props: FilterDateRangeProps<TFilters>,
 ) {
-  const fromValue = () => (props.filterHook.filters()[props.fromKey] as string) ?? "";
-  const toValue = () => (props.filterHook.filters()[props.toKey] as string) ?? "";
+  const fromValue = () =>
+    "filterHook" in props
+      ? ((props.filterHook.filters()[props.fromKey] as string) ?? "")
+      : (props.fromValue ?? "");
+  const toValue = () =>
+    "filterHook" in props
+      ? ((props.filterHook.filters()[props.toKey] as string) ?? "")
+      : (props.toValue ?? "");
 
   const handleFromChange = (value: string) => {
+    if (!("filterHook" in props)) {
+      props.onFromChange(value);
+      return;
+    }
     props.filterHook.setFilter(
       props.fromKey,
       (value || undefined) as TFilters[typeof props.fromKey],
@@ -47,6 +85,10 @@ export function FilterDateRange<TFilters extends Record<string, unknown>>(
   };
 
   const handleToChange = (value: string) => {
+    if (!("filterHook" in props)) {
+      props.onToChange(value);
+      return;
+    }
     props.filterHook.setFilter(props.toKey, (value || undefined) as TFilters[typeof props.toKey]);
   };
 
@@ -58,7 +100,11 @@ export function FilterDateRange<TFilters extends Record<string, unknown>>(
           <TextFieldInput type="date" class="h-8 px-2 py-1" />
         </TextField>
         <TextField value={toValue()} onChange={handleToChange} class="flex-1">
-          <TextFieldLabel class="invisible text-xs">&nbsp;</TextFieldLabel>
+          <TextFieldLabel
+            class={props.toLabel ? "text-xs text-muted-foreground" : "invisible text-xs"}
+          >
+            {props.toLabel ?? "\u00a0"}
+          </TextFieldLabel>
           <TextFieldInput type="date" class="h-8 px-2 py-1" />
         </TextField>
       </div>

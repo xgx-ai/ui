@@ -1,4 +1,5 @@
 import {
+  cn,
   Label,
   Search,
   SearchContent,
@@ -9,7 +10,7 @@ import {
   SearchListbox,
   SearchNoResult,
 } from "@xgx/ui";
-import { ChevronDown } from "@xgx/ui/icons";
+import { Check, ChevronDown } from "@xgx/ui/icons";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import type { UseTableFiltersReturn } from "../use-table-filters";
 
@@ -45,6 +46,31 @@ export interface FilterMultiSelectProps<TFilters extends Record<string, unknown>
    * @default "No results found"
    */
   noResultText?: string;
+  /**
+   * Caps the control's width. `"full"` fills the container.
+   * @default "full"
+   */
+  maxWidth?: "full" | "2xl";
+  /**
+   * Keeps the control one row high, to sit beside compact toolbar controls such as report
+   * filters. Selected values that do not fit are clipped rather than wrapped.
+   */
+  compact?: boolean;
+}
+
+/**
+ * Adds the option the user has just picked to the current selection.
+ *
+ * `Search` reports the whole selection (the existing values plus the new pick) in whatever
+ * order it holds them, so the new pick is the one that is not already selected — not
+ * necessarily the first. Returns `undefined` when nothing new was picked.
+ */
+export function addFilterMultiSelectValue(
+  currentValues: readonly string[],
+  selected: readonly FilterMultiSelectOption[] | null,
+): string[] | undefined {
+  const picked = selected?.find((option) => !currentValues.includes(option.value));
+  return picked ? [...currentValues, picked.value] : undefined;
 }
 
 /**
@@ -68,6 +94,7 @@ export function FilterMultiSelect<TFilters extends Record<string, unknown>>(
   props: FilterMultiSelectProps<TFilters>,
 ) {
   const [searchQuery, setSearchQuery] = createSignal("");
+  const [open, setOpen] = createSignal(false);
   let inputRef: HTMLInputElement | undefined;
 
   // Parse the comma-separated filter value into an array of selected options
@@ -91,18 +118,13 @@ export function FilterMultiSelect<TFilters extends Record<string, unknown>>(
   });
 
   const handleSelect = (selected: FilterMultiSelectOption[] | null) => {
-    if (!selected || selected.length === 0) return;
+    const updatedValues = addFilterMultiSelectValue(selectedValues(), selected);
+    if (!updatedValues) return;
 
-    const newItem = selected[0];
-    const currentValues = selectedValues();
-
-    // Don't add if already selected
-    if (currentValues.includes(newItem.value)) return;
-
-    const updatedValues = [...currentValues, newItem.value];
-    const newFilterValue = updatedValues.join(",");
-
-    props.filterHook.setFilter(props.filterKey, newFilterValue as TFilters[typeof props.filterKey]);
+    props.filterHook.setFilter(
+      props.filterKey,
+      updatedValues.join(",") as TFilters[typeof props.filterKey],
+    );
 
     // Clear input after selection
     if (inputRef) {
@@ -120,11 +142,20 @@ export function FilterMultiSelect<TFilters extends Record<string, unknown>>(
   };
 
   return (
-    <div class="space-y-1.5 py-1">
-      <Label class="text-xs text-muted-foreground">{props.label}</Label>
+    <div
+      class={cn(
+        props.compact ? "grid gap-1" : "space-y-1.5 py-1",
+        props.maxWidth === "2xl" && "max-w-2xl",
+      )}
+    >
+      <Label class={cn("text-xs text-muted-foreground", props.compact && "block h-4 font-medium")}>
+        {props.label}
+      </Label>
       <Search<FilterMultiSelectOption>
         triggerMode="focus"
         multiple={true}
+        open={open()}
+        onOpenChange={setOpen}
         options={filteredOptions()}
         optionValue="value"
         optionTextValue="label"
@@ -133,21 +164,33 @@ export function FilterMultiSelect<TFilters extends Record<string, unknown>>(
         placeholder={props.placeholder ?? "Search and select..."}
         onChange={handleSelect}
         onInputChange={setSearchQuery}
-        itemComponent={(itemProps: any) => (
+        itemComponent={(itemProps) => (
           <SearchItem item={itemProps.item}>
             <SearchItemLabel>{itemProps.item.rawValue.label}</SearchItemLabel>
+            <Show when={selectedValues().includes(itemProps.item.rawValue.value)}>
+              <Check aria-hidden="true" size={14} strokeWidth={2.5} />
+            </Show>
           </SearchItem>
         )}
       >
-        <SearchControl class="relative flex flex-wrap items-center min-h-8 gap-1 pr-8">
+        {/* SearchControl is a fixed-height, clipped row by default; let it grow as chips wrap. */}
+        <SearchControl
+          class={cn(
+            "relative flex items-center gap-1 pr-8",
+            props.compact
+              ? "h-8 min-h-8 flex-nowrap overflow-hidden py-0"
+              : "h-auto min-h-10 flex-wrap overflow-visible py-1",
+          )}
+        >
           <Show when={selectedOptions().length > 0}>
             <For each={selectedOptions()}>
-              {(option: any) => (
+              {(option) => (
                 <span class="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                   {option.label}
                   <button
                     type="button"
                     class="ml-0.5 cursor-pointer text-muted-foreground hover:text-foreground"
+                    aria-label={`Remove ${option.label}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleRemove(option);
@@ -161,9 +204,18 @@ export function FilterMultiSelect<TFilters extends Record<string, unknown>>(
           </Show>
           <SearchInput
             ref={inputRef}
-            class="min-w-[60px] flex-1 bg-transparent py-1 text-xs outline-none"
+            class={cn(
+              "min-w-[60px] flex-1 bg-transparent text-xs outline-none",
+              props.compact ? "h-7 py-0" : "py-1",
+            )}
           />
-          <ChevronDown class="absolute right-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <ChevronDown
+            class="absolute right-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            onClick={() => {
+              setOpen(true);
+              inputRef?.focus();
+            }}
+          />
         </SearchControl>
 
         <SearchContent onCloseAutoFocus={(e) => e.preventDefault()}>
