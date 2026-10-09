@@ -331,6 +331,20 @@ export const TableInfiniteSkeletonRows = (props: TableInfiniteSkeletonRowsProps)
   );
 };
 
+/*
+ * TableChromeLoading: the body's `<Loading>` only covers the rows. The header's select-all
+ * checkbox and loading bar, the end-of-results row and the status bar counts also read the
+ * rows, which suspend until the first page lands. Each sits under its own small boundary:
+ * without one, that read escapes the table and holds the nearest boundary above it, so a
+ * page shows its route-level fallback instead of the table's skeleton rows.
+ */
+const StatusCountSkeleton = () => (
+  <span
+    aria-hidden="true"
+    class="inline-block h-3 w-8 animate-pulse rounded bg-muted align-middle"
+  />
+);
+
 const TableLoadingBar = () => (
   <div role="progressbar" aria-label="Loading table rows" class="xgx-table-loading-bar">
     <style>{TABLE_LOADING_BAR_STYLES}</style>
@@ -513,13 +527,18 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
 
           return (
             <div class="flex items-center justify-center h-full">
-              <Checkbox
-                aria-label="Select all"
-                size="md"
-                checked={allSelected()}
-                onChange={(value) => props.table.toggleSelectAll(value)}
-                indeterminate={someSelected() && !allSelected()}
-              />
+              {/* Reads the rows, which suspend until the first page lands. See TableChromeLoading. */}
+              <Loading
+                fallback={<Checkbox aria-label="Select all" size="md" checked={false} disabled />}
+              >
+                <Checkbox
+                  aria-label="Select all"
+                  size="md"
+                  checked={allSelected()}
+                  onChange={(value) => props.table.toggleSelectAll(value)}
+                  indeterminate={someSelected() && !allSelected()}
+                />
+              </Loading>
             </div>
           );
         },
@@ -659,6 +678,17 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
     !props.table.isLoading();
   const showLoadingBar = () =>
     props.table.isLoading() || props.table.isFetchingMore() || getQueryIsPending(props.table);
+  const loadingBarRow = () => (
+    <TableRow class="border-none cursor-default hover:bg-transparent">
+      <th
+        colspan={Math.max(visibleColumns().length, 1)}
+        class="h-0 border-0 p-0 leading-none"
+        style={{ height: "0", padding: "0" }}
+      >
+        <TableLoadingBar />
+      </th>
+    </TableRow>
+  );
 
   createEffect(
     () => ({
@@ -756,17 +786,11 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
                 </>
               )}
             </Sortable>
-            <Show when={showLoadingBar()}>
-              <TableRow class="border-none cursor-default hover:bg-transparent">
-                <th
-                  colspan={Math.max(visibleColumns().length, 1)}
-                  class="h-0 border-0 p-0 leading-none"
-                  style={{ height: "0", padding: "0" }}
-                >
-                  <TableLoadingBar />
-                </th>
-              </TableRow>
-            </Show>
+            {/* `query.pending()` reads the rows, so the first load suspends it. The bar is
+                what that state should show anyway. */}
+            <Loading fallback={loadingBarRow()}>
+              <Show when={showLoadingBar()}>{loadingBarRow()}</Show>
+            </Loading>
           </TableHeader>
           <TableBody>
             <Loading
@@ -856,13 +880,15 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
                   </div>
                 </Show>
                 {/* An explicit empty string opts out of the end-of-results row entirely. */}
-                <Show when={showEndOfResults() && props.statusBarEndMessage !== ""}>
-                  <div class="flex justify-center py-4">
-                    <div class="text-xs text-muted-foreground/70">
-                      {props.statusBarEndMessage ?? "End of results"}
+                <Loading fallback={null}>
+                  <Show when={showEndOfResults() && props.statusBarEndMessage !== ""}>
+                    <div class="flex justify-center py-4">
+                      <div class="text-xs text-muted-foreground/70">
+                        {props.statusBarEndMessage ?? "End of results"}
+                      </div>
                     </div>
-                  </div>
-                </Show>
+                  </Show>
+                </Loading>
               </TableCell>
             </TableRow>
           </TableFooter>
@@ -872,10 +898,13 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
         <div class="flex items-center justify-between border-t border-border-subtle px-4 py-3 text-xs text-muted-foreground">
           <div>
             <span>
-              {props.statusBarLabel ?? "Total results"}: {totalCount()}
+              {props.statusBarLabel ?? "Total results"}:{" "}
+              <Loading fallback={<StatusCountSkeleton />}>{totalCount()}</Loading>
             </span>
             <Show when={enableRowSelection()}>
-              <span class="ml-1 text-muted-foreground/70">( Selected: {selectedCount()} )</span>
+              <Loading fallback={null}>
+                <span class="ml-1 text-muted-foreground/70">( Selected: {selectedCount()} )</span>
+              </Loading>
             </Show>
           </div>
           <Show when={props.statusBarSlot}>

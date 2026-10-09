@@ -38,17 +38,35 @@ Move application writes out of component top level, memos, and compute
 functions. Prefer derived state, events, actions, or apply callbacks. Use
 `ownedWrite: true` only for narrow internal signals whose ownership semantics
 are understood.
+`untrack` preserves the ambient owner and does not exempt writes from this
+guard.
 
 ## Pending async untracked read
 
 Move the async read beneath the appropriate `Loading` boundary and into a
 tracked JSX, memo, store, or effect compute scope.
 
+## `LOADING_ON_OUTSIDE_HOLD`
+
+A pending source read outside a re-armed `Loading` boundary holds the same
+frame, preventing that boundary's fallback from appearing. Move the outside
+data read beneath the boundary so it owns the wait. Do not add manual loading
+flags to hide the structural problem. Read [async-actions.md](async-actions.md)
+before adjusting boundary or pending behaviour.
+
+## Multiple Solid instances
+
+Inspect the lockfile and linked/shared package resolution when ownership or
+context unexpectedly fails across package boundaries. Align the compatible
+Solid runtime packages and ensure consumers share one `solid-js` instance;
+do not patch the symptom with fallback context or compatibility wrappers.
+
 ## Temporary diagnostic tracing
 
-The pinned `@solidjs/signals` dev build exposes structured diagnostics. When the
-browser console message lacks a useful stack, temporarily subscribe at the app
-entry point:
+When the installed `@solidjs/signals` dev build exports `DEV.diagnostics`,
+and the browser message lacks a useful stack, temporarily subscribe at the app
+entry point. Confirm this export against the installed types first; older
+prereleases can lack it:
 
 ```ts
 import { DEV } from "@solidjs/signals";

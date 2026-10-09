@@ -7,6 +7,8 @@
 
 ## SolidJS v2 Rules
 
+- Read and follow `.agents/skills/solidjs2-best-practices/SKILL.md` for Solid 2 reactivity, fetching, mutations, lifecycle and runtime diagnostics. Application/demo data reads should use the public XGX Query API; native async primitives remain appropriate inside its implementation.
+
 - Target SolidJS v2 only. Do not add new Solid v1-only APIs or patterns.
 - Use `@solidjs/web` for web JSX/runtime imports such as `Dynamic`, `render`, `template`, `insert`, `spread`, and JSX types.
 - Use Solid v2 two-phase effects: `createEffect(compute, effect)` and `createRenderEffect(compute, effect)`. Do not use v1 single-callback effects.

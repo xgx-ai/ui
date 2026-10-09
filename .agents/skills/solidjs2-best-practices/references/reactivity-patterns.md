@@ -138,6 +138,9 @@ const [draftName, setDraftName] = createSignal(() => props.name);
 ```
 
 Use `createStore(fn, seed)` for a field-granular derived object or collection.
+Use `createProjection(fn, seed)` when that derived store should be read-only.
+Writable derived signals/stores can be overridden locally until their source
+changes; do not confuse them with transition-scoped optimistic state.
 
 ## Props and component bodies
 
@@ -201,6 +204,13 @@ setStore((draft) => {
 });
 ```
 
+A setter may return a replacement value: objects shallow-diff at the top level,
+and arrays replace by index and length. This does not perform keyed
+reconciliation. Use projection options such as `{ key: "id" }` for derived
+collections, or `reconcile(rows, "id")(draft.rows)` inside a setter when merging
+server data into a subtree. `undefined` is a real assigned value in stores and
+`merge`, rather than an instruction to skip a property.
+
 ## Lifecycle
 
 Use `onSettled` for mount-style work:
@@ -215,6 +225,17 @@ onSettled(() => {
 
 Return cleanup from an effect apply function for per-dependency setup. Do not
 register ordinary effect cleanup with `onCleanup` inside apply.
+`onCleanup` remains useful inside computations for resources tied to each
+reactive run, mainly in library or custom-primitive internals.
+
+`onSettled` registers one callback, not a subscription. It can also defer
+event-handler work until the triggered transition settles. Return cleanup only
+when registering from an owned scope such as a component body; an unowned
+event-handler registration has no disposal lifetime, so a cleanup return
+throws in development and is dropped in production. Do not call `onCleanup`
+inside its callback, create reactive primitives inside an owner-backed
+callback, or call `flush()` while that settle flush is running. Create the
+primitives in component/factory setup instead.
 
 ## Batching and writes
 
@@ -232,6 +253,8 @@ consumer must immediately observe committed state or updated DOM.
 
 Do not write application state from `createMemo`, effect compute functions, or
 component top level. Use events, actions, or the effect apply phase.
+`untrack` stops dependency collection but preserves the ambient owner, so
+wrapping a setter in it does not bypass the owned-scope write guard.
 
 ## Tests
 
