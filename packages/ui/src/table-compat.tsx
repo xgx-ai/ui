@@ -107,6 +107,33 @@ function renderCell<TData>(
   return value == null ? "" : String(value);
 }
 
+const SKELETON_ROW_COUNT = 8;
+
+/** Placeholder rows under the real column headers while the first page loads. */
+function SkeletonRows(props: { columnCount: number }) {
+  const indexes = (length: number) => Array.from({ length }, (_, index) => index);
+
+  return (
+    <For each={indexes(SKELETON_ROW_COUNT)}>
+      {(rowIndex) => (
+        <tr aria-hidden="true" class="border-b">
+          <For each={indexes(props.columnCount)}>
+            {(columnIndex) => (
+              <td class="px-4 py-3 align-middle">
+                <div
+                  class={`h-4 max-w-full animate-pulse rounded bg-muted ${
+                    columnIndex === 0 ? "w-3/4" : "w-1/2"
+                  } ${rowIndex % 2 === 0 ? "opacity-70" : ""}`}
+                />
+              </td>
+            )}
+          </For>
+        </tr>
+      )}
+    </For>
+  );
+}
+
 export function TableInfinite<TData>(props: TableCompatProps<TData>) {
   const rows = createMemo(() => props.table.data());
   const columnCount = () => Math.max(props.columns.length, 1);
@@ -122,15 +149,7 @@ export function TableInfinite<TData>(props: TableCompatProps<TData>) {
           </tr>
         </thead>
         <tbody>
-          <Loading
-            fallback={
-              <tr>
-                <td class="px-4 py-6 text-center text-muted-foreground" colspan={columnCount()}>
-                  Loading...
-                </td>
-              </tr>
-            }
-          >
+          <Loading fallback={<SkeletonRows columnCount={columnCount()} />}>
             <For each={rows()}>
               {(row, rowIndex) => (
                 <tr class="border-b hover:bg-muted/40" onClick={() => props.onRowClick?.(row)}>

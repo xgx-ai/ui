@@ -78,6 +78,7 @@ const TableCell = (props: ComponentProps<"td">) => {
 };
 
 export type TableStatusBarProps = ComponentProps<"div"> & {
+  /** `undefined` while the total is loading: the bar shows a placeholder, not a false 0. */
   totalCount?: number;
   totalLabel?: string;
   emptyMessage?: string;
@@ -99,7 +100,18 @@ const TableStatusBar = (props: TableStatusBarProps) => {
       </Show>
       <div class="flex w-full items-center border-t border-border pt-2">
         <span>
-          {local.totalLabel ?? "Total"}: {local.totalCount ?? 0}
+          {local.totalLabel ?? "Total"}:{" "}
+          <Show
+            when={local.totalCount !== undefined}
+            fallback={
+              <span
+                aria-hidden="true"
+                class="inline-block h-3 w-8 animate-pulse rounded bg-muted align-middle"
+              />
+            }
+          >
+            {local.totalCount}
+          </Show>
         </span>
       </div>
     </div>
