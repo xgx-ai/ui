@@ -1,5 +1,5 @@
+import { type Accessor, createMemo, createProjection, createSignal } from "solid-js";
 import { type InfiniteQueryResult } from "../../../query/src/index.tsx";
-import { type Accessor, createMemo, createSignal } from "solid-js";
 
 export interface TableInfinitePage<TData> {
   data: TData[];
@@ -12,6 +12,12 @@ export interface UseTableInfiniteFromQueryParams<TData, TPage, TPageParam = unkn
   getRows: (page: TPage) => readonly TData[];
   getCount?: (page: TPage) => number | undefined;
   getTotalCount?: (page: TPage) => number | undefined;
+  /**
+   * A row's stable identity, defaulting to its `id`. A refetch is reconciled by it, so a row
+   * that survives keeps its object and its rendered row, and selection is tracked by it.
+   * Rows without one are never matched to an earlier row.
+   */
+  getRowId?: (row: TData) => string | number | undefined;
   singleSelect?: boolean;
   /**
    * Unique identifier for the table, used for persisting state like column visibility.
@@ -72,6 +78,44 @@ function getDefaultTotalCount<TData>(page: TableInfinitePage<TData>): number | u
   return page.totalCount;
 }
 
+function getDefaultRowId(row: unknown): string | number | undefined {
+  const id = (row as { id?: unknown } | null | undefined)?.id;
+  return typeof id === "string" || typeof id === "number" ? id : undefined;
+}
+
+/**
+ * The reconciliation key for a table's rows.
+ *
+ * Solid applies a projection's `key` at every depth, so it is given only to objects that
+ * arrived as rows; anything nested inside a row merges by position within that row. A row
+ * with no identity gets a key of its own rather than falling back to its position, which
+ * would hand its object, and anything holding it, to whichever row took its place.
+ */
+function createRowKey<TData>(getRowId: (row: TData) => string | number | undefined) {
+  const rows = new WeakSet<object>();
+  const unkeyed = new WeakMap<object, symbol>();
+
+  const key = (item: object): unknown => {
+    if (!rows.has(item)) return undefined;
+    const id = getRowId(item as TData);
+    if (id !== undefined) return id;
+    let own = unkeyed.get(item);
+    if (own === undefined) {
+      own = Symbol("unkeyed row");
+      unkeyed.set(item, own);
+    }
+    return own;
+  };
+  const register = (incoming: TData[]) => {
+    for (const row of incoming) {
+      if (row !== null && typeof row === "object") rows.add(row);
+    }
+    return incoming;
+  };
+
+  return { key, register };
+}
+
 export function useTableInfiniteFromQuery<TData, TPageParam = unknown>(
   params: UseTableInfiniteFromDefaultQueryParams<TData, TPageParam>,
 ): UseTableInfiniteReturn<TData, TableInfinitePage<TData>, TPageParam>;
@@ -98,16 +142,33 @@ export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
       ? (params.getTotalCount as (page: TPage) => number | undefined)
       : (page: TPage) => getDefaultTotalCount(page as TableInfinitePage<TData>);
 
+  const getRowId = params.getRowId ?? getDefaultRowId;
+  const rowKey = createRowKey<TData>(getRowId);
+
   const flattenPages = (pages: readonly TPage[] | undefined): TData[] =>
     pages?.flatMap((page) => [...getRows(page)]) ?? [];
 
-  // Reads `retained`, not `data`: a keyed `<For>` under `<Loading>` does not pick up the
-  // new value in Solid 2 beta.25, so a filtered table would stay stuck on old rows. The
-  // first read still suspends, because `retained` is undefined until something resolves.
-  const data = createMemo(() => {
-    const rows = query.retained();
-    return flattenPages(rows ? rows.pages : query.data().pages);
-  });
+  /*
+   * A refetch answers with entirely new objects, so without reconciliation every row would
+   * be a new row: a keyed `<For>` would remount all of them, and anything a row owns — an
+   * open menu, a dialog waiting on its own save — would be torn down with it. Reconciled by
+   * row identity, a surviving row keeps its object and only the fields that changed notify.
+   *
+   * Reads `retained`, not `data`: a keyed `<For>` under `<Loading>` does not pick up the
+   * new value in Solid 2 beta.25, so a filtered table would stay stuck on old rows. The
+   * first read still suspends, because `retained` is undefined until something resolves.
+   */
+  const reconciledRows = createProjection<TData[]>(
+    () => {
+      const retained = query.retained();
+      return rowKey.register(flattenPages(retained ? retained.pages : query.data().pages));
+    },
+    [],
+    { key: rowKey.key, name: params.tableId ? `${params.tableId}.rows` : "tableRows" },
+  );
+  // A new array when membership or order changes, as before, now holding the reconciled
+  // rows. A change to one row's fields reaches only the readers of those fields.
+  const data = createMemo(() => [...reconciledRows]);
 
   const count = createMemo(() => {
     const pages = query.cached()?.pages;
@@ -143,17 +204,22 @@ export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
   const [allSelected, setAllSelected] = createSignal<boolean>(false);
   const [excludedIds, setExcludedIds] = createSignal<string[]>([]);
 
+  const selectionId = (row: TData) => {
+    const id = getRowId(row);
+    return id === undefined ? undefined : String(id);
+  };
+
   const isRowSelected = (row: TData) => {
-    const rowId = (row as any)?.id as string | undefined;
+    const rowId = selectionId(row);
     if (rowId === undefined) return false;
     if (allSelected()) {
       return !new Set(excludedIds()).has(rowId);
     }
-    return selected().findIndex((x) => (x as any).id === rowId) !== -1;
+    return selected().findIndex((x) => selectionId(x) === rowId) !== -1;
   };
 
   const toggleRowSelection = (row: TData, checked: boolean) => {
-    const rowId = (row as any)?.id as string | undefined;
+    const rowId = selectionId(row);
     if (rowId === undefined) return;
 
     if (singleSelect) {
@@ -175,9 +241,9 @@ export function useTableInfiniteFromQuery<TData, TPage, TPageParam = unknown>(
       }
     } else {
       if (checked) {
-        setSelected((prev) => (prev.some((x) => (x as any).id === rowId) ? prev : [...prev, row]));
+        setSelected((prev) => (prev.some((x) => selectionId(x) === rowId) ? prev : [...prev, row]));
       } else {
-        setSelected((prev) => prev.filter((x) => (x as any).id !== rowId));
+        setSelected((prev) => prev.filter((x) => selectionId(x) !== rowId));
       }
     }
   };

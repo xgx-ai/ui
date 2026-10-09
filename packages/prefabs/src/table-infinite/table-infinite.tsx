@@ -1,5 +1,4 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { createIntersectionLoader } from "../../../query/src/index.tsx";
 import type {
   CellContext,
   ColumnDef,
@@ -27,7 +26,16 @@ import {
 } from "@xgx/ui";
 import { GripVertical, RotateCcw, Settings } from "@xgx/ui/icons";
 import { Sortable } from "@xgx/ui/sortablejs";
-import { createEffect, createMemo, createSignal, For, Loading, Show } from "solid-js";
+import {
+  type Accessor,
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  Loading,
+  Show,
+} from "solid-js";
+import { createIntersectionLoader } from "../../../query/src/index.tsx";
 import type { UseTableInfiniteReturn } from "./use-table-infinite";
 
 export interface TableColumnLayout {
@@ -472,6 +480,15 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
   const sourceColumns = () => props.columns ?? [];
   const rowId = (row: TData, index: number) =>
     props.getRowId?.(row) ?? (row as { id?: string }).id ?? String(index);
+  /*
+   * What a rendered row is keyed on: the row's id, or the row object itself when it has none.
+   * Never a wrapper built here — a fresh wrapper per recompute is a new key, and the keyed
+   * `<For>` would remount every row (and everything a row owns, such as a dialog waiting on
+   * its own save) on each refetch. With rows reconciled by `useTableInfiniteFromQuery`, a
+   * surviving row also keeps its object, so a field change updates only that field's readers.
+   */
+  const rowKey = (row: TData): unknown =>
+    props.getRowId?.(row) ?? (row as { id?: unknown } | null)?.id ?? row;
 
   const loader = createIntersectionLoader({
     canLoad: () =>
@@ -522,7 +539,8 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
         header: () => {
           const currentData = () => getRenderableTableData(props.table);
           const allSelected = () =>
-            currentData().length > 0 && currentData().every((row) => props.table.isRowSelected(row));
+            currentData().length > 0 &&
+            currentData().every((row) => props.table.isRowSelected(row));
           const someSelected = () => currentData().some((row) => props.table.isRowSelected(row));
 
           return (
@@ -623,40 +641,65 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
     ),
   );
 
-  const rows = createMemo<TableRowContext<TData>[]>(() => {
+  // Each row's position in the source data, which is what `accessorFn` and the sort's
+  // tie-break receive. Not its rendered position, which sorting and grouping change.
+  const sourceIndexes = createMemo(() => {
+    const indexes = new Map<TData, number>();
+    getRenderableTableData(props.table).forEach((row, index) => indexes.set(row, index));
+    return indexes;
+  });
+
+  const rows = createMemo<TData[]>(() => {
     const sort = sorting();
     // `<Loading>` retains already-rendered rows across a key change, so the authoritative
     // read is all that is needed: no mirror, no non-suspending fallback.
     const sourceData = getRenderableTableData(props.table);
-    const data = sourceData.map((row, index) => ({
-      id: rowId(row, index),
-      index,
-      original: row,
-      getIsSelected: () => props.table.isRowSelected(row),
-    }));
+    const indexes = sourceIndexes();
+    const indexOf = (row: TData) => indexes.get(row) ?? 0;
 
-    return [...data].sort((left, right) => {
+    return [...sourceData].sort((left, right) => {
       const groupResult = props.groupBy
-        ? compareValues(props.groupBy(left.original), props.groupBy(right.original))
+        ? compareValues(props.groupBy(left), props.groupBy(right))
         : 0;
       if (groupResult !== 0) return groupResult;
-      if (!sort) return left.index - right.index;
+      if (!sort) return indexOf(left) - indexOf(right);
 
       const column = tableColumns().find((item) => item.id === sort.columnId);
-      if (!column) return left.index - right.index;
+      if (!column) return indexOf(left) - indexOf(right);
 
       const sortResult = compareValues(
-        getColumnValue(left.original, left.index, column.columnDef),
-        getColumnValue(right.original, right.index, column.columnDef),
+        getColumnValue(left, indexOf(left), column.columnDef),
+        getColumnValue(right, indexOf(right), column.columnDef),
       );
       return sort.direction === "asc" ? sortResult : -sortResult;
     });
   });
 
+  /*
+   * One context per rendered row, for the row's lifetime. Its fields read through to the
+   * current row, so a cell sees a reconciled row's changes without being rebuilt, and the
+   * index notifies only when this row's own position moves.
+   */
+  const createRowContext = (row: Accessor<TData>): TableRowContext<TData> => {
+    const index = createMemo(() => sourceIndexes().get(row()) ?? 0);
+    return {
+      get id() {
+        return rowId(row(), index());
+      },
+      get index() {
+        return index();
+      },
+      get original() {
+        return row();
+      },
+      getIsSelected: () => props.table.isRowSelected(row()),
+    };
+  };
+
   const rowGroups = createMemo(() => {
-    const grouped: { key?: string; rows: TableRowContext<TData>[] }[] = [];
+    const grouped: { key?: string; rows: TData[] }[] = [];
     for (const row of rows()) {
-      const key = props.groupBy?.(row.original);
+      const key = props.groupBy?.(row);
       const previous = grouped[grouped.length - 1];
       if (!previous || previous.key !== key) {
         grouped.push({ key, rows: [row] });
@@ -814,56 +857,59 @@ export const TableInfinite = <TData,>(props: TableInfiniteProps<TData>) => {
                   </TableRow>
                 }
               >
-                <For each={rowGroups()}>
+                {/* Groups by their key and rows by `rowKey`, never by an object built in a
+                    memo here: see `rowKey`. */}
+                <For each={rowGroups()} keyed={(group) => group.key ?? ""}>
                   {(rowGroup) => (
                     <>
-                      <Show when={rowGroup.key}>
+                      <Show when={rowGroup().key}>
                         {(key) => (
                           <TableRow class="cursor-default bg-muted/50 hover:bg-muted/50">
                             <TableCell
                               colspan={Math.max(visibleColumns().length, 1)}
                               class="py-2 text-xs font-semibold text-muted-foreground"
                             >
-                              {props.renderGroupHeader?.(
-                                key(),
-                                rowGroup.rows.map((row) => row.original),
-                              ) ?? key()}
+                              {props.renderGroupHeader?.(key(), rowGroup().rows) ?? key()}
                             </TableCell>
                           </TableRow>
                         )}
                       </Show>
-                      <For each={rowGroup.rows}>
-                        {(row) => (
-                          <TableRow
-                            data-state={row.getIsSelected() ? "selected" : undefined}
-                            interactive={Boolean(props.onRowClick)}
-                            onClick={() => props.onRowClick?.(row.original)}
-                            onMouseEnter={
-                              props.onRowHover ? () => props.onRowHover?.(row.original) : undefined
-                            }
-                          >
-                            <For each={visibleColumns()}>
-                              {(column) => {
-                                const context: CellContext<TData, unknown> = {
-                                  row,
-                                  column,
-                                  getValue: () =>
-                                    getColumnValue(row.original, row.index, column.columnDef),
-                                };
+                      <For each={rowGroup().rows} keyed={rowKey}>
+                        {(row) => {
+                          const rowContext = createRowContext(row);
 
-                                return (
-                                  <TableCell
-                                    data-table-pinned={column.columnDef.meta?.pinned || undefined}
-                                    class="whitespace-nowrap"
-                                    style={getColumnStyles(column, visibleColumns())}
-                                  >
-                                    {renderCell(context)}
-                                  </TableCell>
-                                );
-                              }}
-                            </For>
-                          </TableRow>
-                        )}
+                          return (
+                            <TableRow
+                              data-state={rowContext.getIsSelected() ? "selected" : undefined}
+                              interactive={Boolean(props.onRowClick)}
+                              onClick={() => props.onRowClick?.(row())}
+                              onMouseEnter={
+                                props.onRowHover ? () => props.onRowHover?.(row()) : undefined
+                              }
+                            >
+                              <For each={visibleColumns()}>
+                                {(column) => {
+                                  const context: CellContext<TData, unknown> = {
+                                    row: rowContext,
+                                    column,
+                                    getValue: () =>
+                                      getColumnValue(row(), rowContext.index, column.columnDef),
+                                  };
+
+                                  return (
+                                    <TableCell
+                                      data-table-pinned={column.columnDef.meta?.pinned || undefined}
+                                      class="whitespace-nowrap"
+                                      style={getColumnStyles(column, visibleColumns())}
+                                    >
+                                      {renderCell(context)}
+                                    </TableCell>
+                                  );
+                                }}
+                              </For>
+                            </TableRow>
+                          );
+                        }}
                       </For>
                     </>
                   )}
